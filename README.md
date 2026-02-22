@@ -77,7 +77,7 @@ pytest
 Run with coverage report:
 
 ```bash
-pytest --cov=map_editor/models --cov-report=term-missing
+pytest --cov=map_editor --cov-report=term-missing
 ```
 
 ---
@@ -86,8 +86,9 @@ pytest --cov=map_editor/models --cov-report=term-missing
 
 ```
 MapEditor_ClaudeCode/
-├── main.py                      # Entry point
-├── requirements.txt
+├── main.py                      # Entry point / Phase 1-2 smoke test
+├── requirements.txt             # Runtime dependencies
+├── requirements-dev.txt         # Dev dependencies (pytest, pytest-cov)
 │
 ├── map_editor/
 │   ├── models/                  # Pure data models (no Qt dependency)
@@ -97,13 +98,20 @@ MapEditor_ClaudeCode/
 │   │   ├── hex_map.py           # Hex-grid map + coordinate math
 │   │   └── map_object.py        # Placed entities (NPCs, items, …)
 │   │
+│   ├── rendering/               # QPainter renderers → QImage
+│   │   ├── tile_renderer.py     # Square tile map renderer
+│   │   └── hex_renderer.py      # Hex map renderer
+│   │
 │   ├── commands/                # QUndoCommand subclasses (undo/redo)
 │   ├── tools/                   # Mouse interaction tools (paint, fill, …)
-│   ├── rendering/               # QPainter renderers + PNG/TMJ export
 │   ├── io/                      # Tiled TMJ read/write
 │   ├── ui/                      # PyQt6 windows, panels, dialogs
 │   └── assets/
 │       └── placeholders/        # Auto-generated placeholder tilesets
+│
+└── tests/
+    ├── models/                  # Unit tests for data models
+    └── rendering/               # Unit tests for renderers
 ```
 
 ---
@@ -113,7 +121,7 @@ MapEditor_ClaudeCode/
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 | Done | Data models (tileset, layer, tile map, hex map, objects) |
-| 2 | Planned | Renderers (tile grid + hex grid via QPainter) |
+| 2 | Done | Renderers (tile grid + hex grid via QPainter → QImage) |
 | 3 | Planned | Core UI shell (main window, canvases, new map dialog) |
 | 4 | Planned | Editing tools + undo/redo (paint, fill, erase, objects) |
 | 5 | Planned | File I/O (Tiled TMJ save/load) + PNG export |

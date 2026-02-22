@@ -4,11 +4,14 @@ Tileset model.
 A Tileset is a collection of TileDefinitions, each identified by a positive
 integer ID (Tiled convention: 0 = empty/no tile, IDs start at 1).
 
-Placeholder generation produces a PNG sprite sheet of solid-colored squares
-so the editor is usable before any real art is loaded.
+Placeholder generation produces a PNG sprite sheet of solid-colored shapes
+(squares for tile tilesets, flat-top hexagons for hex tilesets) so the
+editor is usable before any real art is loaded.
 """
 
 from __future__ import annotations
+
+import math
 
 import os
 from dataclasses import dataclass, field
@@ -148,10 +151,18 @@ class Tileset:
         tile_width: int = 32,
         tile_height: int = 32,
         output_dir: Optional[Path] = None,
+        hex_shaped: bool = False,
     ) -> "Tileset":
         """
         Build a Tileset from *tile_defs* (list of dicts with id/name/color/category)
         and generate a PNG sprite sheet saved to *output_dir*.
+
+        Parameters
+        ----------
+        hex_shaped:
+            When True, each tile in the sprite sheet is drawn as a flat-top
+            hexagon instead of a square.  Use this for hex-map tilesets so the
+            palette thumbnail matches the in-editor shape.
 
         Returns the fully populated Tileset.
         """
@@ -188,7 +199,7 @@ class Tileset:
             output_dir.mkdir(parents=True, exist_ok=True)
             png_path = output_dir / f"{name.lower().replace(' ', '_')}_placeholder.png"
             tileset.source = str(png_path)
-            _generate_placeholder_png(tileset, png_path)
+            _generate_placeholder_png(tileset, png_path, hex_shaped=hex_shaped)
 
         return tileset
 
@@ -212,6 +223,7 @@ def make_default_hex_tileset(output_dir: Optional[Path] = None) -> Tileset:
         name="Default Hex",
         tile_defs=_PLACEHOLDER_HEX_TILES,
         output_dir=output_dir,
+        hex_shaped=True,
     )
 
 
@@ -219,8 +231,14 @@ def make_default_hex_tileset(output_dir: Optional[Path] = None) -> Tileset:
 # Internal: PNG generation
 # ---------------------------------------------------------------------------
 
-def _generate_placeholder_png(tileset: Tileset, path: Path) -> None:
-    """Draw a sprite sheet of solid-colored tiles with name labels."""
+def _generate_placeholder_png(
+    tileset: Tileset, path: Path, *, hex_shaped: bool = False
+) -> None:
+    """Draw a sprite sheet of solid-colored tiles with name labels.
+
+    When *hex_shaped* is True each cell is drawn as a flat-top hexagon
+    (on a transparent background) instead of a filled rectangle.
+    """
     tw = tileset.tile_width
     th = tileset.tile_height
     cols = tileset.columns
@@ -238,17 +256,28 @@ def _generate_placeholder_png(tileset: Tileset, path: Path) -> None:
     for tile in tileset.tiles:
         x0 = tile.sheet_col * tw
         y0 = tile.sheet_row * th
-        x1 = x0 + tw - 1
-        y1 = y0 + th - 1
 
-        # Fill
-        draw.rectangle([x0, y0, x1, y1], fill=(*tile.color, 255))
-        # 1-pixel dark border
-        draw.rectangle([x0, y0, x1, y1], outline=(0, 0, 0, 180), width=1)
+        if hex_shaped:
+            # Draw a flat-top hexagon centred in the cell (2 px margin)
+            cx = x0 + tw / 2
+            cy = y0 + th / 2
+            r = min(tw, th) / 2 - 2
+            corners = [
+                (cx + r * math.cos(math.radians(60 * i)),
+                 cy + r * math.sin(math.radians(60 * i)))
+                for i in range(6)
+            ]
+            draw.polygon(corners, fill=(*tile.color, 255), outline=(0, 0, 0, 180))
+        else:
+            x1 = x0 + tw - 1
+            y1 = y0 + th - 1
+            draw.rectangle([x0, y0, x1, y1], fill=(*tile.color, 255))
+            draw.rectangle([x0, y0, x1, y1], outline=(0, 0, 0, 180), width=1)
 
-        # Label: first word of the tile name, centred
+        # Label: first word of the tile name, centred in the cell
         label = tile.name.split()[0]
-        # Use textbbox to measure (Pillow ≥ 9.2)
+        cx_i = x0 + tw // 2
+        cy_i = y0 + th // 2
         try:
             bbox = draw.textbbox((0, 0), label, font=font)
             lw = bbox[2] - bbox[0]
@@ -256,9 +285,8 @@ def _generate_placeholder_png(tileset: Tileset, path: Path) -> None:
         except AttributeError:
             lw, lh = draw.textsize(label, font=font)  # older Pillow
 
-        lx = x0 + (tw - lw) // 2
-        ly = y0 + (th - lh) // 2
-        # Shadow for legibility
+        lx = cx_i - lw // 2
+        ly = cy_i - lh // 2
         draw.text((lx + 1, ly + 1), label, font=font, fill=(0, 0, 0, 200))
         draw.text((lx, ly), label, font=font, fill=(255, 255, 255, 230))
 

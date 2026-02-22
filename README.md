@@ -62,7 +62,7 @@ python main.py
 
 ## Testing
 
-Install the development dependencies (includes `pytest` and `pytest-cov`):
+Install the development dependencies (includes `pytest`, `pytest-cov`, `mkdocs`, and `mkdocs-material`):
 
 ```bash
 pip install -r requirements-dev.txt
@@ -82,13 +82,32 @@ pytest --cov=map_editor --cov-report=term-missing
 
 ---
 
+## Documentation
+
+Full documentation is in the `docs/` directory and built with [MkDocs](https://www.mkdocs.org/) + [Material theme](https://squidfunk.github.io/mkdocs-material/).
+
+Preview locally (install dev dependencies first):
+
+```bash
+# macOS / Linux
+mkdocs serve
+
+# Windows
+PYTHONUTF8=1 mkdocs serve
+```
+
+Then open `http://127.0.0.1:8000`.
+
+---
+
 ## Project Structure
 
 ```
 MapEditor_ClaudeCode/
 ├── main.py                      # Entry point / Phase 1-2 smoke test
 ├── requirements.txt             # Runtime dependencies
-├── requirements-dev.txt         # Dev dependencies (pytest, pytest-cov)
+├── requirements-dev.txt         # Dev dependencies (pytest, pytest-cov, mkdocs)
+├── mkdocs.yml                   # Documentation site config
 │
 ├── map_editor/
 │   ├── models/                  # Pure data models (no Qt dependency)
@@ -109,9 +128,11 @@ MapEditor_ClaudeCode/
 │   └── assets/
 │       └── placeholders/        # Auto-generated placeholder tilesets
 │
-└── tests/
-    ├── models/                  # Unit tests for data models
-    └── rendering/               # Unit tests for renderers
+├── tests/
+│   ├── models/                  # Unit tests for data models
+│   └── rendering/               # Unit tests for renderers
+│
+└── docs/                        # MkDocs source (user guide)
 ```
 
 ---

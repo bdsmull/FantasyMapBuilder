@@ -25,6 +25,9 @@ MANIFEST
 htmlcov/
 .tox/
 
+# MkDocs generated site
+site/
+
 # Type checking
 .mypy_cache/
 .pytype/

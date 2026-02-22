@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- MkDocs + Material theme documentation site (`docs/`, `mkdocs.yml`)
+  - Getting Started, Core Concepts, Map Types, Tilesets, Layers, Objects, Coordinate Systems, File Format, Architecture, Testing, Contributing pages
+  - `mkdocs>=1.6` and `mkdocs-material>=9.5` added to `requirements-dev.txt`
+  - `site/` added to `.gitignore`
+
 ### Planned
 - Phase 3: PyQt6 main window, dual-canvas workspace, new map dialog
 - Phase 4: Paint, fill, erase, and object placement tools with undo/redo

@@ -1,0 +1,56 @@
+site_name: Fantasy RPG Map Editor
+site_description: A Python desktop application for creating and editing fantasy RPG maps with tile and hex grid support.
+
+# repo_url: https://github.com/<your-username>/MapEditor_ClaudeCode
+# repo_name: MapEditor_ClaudeCode
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Core Concepts:
+    - Overview: concepts.md
+    - Map Types: map-types.md
+    - Tilesets: tilesets.md
+    - Layers: layers.md
+    - Objects: objects.md
+    - Coordinate Systems: coordinates.md
+  - File Format: file-format.md
+  - Development:
+    - Architecture: architecture.md
+    - Testing: testing.md
+    - Contributing: contributing.md

@@ -34,32 +34,32 @@ pip install -r requirements.txt
 
 ## Running the Editor
 
-!!! note "UI not yet built"
-    The interactive editor UI is planned for Phase 3. Running `main.py` currently
-    executes a smoke test: it creates sample tile and hex maps, renders them to PNG,
-    and prints a summary to the console.
-
 ```bash
 python main.py
 ```
 
-Expected output:
+The application opens a 1280 × 800 window with a dark multi-document workspace.
 
-```
-TileMap(name='Test Dungeon', 20x15, tile_size=32x32)
-  Layers     : [TileLayer(name='Ground', 20x15), ObjectLayer(name='Objects')]
-  Pixel size : 640x480
-  Render     : map_editor\assets\renders\test_dungeon.png
+**Creating your first map:**
 
-HexMap(name='Test World', 12x10, hex_size=40.0, FLAT_TOP)
-  Layers     : [TileLayer(name='Terrain', 12x10), ObjectLayer(name='Locations')]
-  Pixel size : 880.0x694.0
-  Render     : map_editor\assets\renders\test_world.png
+1. Go to **File → New Tile Map** (Ctrl+T) or **File → New Hex Map** (Ctrl+H).
+2. Enter a name, choose dimensions, and click **OK**.
+3. A new canvas sub-window opens inside the workspace.
 
-Phase 2 complete. Renderers OK.
-```
+You can open multiple maps simultaneously — use **Window → Tile Windows** or
+**Window → Cascade** to arrange them.
 
-Rendered PNG files are saved to `map_editor/assets/renders/` for visual inspection.
+**Navigation:**
+
+| Action | Input |
+|--------|-------|
+| Pan | Middle-mouse drag |
+| Zoom in / out | Ctrl + scroll wheel |
+| Fit map to view | Ctrl+0 |
+| Toggle grid | G |
+
+The status bar shows the active map name, the tile or hex cell under the cursor, and the
+current zoom level.
 
 ---
 

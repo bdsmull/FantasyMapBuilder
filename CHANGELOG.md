@@ -8,16 +8,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
-- MkDocs + Material theme documentation site (`docs/`, `mkdocs.yml`)
-  - Getting Started, Core Concepts, Map Types, Tilesets, Layers, Objects, Coordinate Systems, File Format, Architecture, Testing, Contributing pages
-  - `mkdocs>=1.6` and `mkdocs-material>=9.5` added to `requirements-dev.txt`
-  - `site/` added to `.gitignore`
-
 ### Planned
-- Phase 3: PyQt6 main window, dual-canvas workspace, new map dialog
 - Phase 4: Paint, fill, erase, and object placement tools with undo/redo
 - Phase 5: Tiled `.tmj` save/load and PNG export
+
+---
+
+## [0.3.0] - 2026-02-22
+
+### Added
+- `MainWindow` — `QMainWindow` with a `QMdiArea` central workspace
+  - File menu: New Tile Map (Ctrl+T), New Hex Map (Ctrl+H), Close Map (Ctrl+W), Quit (Ctrl+Q)
+  - View menu: Zoom In/Out/Reset (Ctrl+=/−/0), Show Grid toggle (G, checkable)
+  - Window menu: Tile Windows, Cascade, Close All sub-windows
+  - Help menu: About dialog
+  - Dock stubs: Layers panel (left) and Tile Palette (right) — wired up in Phase 4
+  - Status bar: active map name, cursor tile coordinates, zoom percentage
+- `MapCanvas` — abstract `QGraphicsView` base shared by tile and hex canvases
+  - `cursor_moved(int, int)` and `zoom_changed(float)` signals
+  - Smooth zoom via Ctrl+scroll wheel (0.1× – 16× range, 1.2× step)
+  - Middle-mouse-button panning using `ScrollHandDrag` and a synthetic left-button event
+  - `fit_in_view()` on first show via `QTimer.singleShot`
+- `TileCanvas` — `MapCanvas` subclass that renders a `TileMap` into a `QGraphicsView`
+- `HexCanvas` — `MapCanvas` subclass that renders a `HexMap` into a `QGraphicsView`
+- `NewMapDialog` — `QDialog` for creating a new tile or hex map
+  - Stacked widget switches between tile settings (name, width, height, tile size) and hex
+    settings (name, cols, rows, hex size, orientation)
+  - OK button disabled while the map name field is empty
+- MkDocs + Material theme documentation site (`docs/`, `mkdocs.yml`)
+  - Getting Started, Core Concepts, Map Types, Tilesets, Layers, Objects, Coordinate Systems,
+    File Format, Architecture, Testing, Contributing pages
+  - `mkdocs>=1.6` and `mkdocs-material>=9.5` added to `requirements-dev.txt`
+  - `site/` added to `.gitignore`
+- `pytest-qt>=4.4` added to `requirements-dev.txt`
+- UI smoke tests (`tests/ui/test_ui.py`) — 7 tests covering window creation, dialog behaviour,
+  and canvas rendering
 
 ---
 

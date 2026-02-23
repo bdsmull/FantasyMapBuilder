@@ -13,16 +13,11 @@ Maps save and load in [Tiled](https://www.mapeditor.org/) `.tmj` format and can 
 
 ## Current Status
 
-!!! note "Development in Progress"
-    Phases 1 and 2 are complete and fully tested. The interactive UI (Phase 3) is the next
-    milestone. Running the project currently executes a headless smoke test that renders
-    sample maps to PNG.
-
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 | ✅ Done | Data models — tileset, layers, tile map, hex map, objects |
 | 2 | ✅ Done | Renderers — tile grid and hex grid via QPainter → QImage |
-| 3 | Planned | Core UI shell — main window, dual canvases, new map dialog |
+| 3 | ✅ Done | Core UI shell — main window, dual canvases, new map dialog |
 | 4 | Planned | Editing tools — paint, fill, erase, object placement, undo/redo |
 | 5 | Planned | File I/O — Tiled TMJ save/load and PNG export |
 

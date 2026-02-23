@@ -4,7 +4,7 @@
 
 ```
 MapEditor_ClaudeCode/
-├── main.py                    # Entry point / Phase 1-2 smoke test
+├── main.py                    # Entry point — launches the Qt application
 ├── requirements.txt           # Runtime: PyQt6, Pillow
 ├── requirements-dev.txt       # Dev: pytest, pytest-cov, mkdocs, mkdocs-material
 │
@@ -23,14 +23,21 @@ MapEditor_ClaudeCode/
 │   ├── commands/              # QUndoCommand subclasses (Phase 4)
 │   ├── tools/                 # Mouse tools: paint, fill, erase (Phase 4)
 │   ├── io/                    # TMJ reader/writer (Phase 5)
-│   ├── ui/                    # PyQt6 windows, panels, dialogs (Phase 3+)
+│   ├── ui/                    # PyQt6 windows, panels, dialogs
+│   │   ├── main_window.py     # MainWindow (QMdiArea workspace, menus, status bar)
+│   │   ├── map_canvas.py      # Abstract QGraphicsView — zoom, pan, grid, signals
+│   │   ├── tile_canvas.py     # TileCanvas (MapCanvas for TileMap)
+│   │   ├── hex_canvas.py      # HexCanvas (MapCanvas for HexMap)
+│   │   └── dialogs/
+│   │       └── new_map_dialog.py  # New map dialog (tile or hex)
 │   └── assets/
 │       └── placeholders/      # Auto-generated sprite sheets (git-ignored)
 │
 ├── tests/
 │   ├── conftest.py            # Shared fixtures (reset MapObject ID counter)
 │   ├── models/                # Unit tests for all data models
-│   └── rendering/             # Pixel-level tests for both renderers
+│   ├── rendering/             # Pixel-level tests for both renderers
+│   └── ui/                    # UI smoke tests (pytest-qt)
 │
 └── docs/                      # MkDocs source (this documentation)
 ```
@@ -43,7 +50,7 @@ MapEditor_ClaudeCode/
 |-------|--------|---------------|
 | 1 | ✅ Done | `models/` — data model and placeholder PNG generation |
 | 2 | ✅ Done | `rendering/` — tile and hex renderers |
-| 3 | Planned | `ui/main_window.py`, `ui/map_canvas.py`, `ui/tile_canvas.py`, `ui/hex_canvas.py`, `ui/dialogs/new_map_dialog.py` |
+| 3 | ✅ Done | `ui/main_window.py`, `ui/map_canvas.py`, `ui/tile_canvas.py`, `ui/hex_canvas.py`, `ui/dialogs/new_map_dialog.py` |
 | 4 | Planned | `tools/`, `commands/`, `ui/tile_palette.py`, `ui/layer_panel.py`, `ui/toolbar.py`, `ui/object_panel.py` |
 | 5 | Planned | `io/tmj_reader.py`, `io/tmj_writer.py`, `rendering/exporter.py`, `ui/dialogs/tileset_dialog.py` |
 
@@ -60,9 +67,10 @@ display; this is effectively zero-copy on most platforms.
 
 ### Offscreen Qt platform
 
-Both `main.py` and the rendering test conftest set `QT_QPA_PLATFORM=offscreen` before
-creating a `QApplication`. This allows Qt to initialise and QPainter to operate without a
-physical display.
+Renderer tests and UI tests set `QT_QPA_PLATFORM=offscreen` (in their respective
+`conftest.py`) before creating a `QApplication`. This allows Qt to initialise and QPainter
+to operate without a physical display. `main.py` no longer sets this variable — it launches
+the real windowed application.
 
 ### Axial hex coordinates
 
@@ -99,6 +107,8 @@ The test suite uses `pytest`. Key conventions:
 - **Model tests** (`tests/models/`) — no Qt required; fast, pure-Python tests.
 - **Renderer tests** (`tests/rendering/`) — require a `QApplication`; provided by a
   session-scoped `qapp` fixture in `tests/rendering/conftest.py`.
+- **UI tests** (`tests/ui/`) — use `pytest-qt`'s `qtbot` fixture; `QT_QPA_PLATFORM=offscreen`
+  set in `tests/ui/conftest.py`.
 - **ID isolation** — `MapObject._id_counter` is a class-level global reset to zero before
   every test by an `autouse` fixture in `tests/conftest.py`.
 

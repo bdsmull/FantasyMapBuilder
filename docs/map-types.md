@@ -99,6 +99,21 @@ hex_map = HexMap.create_new(
 
 ---
 
+## Opening a Map in the Editor
+
+Use **File → New Tile Map** (Ctrl+T) or **File → New Hex Map** (Ctrl+H) to open the New
+Map dialog. The dialog lets you choose:
+
+**For tile maps** — name, width (columns), height (rows), and tile size (16, 32, or 64 px).
+
+**For hex maps** — name, number of columns and rows, hex circumradius in pixels, and
+orientation (flat-top or pointy-top).
+
+Click **OK** and the map opens as a sub-window inside the workspace. Multiple maps can be
+open simultaneously and arranged with **Window → Tile Windows** or **Window → Cascade**.
+
+---
+
 ## Shared API
 
 Both `TileMap` and `HexMap` expose the same interface for tilesets and layers.

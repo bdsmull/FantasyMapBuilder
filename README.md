@@ -104,7 +104,7 @@ Then open `http://127.0.0.1:8000`.
 
 ```
 MapEditor_ClaudeCode/
-├── main.py                      # Entry point / Phase 1-2 smoke test
+├── main.py                      # Entry point — launches the Qt application
 ├── requirements.txt             # Runtime dependencies
 ├── requirements-dev.txt         # Dev dependencies (pytest, pytest-cov, mkdocs)
 ├── mkdocs.yml                   # Documentation site config
@@ -125,12 +125,19 @@ MapEditor_ClaudeCode/
 │   ├── tools/                   # Mouse interaction tools (paint, fill, …)
 │   ├── io/                      # Tiled TMJ read/write
 │   ├── ui/                      # PyQt6 windows, panels, dialogs
+│   │   ├── main_window.py       # MainWindow (QMdiArea workspace)
+│   │   ├── map_canvas.py        # Abstract QGraphicsView base
+│   │   ├── tile_canvas.py       # Canvas for TileMap
+│   │   ├── hex_canvas.py        # Canvas for HexMap
+│   │   └── dialogs/
+│   │       └── new_map_dialog.py  # New map creation dialog
 │   └── assets/
 │       └── placeholders/        # Auto-generated placeholder tilesets
 │
 ├── tests/
 │   ├── models/                  # Unit tests for data models
-│   └── rendering/               # Unit tests for renderers
+│   ├── rendering/               # Unit tests for renderers
+│   └── ui/                      # UI smoke tests (pytest-qt)
 │
 └── docs/                        # MkDocs source (user guide)
 ```
@@ -143,7 +150,7 @@ MapEditor_ClaudeCode/
 |-------|--------|-------------|
 | 1 | Done | Data models (tileset, layer, tile map, hex map, objects) |
 | 2 | Done | Renderers (tile grid + hex grid via QPainter → QImage) |
-| 3 | Planned | Core UI shell (main window, canvases, new map dialog) |
+| 3 | Done | Core UI shell (main window, canvases, new map dialog) |
 | 4 | Planned | Editing tools + undo/redo (paint, fill, erase, objects) |
 | 5 | Planned | File I/O (Tiled TMJ save/load) + PNG export |
 

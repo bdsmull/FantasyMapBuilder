@@ -9,8 +9,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Planned
-- Phase 4: Paint, fill, erase, and object placement tools with undo/redo
 - Phase 5: Tiled `.tmj` save/load and PNG export
+
+---
+
+## [0.4.0] - 2026-02-23
+
+### Added
+- **Editing tools** — strategy-pattern tool system with four interchangeable tools:
+  - `PaintTool` — left-click/drag to paint tiles; one undo step per full stroke
+  - `EraseTool` — left-click/drag to erase tiles (set to ID 0); one undo step per stroke
+  - `FillTool` — flood-fill a contiguous same-tile region with the active tile
+  - `PointObjectTool` — left-click to place a named point object; right-click to remove the nearest one
+- **`BaseTool`** — abstract base class defining `on_press`, `on_drag`, `on_release`, and `cursor()` interface
+- **Undo/redo commands** (`map_editor/commands/tile_commands.py`):
+  - `SetTileRegionCommand` — undoes/redoes a batched paint or erase stroke
+  - `FloodFillCommand` — undoes/redoes a flood fill
+  - `AddObjectCommand` / `RemoveObjectCommand` — undoes/redoes point object placement and deletion
+  - All commands use a `_first=True` skip-first-redo pattern (changes are applied interactively before `push()`)
+- **`QUndoStack` per canvas** — each open map has its own independent undo history; `indexChanged` auto-triggers `refresh()`
+- **Layer panel** (`LayerPanelWidget`) — `QListWidget` dock showing all layers top-first with per-layer visibility checkboxes
+- **Tile palette** (`TilePaletteWidget`) — custom `QWidget` dock displaying the active tileset sprite sheet scaled to dock width; click to select a tile (yellow highlight on selection)
+- **Toolbar** — four exclusive checkable tool actions: Paint (Ctrl+1), Erase (Ctrl+2), Fill (Ctrl+3), Point (Ctrl+4)
+- **Edit menu** — Undo (Ctrl+Z), Redo (Ctrl+Y), Clear Layer, Fill Layer
+- `MapCanvas` additions: `set_tool()`, `set_active_layer()`, `set_active_gid()`, `push_command()`, `undo_stack()`, right-button dispatch for `on_right_press`
+- `TileCanvas._cell_to_pixel_center()` and `TileCanvas._get_tile_size()`
+- `HexCanvas._cell_to_pixel_center()` and `HexCanvas._get_tile_size()`
+- Tool tests (`tests/tools/test_tools.py`) — 7 tests using a headless `CanvasStub` (no QWidget needed)
 
 ---
 

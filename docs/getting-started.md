@@ -63,6 +63,51 @@ current zoom level.
 
 ---
 
+## Editing
+
+### Selecting a tool
+
+Four tools are available in the toolbar (or via keyboard shortcuts):
+
+| Tool | Shortcut | Left-click | Right-click |
+|------|----------|-----------|-------------|
+| Paint | Ctrl+1 | Paint the active tile onto the map | — |
+| Erase | Ctrl+2 | Erase tiles (set to empty) | — |
+| Fill | Ctrl+3 | Flood-fill a contiguous region | — |
+| Point | Ctrl+4 | Place a named point object | Remove nearest point object |
+
+Paint and Erase accumulate the whole drag stroke into a **single undo step** — press, drag,
+release, then Ctrl+Z reverts the entire stroke at once.
+
+### Selecting a tile
+
+The **Tile Palette** dock (right side) shows the active tileset's sprite sheet. Click any
+tile to select it; the selection is highlighted in yellow. The selected tile is used by
+Paint and Fill tools.
+
+### Managing layers
+
+The **Layers** dock (left side) lists every layer in the active map, top-first. Click a
+layer to make it active. Toggle its checkbox to show or hide it — hidden layers are skipped
+by the renderer immediately.
+
+### Undo / Redo
+
+| Action | Shortcut |
+|--------|----------|
+| Undo | Ctrl+Z |
+| Redo | Ctrl+Y |
+
+Each open map canvas has its own independent undo history. Switching between sub-windows
+reconnects the Edit menu to the newly active canvas's undo stack.
+
+### Clear / Fill Layer
+
+- **Edit → Clear Layer** — sets every cell in the active tile layer to empty (0).
+- **Edit → Fill Layer** — sets every cell to the currently selected tile.
+
+---
+
 ## Installing Development Dependencies
 
 To run the test suite or build this documentation, install the dev dependencies

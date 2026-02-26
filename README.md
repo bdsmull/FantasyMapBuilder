@@ -122,13 +122,21 @@ MapEditor_ClaudeCode/
 │   │   └── hex_renderer.py      # Hex map renderer
 │   │
 │   ├── commands/                # QUndoCommand subclasses (undo/redo)
-│   ├── tools/                   # Mouse interaction tools (paint, fill, …)
+│   │   └── tile_commands.py     # SetTileRegionCommand, FloodFillCommand, Add/RemoveObjectCommand
+│   ├── tools/                   # Mouse interaction tools
+│   │   ├── base_tool.py         # BaseTool interface
+│   │   ├── paint_tool.py        # PaintTool
+│   │   ├── erase_tool.py        # EraseTool
+│   │   ├── fill_tool.py         # FillTool
+│   │   └── point_tool.py        # PointObjectTool
 │   ├── io/                      # Tiled TMJ read/write
 │   ├── ui/                      # PyQt6 windows, panels, dialogs
 │   │   ├── main_window.py       # MainWindow (QMdiArea workspace)
 │   │   ├── map_canvas.py        # Abstract QGraphicsView base
 │   │   ├── tile_canvas.py       # Canvas for TileMap
 │   │   ├── hex_canvas.py        # Canvas for HexMap
+│   │   ├── tile_palette.py      # TilePaletteWidget (sprite sheet selector)
+│   │   ├── layer_panel.py       # LayerPanelWidget (layer list + visibility)
 │   │   └── dialogs/
 │   │       └── new_map_dialog.py  # New map creation dialog
 │   └── assets/
@@ -137,6 +145,7 @@ MapEditor_ClaudeCode/
 ├── tests/
 │   ├── models/                  # Unit tests for data models
 │   ├── rendering/               # Unit tests for renderers
+│   ├── tools/                   # Unit tests for editing tools
 │   └── ui/                      # UI smoke tests (pytest-qt)
 │
 └── docs/                        # MkDocs source (user guide)
@@ -151,7 +160,7 @@ MapEditor_ClaudeCode/
 | 1 | Done | Data models (tileset, layer, tile map, hex map, objects) |
 | 2 | Done | Renderers (tile grid + hex grid via QPainter → QImage) |
 | 3 | Done | Core UI shell (main window, canvases, new map dialog) |
-| 4 | Planned | Editing tools + undo/redo (paint, fill, erase, objects) |
+| 4 | Done | Editing tools + undo/redo (paint, fill, erase, objects) |
 | 5 | Planned | File I/O (Tiled TMJ save/load) + PNG export |
 
 ---

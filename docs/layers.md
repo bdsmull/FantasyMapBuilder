@@ -103,3 +103,16 @@ methods to reorder them:
          Ground        ← TileLayer    floor and wall tiles
 [bottom]
 ```
+
+---
+
+## Visibility in the editor
+
+In the **Layers** dock, each layer has a checkbox. Unchecking it sets `layer.visible = False`
+and immediately triggers a canvas refresh — the layer disappears from the viewport without
+modifying any tile data. Re-checking it restores full visibility.
+
+Hidden layers are skipped entirely by both `TileRenderer` and `HexRenderer`. The Paint,
+Erase, Fill, and Point tools still operate on hidden layers (the active layer is determined
+by the panel selection, independent of visibility) so you can edit a layer without seeing it,
+then reveal it when ready.

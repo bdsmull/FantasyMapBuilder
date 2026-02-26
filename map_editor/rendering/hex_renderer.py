@@ -111,15 +111,99 @@ class HexRenderer:
         """Discard cached sprite-sheet images."""
         self._sheet_cache.clear()
 
+    def render_clipped(
+        self,
+        hex_map: HexMap,
+        clip_rect: QRectF,
+        layers=None,
+        *,
+        show_grid: bool = True,
+    ) -> tuple[QImage, float, float]:
+        """
+        Render only the portion of *hex_map* that intersects *clip_rect*.
+
+        Returns
+        -------
+        (image, origin_x, origin_y)
+            *image* covers the visible hex region; *origin_x/y* is the
+            scene-space position of the image's top-left corner.
+        """
+        hw, hh = hex_map.hex_pixel_size()
+        map_w = math.ceil(hex_map.pixel_width)
+        map_h = math.ceil(hex_map.pixel_height)
+
+        # Extend clip region by 2 hex cells on each side to avoid edge clipping
+        pad_x = hw * 2.0
+        pad_y = hh * 2.0
+        origin_x = max(0.0, clip_rect.left() - pad_x)
+        origin_y = max(0.0, clip_rect.top() - pad_y)
+        end_x = min(float(map_w), clip_rect.right() + pad_x)
+        end_y = min(float(map_h), clip_rect.bottom() + pad_y)
+
+        if end_x <= origin_x or end_y <= origin_y:
+            img = QImage(1, 1, QImage.Format.Format_ARGB32_Premultiplied)
+            img.fill(_BACKGROUND)
+            return img, 0.0, 0.0
+
+        img_w = math.ceil(end_x - origin_x)
+        img_h = math.ceil(end_y - origin_y)
+
+        # Approximate cell range covering the padded region (with extra margin)
+        col_start = max(0, int(origin_x / hw) - 1)
+        row_start = max(0, int(origin_y / hh) - 1)
+        col_end = min(hex_map.cols, math.ceil(end_x / hw) + 1)
+        row_end = min(hex_map.rows, math.ceil(end_y / hh) + 1)
+
+        image = QImage(img_w, img_h, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(_BACKGROUND)
+
+        painter = QPainter(image)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        # Translate so scene-space coordinates map into the smaller image
+        painter.translate(-origin_x, -origin_y)
+
+        for layer in (layers if layers is not None else hex_map.layers):
+            if not layer.visible:
+                continue
+            painter.setOpacity(layer.opacity)
+            if isinstance(layer, TileLayer):
+                self._draw_tile_layer(
+                    painter, hex_map, layer,
+                    col_start, row_start, col_end, row_end,
+                )
+            elif isinstance(layer, ObjectLayer):
+                self._draw_object_layer(painter, hex_map, layer)
+
+        painter.setOpacity(1.0)
+        if show_grid:
+            self._draw_grid(
+                painter, hex_map,
+                col_start, row_start, col_end, row_end,
+            )
+
+        painter.end()
+        return image, origin_x, origin_y
+
     # ------------------------------------------------------------------
     # Layer drawing
     # ------------------------------------------------------------------
 
     def _draw_tile_layer(
-        self, painter: QPainter, hex_map: HexMap, layer: TileLayer
+        self,
+        painter: QPainter,
+        hex_map: HexMap,
+        layer: TileLayer,
+        col_start: int = 0,
+        row_start: int = 0,
+        col_end: Optional[int] = None,
+        row_end: Optional[int] = None,
     ) -> None:
-        for row in range(layer.height):
-            for col in range(layer.width):
+        if col_end is None:
+            col_end = layer.width
+        if row_end is None:
+            row_end = layer.height
+        for row in range(row_start, row_end):
+            for col in range(col_start, col_end):
                 tile_id = layer.get_tile(col, row)
                 if tile_id == 0:
                     continue
@@ -198,14 +282,26 @@ class HexRenderer:
     # Grid
     # ------------------------------------------------------------------
 
-    def _draw_grid(self, painter: QPainter, hex_map: HexMap) -> None:
+    def _draw_grid(
+        self,
+        painter: QPainter,
+        hex_map: HexMap,
+        col_start: int = 0,
+        row_start: int = 0,
+        col_end: Optional[int] = None,
+        row_end: Optional[int] = None,
+    ) -> None:
+        if col_end is None:
+            col_end = hex_map.cols
+        if row_end is None:
+            row_end = hex_map.rows
         pen = QPen(_GRID_COLOR)
         pen.setWidth(_GRID_PEN_WIDTH)
         painter.setPen(pen)
         painter.setBrush(QBrush())  # transparent fill
 
-        for row in range(hex_map.rows):
-            for col in range(hex_map.cols):
+        for row in range(row_start, row_end):
+            for col in range(col_start, col_end):
                 painter.drawPolygon(_hex_polygon(hex_map, col, row))
 
     # ------------------------------------------------------------------

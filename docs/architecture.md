@@ -20,14 +20,22 @@ MapEditor_ClaudeCode/
 │   │   ├── tile_renderer.py   # TileRenderer
 │   │   └── hex_renderer.py    # HexRenderer
 │   │
-│   ├── commands/              # QUndoCommand subclasses (Phase 4)
-│   ├── tools/                 # Mouse tools: paint, fill, erase (Phase 4)
+│   ├── commands/              # QUndoCommand subclasses
+│   │   └── tile_commands.py   # SetTileRegionCommand, FloodFillCommand, Add/RemoveObjectCommand
+│   ├── tools/                 # Mouse interaction tools (strategy pattern)
+│   │   ├── base_tool.py       # BaseTool interface
+│   │   ├── paint_tool.py      # PaintTool
+│   │   ├── erase_tool.py      # EraseTool
+│   │   ├── fill_tool.py       # FillTool
+│   │   └── point_tool.py      # PointObjectTool
 │   ├── io/                    # TMJ reader/writer (Phase 5)
 │   ├── ui/                    # PyQt6 windows, panels, dialogs
-│   │   ├── main_window.py     # MainWindow (QMdiArea workspace, menus, status bar)
-│   │   ├── map_canvas.py      # Abstract QGraphicsView — zoom, pan, grid, signals
+│   │   ├── main_window.py     # MainWindow (QMdiArea workspace, menus, toolbar, status bar)
+│   │   ├── map_canvas.py      # Abstract QGraphicsView — zoom, pan, grid, undo stack, tool dispatch
 │   │   ├── tile_canvas.py     # TileCanvas (MapCanvas for TileMap)
 │   │   ├── hex_canvas.py      # HexCanvas (MapCanvas for HexMap)
+│   │   ├── tile_palette.py    # TilePaletteWidget (sprite sheet tile selector)
+│   │   ├── layer_panel.py     # LayerPanelWidget (layer list with visibility checkboxes)
 │   │   └── dialogs/
 │   │       └── new_map_dialog.py  # New map dialog (tile or hex)
 │   └── assets/
@@ -37,6 +45,7 @@ MapEditor_ClaudeCode/
 │   ├── conftest.py            # Shared fixtures (reset MapObject ID counter)
 │   ├── models/                # Unit tests for all data models
 │   ├── rendering/             # Pixel-level tests for both renderers
+│   ├── tools/                 # Unit tests for editing tools (headless CanvasStub)
 │   └── ui/                    # UI smoke tests (pytest-qt)
 │
 └── docs/                      # MkDocs source (this documentation)
@@ -51,7 +60,7 @@ MapEditor_ClaudeCode/
 | 1 | ✅ Done | `models/` — data model and placeholder PNG generation |
 | 2 | ✅ Done | `rendering/` — tile and hex renderers |
 | 3 | ✅ Done | `ui/main_window.py`, `ui/map_canvas.py`, `ui/tile_canvas.py`, `ui/hex_canvas.py`, `ui/dialogs/new_map_dialog.py` |
-| 4 | Planned | `tools/`, `commands/`, `ui/tile_palette.py`, `ui/layer_panel.py`, `ui/toolbar.py`, `ui/object_panel.py` |
+| 4 | ✅ Done | `tools/` (BaseTool + 4 tools), `commands/tile_commands.py`, `ui/tile_palette.py`, `ui/layer_panel.py` |
 | 5 | Planned | `io/tmj_reader.py`, `io/tmj_writer.py`, `rendering/exporter.py`, `ui/dialogs/tileset_dialog.py` |
 
 ---
@@ -90,6 +99,32 @@ When multiple tilesets are attached to a map, tile IDs stored in `TileLayer.data
 *global*: each tileset's `first_gid` offset is baked in. The helpers `tileset_for_gid()`
 and `local_id()` abstract this away, following the same convention as Tiled.
 
+### Tool strategy pattern
+
+`map_editor/tools/` implements the **Strategy** pattern. `BaseTool` defines a three-method
+interface (`on_press`, `on_drag`, `on_release`) plus a `cursor()` hint. `MapCanvas` holds a
+single `_active_tool` reference and delegates all mouse events to it. Switching tools is a
+single `canvas.set_tool(tool)` call.
+
+Tools receive the canvas as a parameter on every call, so the same tool instance is safely
+shared across multiple open canvases — no tool state is per-canvas.
+
+**Single undo step per stroke:** `PaintTool` and `EraseTool` accumulate changes in a
+`_pending` list during press and drag, then push a single `SetTileRegionCommand` on
+release. This means the entire drag stroke is reverted by one Ctrl+Z.
+
+**Skip-first-redo pattern:** All `QUndoCommand` subclasses set `_first = True`. Because
+`QUndoStack.push()` immediately calls `redo()` — and the tool already applied changes for
+live feedback — the first `redo()` is a no-op. Subsequent redo calls after undo replay the
+changes normally.
+
+### Per-canvas undo stacks
+
+Each `MapCanvas` owns a `QUndoStack`. When a sub-window is activated,
+`MainWindow._reconnect_undo_stack()` safely disconnects the Edit menu actions from the
+previous stack and reconnects them to the newly active one. Two open maps therefore have
+fully independent undo histories.
+
 ### Pure model layer
 
 `map_editor/models/` has zero Qt dependency. This means:
@@ -109,6 +144,9 @@ The test suite uses `pytest`. Key conventions:
   session-scoped `qapp` fixture in `tests/rendering/conftest.py`.
 - **UI tests** (`tests/ui/`) — use `pytest-qt`'s `qtbot` fixture; `QT_QPA_PLATFORM=offscreen`
   set in `tests/ui/conftest.py`.
+- **Tool tests** (`tests/tools/`) — use a plain `CanvasStub` class (no `QWidget`) that
+  implements the minimal canvas interface (`push_command`, `refresh`, `_cell_to_pixel_center`,
+  `_get_tile_size`). Tools can be tested headlessly alongside commands.
 - **ID isolation** — `MapObject._id_counter` is a class-level global reset to zero before
   every test by an `autouse` fixture in `tests/conftest.py`.
 

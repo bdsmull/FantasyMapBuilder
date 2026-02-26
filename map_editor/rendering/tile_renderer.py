@@ -123,6 +123,73 @@ class TileRenderer:
         painter.end()
         return image
 
+    def render_clipped(
+        self,
+        tile_map: TileMap,
+        clip_rect: QRectF,
+        layers: Optional[list[Layer]] = None,
+        *,
+        show_grid: bool = True,
+    ) -> tuple[QImage, float, float]:
+        """
+        Render only the portion of *tile_map* that intersects *clip_rect*.
+
+        Returns
+        -------
+        (image, origin_x, origin_y)
+            *image* covers the visible tile region; *origin_x/y* is the
+            scene-space position of the image's top-left corner so the
+            caller can position the pixmap item correctly.
+        """
+        tw = tile_map.tile_width
+        th = tile_map.tile_height
+
+        # Visible tile range with a 1-tile margin on each side
+        col_start = max(0, int(clip_rect.left() / tw) - 1)
+        row_start = max(0, int(clip_rect.top() / th) - 1)
+        col_end = min(tile_map.width, math.ceil(clip_rect.right() / tw) + 1)
+        row_end = min(tile_map.height, math.ceil(clip_rect.bottom() / th) + 1)
+
+        if col_end <= col_start or row_end <= row_start:
+            img = QImage(1, 1, QImage.Format.Format_ARGB32_Premultiplied)
+            img.fill(_BACKGROUND)
+            return img, 0.0, 0.0
+
+        origin_x = float(col_start * tw)
+        origin_y = float(row_start * th)
+        img_w = (col_end - col_start) * tw
+        img_h = (row_end - row_start) * th
+
+        image = QImage(img_w, img_h, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(_BACKGROUND)
+
+        painter = QPainter(image)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        # Translate so scene-space coordinates map into the smaller image
+        painter.translate(-origin_x, -origin_y)
+
+        for layer in (layers if layers is not None else tile_map.layers):
+            if not layer.visible:
+                continue
+            painter.setOpacity(layer.opacity)
+            if isinstance(layer, TileLayer):
+                self._draw_tile_layer(
+                    painter, tile_map, layer,
+                    col_start, row_start, col_end, row_end,
+                )
+            elif isinstance(layer, ObjectLayer):
+                self._draw_object_layer(painter, tile_map, layer)
+
+        painter.setOpacity(1.0)
+        if show_grid:
+            self._draw_grid(
+                painter, tile_map,
+                col_start, row_start, col_end, row_end,
+            )
+
+        painter.end()
+        return image, origin_x, origin_y
+
     def invalidate_cache(self) -> None:
         """Discard cached sprite-sheet images (call after a tileset is reloaded)."""
         self._sheet_cache.clear()
@@ -132,13 +199,24 @@ class TileRenderer:
     # ------------------------------------------------------------------
 
     def _draw_tile_layer(
-        self, painter: QPainter, tile_map: TileMap, layer: TileLayer
+        self,
+        painter: QPainter,
+        tile_map: TileMap,
+        layer: TileLayer,
+        col_start: int = 0,
+        row_start: int = 0,
+        col_end: Optional[int] = None,
+        row_end: Optional[int] = None,
     ) -> None:
+        if col_end is None:
+            col_end = layer.width
+        if row_end is None:
+            row_end = layer.height
         tw = tile_map.tile_width
         th = tile_map.tile_height
 
-        for row in range(layer.height):
-            for col in range(layer.width):
+        for row in range(row_start, row_end):
+            for col in range(col_start, col_end):
                 tile_id = layer.get_tile(col, row)
                 if tile_id == 0:
                     continue
@@ -222,23 +300,37 @@ class TileRenderer:
     # Grid
     # ------------------------------------------------------------------
 
-    def _draw_grid(self, painter: QPainter, tile_map: TileMap) -> None:
+    def _draw_grid(
+        self,
+        painter: QPainter,
+        tile_map: TileMap,
+        col_start: int = 0,
+        row_start: int = 0,
+        col_end: Optional[int] = None,
+        row_end: Optional[int] = None,
+    ) -> None:
+        if col_end is None:
+            col_end = tile_map.width
+        if row_end is None:
+            row_end = tile_map.height
         pen = QPen(_GRID_COLOR)
         pen.setWidth(_GRID_PEN_WIDTH)
         painter.setPen(pen)
 
-        w = tile_map.pixel_width
-        h = tile_map.pixel_height
         tw = tile_map.tile_width
         th = tile_map.tile_height
+        x0 = col_start * tw
+        y0 = row_start * th
+        x1 = col_end * tw
+        y1 = row_end * th
 
-        for col in range(tile_map.width + 1):
+        for col in range(col_start, col_end + 1):
             x = col * tw
-            painter.drawLine(x, 0, x, h)
+            painter.drawLine(x, y0, x, y1)
 
-        for row in range(tile_map.height + 1):
+        for row in range(row_start, row_end + 1):
             y = row * th
-            painter.drawLine(0, y, w, y)
+            painter.drawLine(x0, y, x1, y)
 
     # ------------------------------------------------------------------
     # Sprite-sheet cache

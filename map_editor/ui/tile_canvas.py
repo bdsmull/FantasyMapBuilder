@@ -1,4 +1,5 @@
 """Canvas for displaying a TileMap."""
+from PyQt6.QtCore import QRectF
 from PyQt6.QtGui import QImage
 
 from map_editor.models.tile_map import TileMap
@@ -19,8 +20,10 @@ class TileCanvas(MapCanvas):
     # MapCanvas abstract interface
     # ------------------------------------------------------------------
 
-    def _do_render(self) -> QImage:
-        return self._renderer.render(self.tile_map, show_grid=self._show_grid)
+    def _do_render(self, clip_rect: QRectF) -> tuple[QImage, float, float]:
+        return self._renderer.render_clipped(
+            self.tile_map, clip_rect, show_grid=self._show_grid
+        )
 
     def _pixel_to_cell(self, px: float, py: float) -> tuple[int, int]:
         col, row = self.tile_map.pixel_to_tile(px, py)
@@ -33,3 +36,13 @@ class TileCanvas(MapCanvas):
 
     def map_name(self) -> str:
         return self.tile_map.name
+
+    def _cell_to_pixel_center(self, col: int, row: int) -> tuple[float, float]:
+        px, py = self.tile_map.tile_to_pixel(col, row)
+        return (
+            float(px + self.tile_map.tile_width // 2),
+            float(py + self.tile_map.tile_height // 2),
+        )
+
+    def _get_tile_size(self) -> tuple[int, int]:
+        return self.tile_map.tile_width, self.tile_map.tile_height

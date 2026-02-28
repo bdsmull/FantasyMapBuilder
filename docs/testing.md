@@ -47,11 +47,11 @@ npm run test:watch  # watch mode
 | Path | Contents |
 |------|---------|
 | `tests/conftest.py` | `autouse` fixture resetting `MapObject._id_counter` to 0 before every test |
-| `tests/models/test_tileset.py` | 15 tests — tile definitions, placeholder PNG generation, sheet positions |
-| `tests/models/test_map_object.py` | 14 tests — factory methods, ID counter isolation, properties |
-| `tests/models/test_layer.py` | 31 tests — tile access, flood fill, object hit-testing |
-| `tests/models/test_tile_map.py` | 27 tests — GID resolution, layer management, coordinate helpers |
-| `tests/models/test_hex_map.py` | 28 tests — pixel↔hex round-trips, neighbour lookup, distance |
+| `tests/models/test_tileset.py` | 22 tests — tile definitions, placeholder PNG generation, sheet positions |
+| `tests/models/test_map_object.py` | 19 tests — factory methods, ID counter isolation, properties |
+| `tests/models/test_layer.py` | 39 tests — tile access, flood fill, object hit-testing |
+| `tests/models/test_tile_map.py` | 33 tests — GID resolution, layer management, coordinate helpers |
+| `tests/models/test_hex_map.py` | 31 tests — pixel↔hex round-trips, neighbour lookup, distance |
 | `tests/io/test_tmj_io.py` | 20 tests — TMJ round-trips, object shapes, multi-tileset GIDs, POINTY_TOP hex |
 | `tests/api/conftest.py` | `client` fixture (httpx `AsyncClient`), isolated temp `maps/` dir |
 | `tests/api/test_api.py` | 14 tests — all CRUD endpoints, upload, download, error cases |
@@ -63,10 +63,10 @@ npm run test:watch  # watch mode
 | Path | Contents |
 |------|---------|
 | `frontend/src/__tests__/fillTool.test.ts` | 6 tests — `bfsFloodFill`: 1×1, same-GID no-op, row fill, boundary stop, 2-D, no diagonal |
-| `frontend/src/__tests__/tileRenderer.test.ts` | 7 tests — `screenToTile` and `tileToScreen` with zoom/pan; inverse relationship |
-| `frontend/src/__tests__/mapStore.test.ts` | 12 tests — `loadMap`, `applyTile`, `commitPendingTiles`, undo (single/batch/no-op), redo, dirty flag |
+| `frontend/src/__tests__/tileRenderer.test.ts` | 10 tests — `screenToTile` and `tileToScreen` with zoom/pan; inverse relationship |
+| `frontend/src/__tests__/mapStore.test.ts` | 11 tests — `loadMap`, `applyTile`, `commitPendingTiles`, undo (single/batch/no-op), redo, dirty flag |
 
-**Total frontend tests: 25**
+**Total frontend tests: 27**
 
 ---
 

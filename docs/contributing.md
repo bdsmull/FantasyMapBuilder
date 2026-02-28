@@ -19,24 +19,43 @@ Activate:
 pip install -r requirements-dev.txt
 ```
 
+Install frontend dependencies:
+
+```bash
+cd frontend && npm install && cd ..
+```
+
 Verify everything is working:
 
 ```bash
 pytest
-python main.py
+cd frontend && npm test && cd ..
+python main.py --dev
 ```
 
 ---
 
 ## Code conventions
 
-- **Python version**: 3.11+
+### Python
+
+- **Version**: 3.11+
 - **Style**: PEP 8; no formatter is enforced yet
-- **Type hints**: used throughout models and renderers — new code should follow suit
+- **Type hints**: used throughout — new code should follow suit
 - **Imports**: standard library → third-party → local, each group separated by a blank line
 - **Dataclasses**: models use `@dataclass`; avoid hand-written `__init__` boilerplate
-- **Qt dependency boundary**: `map_editor/models/` must stay free of any Qt import so it
-  can be tested and used without a `QApplication`
+- **Dependency boundary**: `map_editor/models/` must stay free of any server or UI import
+  so it can be tested in isolation
+
+### TypeScript / React
+
+- **Strict mode**: `tsconfig.json` has `"strict": true` — no implicit `any`
+- **State**: all map state lives in the Zustand store (`src/store/mapStore.ts`); components
+  read from the store and dispatch actions
+- **Pure functions**: canvas renderers and tools are pure functions with no side effects —
+  keep them that way so they remain easy to test
+- **Components**: prefer small, focused components; pass props rather than reaching into
+  the store from deep inside a component tree
 
 ---
 
@@ -44,14 +63,16 @@ python main.py
 
 All contributions should include tests. The bar is:
 
-- New model code → unit tests in `tests/models/`
-- New renderer features → pixel-sampling tests in `tests/rendering/`
+- New Python model code → unit tests in `tests/models/`
+- New API endpoints → tests in `tests/api/` using the `client` fixture
+- New frontend logic (pure functions) → Vitest tests in `frontend/src/__tests__/`
 - Bug fixes → a regression test that would have caught the bug before the fix
 
 Run the full suite before opening a pull request:
 
 ```bash
 pytest --tb=short
+cd frontend && npm test
 ```
 
 See [Testing](testing.md) for more details.

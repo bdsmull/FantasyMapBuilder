@@ -52,10 +52,10 @@ Square maps use column/row tile coordinates that map linearly to pixel space. He
 
 ## Rendering
 
-The `TileRenderer` and `HexRenderer` classes convert a map into a `QImage` using QPainter. This is a headless operation — no display or windowing system is required. The future canvas widget (Phase 3) will promote the image to a `QPixmap` for display.
+The `tileRenderer.ts` and `hexRenderer.ts` modules draw maps onto an HTML5 `<canvas>` element using the Canvas 2D API. Rendering runs entirely in the browser — no server round-trips are needed for display. Tileset images are fetched from the server once and cached for the session.
 
 ---
 
 ## File Format
 
-Maps will be saved and loaded in [Tiled](https://www.mapeditor.org/) `.tmj` format (Phase 5). The data model is already structured to map cleanly to this schema. See [File Format](file-format.md).
+Maps are saved and loaded in [Tiled](https://www.mapeditor.org/) `.tmj` format — a JSON schema compatible with the Tiled editor and any Tiled-compatible game engine. See [File Format](file-format.md).

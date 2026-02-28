@@ -1,6 +1,6 @@
 # Fantasy RPG Map Editor
 
-A Python desktop application for creating and editing fantasy RPG maps, built with PyQt6.
+A web-based application for creating and editing fantasy RPG maps, built with FastAPI and React.
 
 The editor supports two map scales in a unified workspace:
 
@@ -16,10 +16,10 @@ Maps save and load in [Tiled](https://www.mapeditor.org/) `.tmj` format and can 
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 | ✅ Done | Data models — tileset, layers, tile map, hex map, objects |
-| 2 | ✅ Done | Renderers — tile grid and hex grid via QPainter → QImage |
-| 3 | ✅ Done | Core UI shell — main window, dual canvases, new map dialog |
-| 4 | ✅ Done | Editing tools — paint, fill, erase, object placement, undo/redo |
-| 5 | ✅ Done | File I/O — Tiled TMJ save/load, PNG/JPEG export, tileset management |
+| 2 | ✅ Done | File I/O — Tiled TMJ save/load, tileset management |
+| 3 | ✅ Done | FastAPI backend — map CRUD, upload/download, tileset image serving |
+| 4 | ✅ Done | React frontend — canvas renderers, editing tools, undo/redo, UI panels |
+| 5 | ✅ Done | Touch support — pinch-to-zoom, Pointer Events API, iPad LAN access |
 
 ---
 
@@ -32,7 +32,7 @@ Maps save and load in [Tiled](https://www.mapeditor.org/) `.tmj` format and can 
 - Object and entity placement (NPCs, chests, spawn points, triggers, …)
 - Full undo/redo history per canvas (independent stacks)
 - Tiled `.tmj` compatible save/load — maps open in Tiled and any compatible engine
-- PNG/JPEG image export of the full map (all layers)
+- Touch support with pinch-to-zoom (iPad / touchscreen)
 - Tileset management — add from PNG sprite sheet or remove unused tilesets
 - Placeholder tile generator — usable out of the box with no external art
 

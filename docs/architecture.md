@@ -77,8 +77,8 @@ MapEditor_ClaudeCode/
 │
 ├── tests/                         # Python tests
 │   ├── conftest.py                # autouse fixture: reset MapObject ID counter
-│   ├── models/                    # 115 unit tests — pure Python, no Qt
-│   ├── io/                        # 23 TMJ round-trip tests
+│   ├── models/                    # 144 unit tests — pure Python
+│   ├── io/                        # 20 TMJ round-trip tests
 │   └── api/                       # 14 FastAPI endpoint tests (httpx)
 │
 ├── maps/                          # Server-side .tmj file storage

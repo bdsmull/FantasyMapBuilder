@@ -1,13 +1,13 @@
 # Fantasy RPG Map Editor
 
-A Python desktop application for creating and editing fantasy RPG maps, built with PyQt6.
+A web-based application for creating and editing fantasy RPG maps, built with FastAPI and React.
 
 Supports two map scales in a single workspace:
 
 - **Tile grid** — small-scale maps for towns, dungeons, interiors, and combat (square grid)
 - **Hex grid** — large-scale maps for regions, continents, and world overviews (hexagonal grid)
 
-Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format and can also be exported as PNG images.
+Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format. The editor runs in any modern browser and is accessible from other devices (e.g. an iPad) on the same network.
 
 ---
 
@@ -15,11 +15,11 @@ Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format and can also
 
 - Dual-mode workspace: tile and hex maps side by side
 - Multiple layers per map (tile layers and object/entity layers)
-- Custom tileset support (load your own PNG sprite sheets)
+- Custom tileset support — load your own PNG sprite sheets
 - Object and entity placement (NPCs, chests, spawn points, triggers, …)
 - Full undo/redo history
 - Tiled `.tmj` compatible save/load
-- PNG image export
+- Touch support with pinch-to-zoom (iPad / touchscreen)
 - Placeholder tile generator — usable out of the box with no external art
 
 ---
@@ -27,8 +27,7 @@ Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format and can also
 ## Requirements
 
 - Python 3.11+
-- PyQt6
-- Pillow
+- Node.js 20+
 
 ---
 
@@ -51,40 +50,127 @@ Activate it:
 | macOS / Linux | `source .venv/bin/activate` |
 
 ```bash
-# Install runtime dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Run the editor
+# Install frontend dependencies
+cd frontend && npm install && cd ..
+```
+
+---
+
+## Running
+
+### Development mode (two terminals)
+
+**Terminal 1 — API server** (auto-reloads Python changes):
+
+```bash
+python main.py --dev
+```
+
+**Terminal 2 — Vite dev server** (hot-reloads React changes):
+
+```bash
+cd frontend && npm run dev
+```
+
+Open **http://localhost:5173** in your browser.
+
+### Production mode (single server)
+
+```bash
+cd frontend && npm run build && cd ..
 python main.py
+```
+
+Open **http://localhost:8000** in your browser.
+
+**LAN access** (e.g. iPad on the same WiFi): find your PC's IP and open `http://<ip>:8000`.
+
+```bash
+# Windows
+ipconfig | findstr IPv4
 ```
 
 ---
 
 ## Testing
 
-Install the development dependencies (includes `pytest`, `pytest-cov`, `mkdocs`, and `mkdocs-material`):
+Install development dependencies:
 
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-Run the full test suite:
+Run the Python test suite (178 tests):
 
 ```bash
 pytest
 ```
 
-Run with coverage report:
+Run the frontend test suite (27 tests):
 
 ```bash
-pytest --cov=map_editor --cov-report=term-missing
+cd frontend && npm test
+```
+
+---
+
+## Project Structure
+
+```
+MapEditor_ClaudeCode/
+├── main.py                        # Entry point — starts uvicorn on :8000
+├── requirements.txt               # Runtime: fastapi, uvicorn, Pillow, python-multipart
+├── requirements-dev.txt           # Dev: pytest, httpx, pytest-asyncio, mkdocs
+│
+├── server/                        # FastAPI backend
+│   ├── main.py                    # FastAPI app, CORS, static file mount
+│   └── api/
+│       ├── maps.py                # Map CRUD + upload/download endpoints
+│       └── tilesets.py            # Tileset image serving
+│
+├── map_editor/                    # Pure-Python model + I/O layer
+│   ├── models/                    # Data models (zero Qt dependency)
+│   │   ├── tileset.py             # TileCategory, TileDefinition, Tileset
+│   │   ├── layer.py               # TileLayer (2-D grid), ObjectLayer
+│   │   ├── tile_map.py            # TileMap container
+│   │   ├── hex_map.py             # HexMap + hex coordinate math
+│   │   └── map_object.py          # MapObject (free-form entities)
+│   ├── io/
+│   │   ├── tmj_writer.py          # write_tile_map / write_hex_map → .tmj JSON
+│   │   └── tmj_reader.py          # read_map(path) → TileMap | HexMap
+│   └── assets/
+│       └── placeholders/          # Auto-generated sprite sheets (git-ignored)
+│
+├── frontend/                      # React + TypeScript SPA (Vite)
+│   ├── index.html
+│   ├── package.json               # React 18, Zustand 5, Vite 6, Vitest 2
+│   ├── vite.config.ts             # Dev proxy: /api → http://localhost:8000
+│   └── src/
+│       ├── types/tmj.ts           # TypeScript interfaces mirroring TMJ format
+│       ├── store/mapStore.ts      # Zustand store — map state + undo/redo
+│       ├── api/client.ts          # fetch wrappers for all API endpoints
+│       ├── canvas/                # HTML5 Canvas renderers (tile + hex)
+│       ├── tools/                 # Paint, erase, fill, point-object tools
+│       ├── components/            # React UI components + dialogs
+│       └── __tests__/             # Vitest unit tests
+│
+├── tests/                         # Python pytest suite (178 tests)
+│   ├── models/                    # Unit tests — pure data models
+│   ├── io/                        # TMJ round-trip tests
+│   └── api/                       # FastAPI endpoint tests (httpx)
+│
+├── maps/                          # Server-side .tmj file storage
+└── docs/                          # MkDocs documentation source
 ```
 
 ---
 
 ## Documentation
 
-Full documentation is in the `docs/` directory and built with [MkDocs](https://www.mkdocs.org/) + [Material theme](https://squidfunk.github.io/mkdocs-material/).
+Full documentation is in the `docs/` directory and built with [MkDocs](https://www.mkdocs.org/) + Material theme.
 
 Preview locally (install dev dependencies first):
 
@@ -96,76 +182,7 @@ mkdocs serve
 PYTHONUTF8=1 mkdocs serve
 ```
 
-Then open `http://127.0.0.1:8000`.
-
----
-
-## Project Structure
-
-```
-MapEditor_ClaudeCode/
-├── main.py                      # Entry point — launches the Qt application
-├── requirements.txt             # Runtime dependencies
-├── requirements-dev.txt         # Dev dependencies (pytest, pytest-cov, mkdocs)
-├── mkdocs.yml                   # Documentation site config
-│
-├── map_editor/
-│   ├── models/                  # Pure data models (no Qt dependency)
-│   │   ├── tileset.py           # Tileset + placeholder PNG generator
-│   │   ├── layer.py             # TileLayer, ObjectLayer
-│   │   ├── tile_map.py          # Square-grid map container
-│   │   ├── hex_map.py           # Hex-grid map + coordinate math
-│   │   └── map_object.py        # Placed entities (NPCs, items, …)
-│   │
-│   ├── commands/                # QUndoCommand subclasses (undo/redo)
-│   │   └── tile_commands.py     # SetTileRegionCommand, FloodFillCommand, Add/RemoveObjectCommand
-│   ├── tools/                   # Mouse interaction tools
-│   │   ├── base_tool.py         # BaseTool interface
-│   │   ├── paint_tool.py        # PaintTool
-│   │   ├── erase_tool.py        # EraseTool
-│   │   ├── fill_tool.py         # FillTool
-│   │   └── point_tool.py        # PointObjectTool
-│   ├── io/                      # Tiled TMJ read/write
-│   │   ├── tmj_writer.py        # write_tile_map / write_hex_map → .tmj
-│   │   └── tmj_reader.py        # read_map(path) → TileMap | HexMap
-│   ├── rendering/               # QPainter renderers → QImage
-│   │   ├── tile_renderer.py     # Square tile map renderer
-│   │   ├── hex_renderer.py      # Hex map renderer
-│   │   └── exporter.py          # export_tile_map / export_hex_map → PNG/JPEG
-│   ├── ui/                      # PyQt6 windows, panels, dialogs
-│   │   ├── main_window.py       # MainWindow (QMdiArea workspace)
-│   │   ├── map_canvas.py        # Abstract QGraphicsView base
-│   │   ├── tile_canvas.py       # Canvas for TileMap
-│   │   ├── hex_canvas.py        # Canvas for HexMap
-│   │   ├── tile_palette.py      # TilePaletteWidget (sprite sheet selector)
-│   │   ├── layer_panel.py       # LayerPanelWidget (layer list + visibility)
-│   │   └── dialogs/
-│   │       ├── new_map_dialog.py  # New map creation dialog
-│   │       └── tileset_dialog.py  # Manage Tilesets (Add / Remove)
-│   └── assets/
-│       └── placeholders/        # Auto-generated placeholder tilesets
-│
-├── tests/
-│   ├── models/                  # Unit tests for data models
-│   ├── rendering/               # Unit tests for renderers
-│   ├── tools/                   # Unit tests for editing tools
-│   ├── io/                      # TMJ round-trip and export tests
-│   └── ui/                      # UI smoke tests (pytest-qt)
-│
-└── docs/                        # MkDocs source (user guide)
-```
-
----
-
-## Development Roadmap
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 1 | Done | Data models (tileset, layer, tile map, hex map, objects) |
-| 2 | Done | Renderers (tile grid + hex grid via QPainter → QImage) |
-| 3 | Done | Core UI shell (main window, canvases, new map dialog) |
-| 4 | Done | Editing tools + undo/redo (paint, fill, erase, objects) |
-| 5 | Done | File I/O — Tiled TMJ save/load, PNG/JPEG export, tileset management |
+Then open `http://127.0.0.1:8000` (use a different port if the API server is already running there).
 
 ---
 

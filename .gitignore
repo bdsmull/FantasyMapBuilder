@@ -32,6 +32,10 @@ site/
 .mypy_cache/
 .pytype/
 
+# Node / frontend
+node_modules/
+frontend/dist/
+
 # IDE
 .vscode/
 .idea/

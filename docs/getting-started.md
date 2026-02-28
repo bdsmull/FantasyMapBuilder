@@ -3,6 +3,7 @@
 ## Prerequisites
 
 - Python 3.11 or later
+- [Node.js 20+](https://nodejs.org/) (for building the frontend)
 - Git
 
 ---
@@ -24,156 +25,168 @@ Activate the environment:
 | Windows | `.venv\Scripts\activate` |
 | macOS / Linux | `source .venv/bin/activate` |
 
-Install runtime dependencies:
+Install Python dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Install frontend dependencies:
+
+```bash
+cd frontend
+npm install
+cd ..
 ```
 
 ---
 
 ## Running the Editor
 
+### Development mode (two terminals)
+
+**Terminal 1 — API server** (auto-reloads Python changes):
+
+```bash
+python main.py --dev
+```
+
+**Terminal 2 — Vite dev server** (hot-reloads React changes):
+
+```bash
+cd frontend
+npm run dev
+```
+
+Then open `http://localhost:5173` in your browser.
+The Vite dev server proxies all `/api` requests to the FastAPI server on port 8000.
+
+### Production mode (single server, including iPad access)
+
+Build the React app first:
+
+```bash
+cd frontend
+npm run build
+cd ..
+```
+
+Then start the server:
+
 ```bash
 python main.py
 ```
 
-The application opens a 1280 × 800 window with a dark multi-document workspace.
+The server serves both the API and the React app on `http://localhost:8000`.
 
-**Creating your first map:**
+**iPad access (same WiFi network):**
 
-1. Go to **File → New Tile Map** (Ctrl+T) or **File → New Hex Map** (Ctrl+H).
-2. Enter a name, choose dimensions, and click **OK**.
-3. A new canvas sub-window opens inside the workspace.
+```bash
+# Find your PC's LAN IP (Windows)
+ipconfig | findstr IPv4
 
-You can open multiple maps simultaneously — use **Window → Tile Windows** or
-**Window → Cascade** to arrange them.
+# Find your PC's LAN IP (macOS / Linux)
+ip addr show | grep "inet "
+```
 
-**Navigation:**
-
-| Action | Input |
-|--------|-------|
-| Pan | Middle-mouse drag |
-| Zoom in / out | Ctrl + scroll wheel |
-| Fit map to view | Ctrl+0 |
-| Toggle grid | G |
-
-The status bar shows the active map name, the tile or hex cell under the cursor, and the
-current zoom level.
+Open `http://<your-pc-ip>:8000` on your iPad.
 
 ---
 
-## Editing
+## Using the Editor
 
-### Selecting a tool
+### Creating a map
 
-Four tools are available in the toolbar (or via keyboard shortcuts):
+1. Go to **File → New Tile Map** or **File → New Hex Map**.
+2. Enter a name, choose dimensions and tile size, then click **OK**.
 
-| Tool | Shortcut | Left-click | Right-click |
-|------|----------|-----------|-------------|
-| Paint | Ctrl+1 | Paint the active tile onto the map | — |
-| Erase | Ctrl+2 | Erase tiles (set to empty) | — |
-| Fill | Ctrl+3 | Flood-fill a contiguous region | — |
-| Point | Ctrl+4 | Place a named point object | Remove nearest point object |
+### Editing tools
 
-Paint and Erase accumulate the whole drag stroke into a **single undo step** — press, drag,
-release, then Ctrl+Z reverts the entire stroke at once.
+| Tool | Keyboard | Description |
+|------|----------|-------------|
+| Paint | `1` | Paint the active tile onto the map |
+| Erase | `2` | Erase tiles (set to empty) |
+| Fill | `3` | Flood-fill a contiguous region |
+| Point | `4` | Place / remove a named point object |
 
-### Selecting a tile
+Paint and Erase accumulate the entire drag stroke into a **single undo step**.
 
-The **Tile Palette** dock (right side) shows the active tileset's sprite sheet. Click any
-tile to select it; the selection is highlighted in yellow. The selected tile is used by
-Paint and Fill tools.
+### Navigation
 
-### Managing layers
+| Action | Mouse | Touch (iPad) |
+|--------|-------|--------------|
+| Pan | Middle-drag or two-finger drag | Two-finger drag |
+| Zoom | Scroll wheel | Pinch |
+| Grid toggle | `G` | Toolbar button |
 
-The **Layers** dock (left side) lists every layer in the active map, top-first. Click a
-layer to make it active. Toggle its checkbox to show or hide it — hidden layers are skipped
-by the renderer immediately.
+### Tile Palette
+
+The **Tile Palette** panel shows the active tileset's sprite sheet. Tap / click any tile
+to select it. The selected tile is used by the Paint and Fill tools.
+
+### Layers
+
+The **Layers** panel lists every layer. Click a layer name to make it active; toggle the
+eye icon to show or hide it.
 
 ### Undo / Redo
 
-| Action | Shortcut |
+| Action | Keyboard |
 |--------|----------|
-| Undo | Ctrl+Z |
-| Redo | Ctrl+Y |
+| Undo | `Ctrl+Z` |
+| Redo | `Ctrl+Y` |
 
-Each open map canvas has its own independent undo history. Switching between sub-windows
-reconnects the Edit menu to the newly active canvas's undo stack.
+### Saving and Loading
 
-### Clear / Fill Layer
-
-- **Edit → Clear Layer** — sets every cell in the active tile layer to empty (0).
-- **Edit → Fill Layer** — sets every cell to the currently selected tile.
-
----
-
-## Saving and Loading Maps
-
-Maps are saved in [Tiled's `.tmj` JSON format](file-format.md), which is compatible with
-Tiled itself and any Tiled-compatible game engine.
-
-| Action | Shortcut | Description |
+| Action | Keyboard | Description |
 |--------|----------|-------------|
-| Open… | Ctrl+O | Load a `.tmj` file into a new canvas |
-| Save | Ctrl+S | Save to the current file path |
-| Save As… | Ctrl+Shift+S | Save to a new file path |
-| Export as Image… | — | Render the map to a PNG or JPEG |
+| New Tile Map | `Ctrl+T` | Create a new tile map |
+| New Hex Map | `Ctrl+H` | Create a new hex map |
+| Open… | `Ctrl+O` | Browse server-saved maps or upload a `.tmj` file |
+| Save | `Ctrl+S` | Save to the server |
+| Download | — | Download raw `.tmj` to your device |
 
-!!! note "First save"
-    A newly created map has no file path yet. The first **Ctrl+S** automatically opens
-    the Save As dialog.
-
-!!! tip "All layers exported"
-    The image exporter renders every layer regardless of its visibility toggle, so the
-    exported image always shows the complete map content.
+Maps are stored in Tiled's `.tmj` JSON format — compatible with Tiled and any
+Tiled-compatible game engine.
 
 ---
 
 ## Managing Tilesets
 
-Go to **Edit → Manage Tilesets…** to open the tileset management dialog for the active map.
+Go to **Edit → Manage Tilesets…** to add or remove sprite sheets.
 
-**Add from PNG** — browse for a sprite-sheet image and enter a tileset name and tile
-dimensions. The editor computes the tile count and column layout automatically.
-
-**Remove** — removes the selected tileset. If any tile layer still references tiles from
-that tileset, the removal is blocked and a warning is shown.
-
-After adding or removing a tileset the Tile Palette updates automatically.
+- **Add from file** — browse for a PNG and enter a tileset name and tile dimensions.
+- **Remove** — removes the selected tileset. Blocked if any tile layer still references it.
 
 ---
 
 ## Installing Development Dependencies
 
-To run the test suite or build this documentation, install the dev dependencies
-(includes `pytest`, `pytest-cov`, `mkdocs`, and `mkdocs-material`):
-
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-Run the full test suite:
+Run the Python test suite:
 
 ```bash
-pytest
+pytest tests/models tests/io tests/api -v
+```
+
+Run the frontend (Vitest) tests:
+
+```bash
+cd frontend
+npm test
 ```
 
 Preview the documentation locally:
 
-=== "macOS / Linux"
+```bash
+PYTHONUTF8=1 mkdocs serve   # Windows
+mkdocs serve                 # macOS / Linux
+```
 
-    ```bash
-    mkdocs serve
-    ```
-
-=== "Windows"
-
-    ```bash
-    PYTHONUTF8=1 mkdocs serve
-    ```
-
-Then open `http://127.0.0.1:8000` in a browser.
+Then open `http://127.0.0.1:8000` (if the API server is not running on that port).
 
 ---
 

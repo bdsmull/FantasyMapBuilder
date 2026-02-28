@@ -354,27 +354,7 @@ def test_read_dispatches_hex_correctly(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Exporter tests (require QApplication — provided by conftest)
-# ---------------------------------------------------------------------------
-
-def test_export_tile_map_creates_png(tmp_path, qapp):
-    """export_tile_map must produce a loadable PNG file."""
-    from PyQt6.QtGui import QImage
-    from map_editor.rendering import exporter
-
-    map_ = _simple_tile_map()
-    out = tmp_path / "export.png"
-    exporter.export_tile_map(map_, out)
-
-    assert out.exists()
-    img = QImage(str(out))
-    assert not img.isNull()
-    assert img.width() == map_.pixel_width
-    assert img.height() == map_.pixel_height
-
-
-# ---------------------------------------------------------------------------
-# Additional shape, multi-tileset, orientation, and export tests
+# Additional shape, multi-tileset, and orientation tests
 # ---------------------------------------------------------------------------
 
 def test_ellipse_shape_round_trip(tmp_path):
@@ -568,47 +548,3 @@ def test_external_tileset_stubs(tmp_path):
     assert ts.tile_by_id(2).name == "Tile 2"
 
 
-def test_export_hex_map_creates_png(tmp_path, qapp):
-    """export_hex_map must produce a valid PNG file with correct dimensions."""
-    from PyQt6.QtGui import QImage
-    from map_editor.rendering import exporter
-
-    map_ = _simple_hex_map()
-    out = tmp_path / "hex_export.png"
-    exporter.export_hex_map(map_, out)
-
-    assert out.exists()
-    img = QImage(str(out))
-    assert not img.isNull()
-
-
-def test_export_includes_hidden_layers(tmp_path, qapp):
-    """Tiles on a hidden layer must appear in the exported image."""
-    from PyQt6.QtGui import QImage, QColor
-    from map_editor.rendering import exporter
-
-    map_ = _simple_tile_map()
-    # Make the tile layer invisible
-    tile_layer = map_.tile_layers()[0]
-    tile_layer.visible = False
-    # The tile at (0,0) has color (106, 168, 79) — Grass
-    # If the exporter respects visible=False, the pixel should be dark background;
-    # if it overrides visibility (correct), the pixel should be a non-background color.
-
-    out = tmp_path / "hidden.png"
-    exporter.export_tile_map(map_, out, show_grid=False)
-
-    # Reload to verify pixel content
-    img = QImage(str(out))
-    assert not img.isNull()
-    # The exporter renders all layers regardless of visibility — so the image
-    # must exist and be the full map size.
-    assert img.width() == map_.pixel_width
-    assert img.height() == map_.pixel_height
-    # Check that the (0,0) tile cell is NOT the dark background color (20,20,20)
-    # — meaning the hidden layer was rendered.
-    px = QColor(img.pixel(16, 16))  # centre of first tile
-    background = QColor(20, 20, 20)
-    assert px != background, (
-        f"Pixel at (16,16) is {px.name()}, expected non-background (layer was hidden)"
-    )

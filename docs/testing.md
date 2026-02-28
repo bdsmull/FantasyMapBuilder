@@ -8,86 +8,112 @@ Install the development dependencies:
 pip install -r requirements-dev.txt
 ```
 
----
-
-## Running the test suite
+Install frontend dependencies (requires Node.js 20+):
 
 ```bash
-pytest
-```
-
-Run verbosely to see individual test names:
-
-```bash
-pytest -v
+cd frontend && npm install
 ```
 
 ---
 
-## Coverage
+## Running the Python test suite
 
 ```bash
-pytest --cov=map_editor --cov-report=term-missing
+# All Python tests
+pytest tests/models tests/io tests/api -v
+
+# With coverage
+pytest tests/models tests/io tests/api --cov=map_editor --cov=server --cov-report=term-missing
+
+# HTML coverage report
+pytest tests/models tests/io tests/api --cov=map_editor --cov=server --cov-report=html
+# Open htmlcov/index.html
 ```
 
-To generate an HTML report:
+## Running the frontend (Vitest) tests
 
 ```bash
-pytest --cov=map_editor --cov-report=html
-# Open htmlcov/index.html in a browser
+cd frontend
+npm test          # run once
+npm run test:watch  # watch mode
 ```
 
 ---
 
 ## Test layout
 
+### Python tests
+
 | Path | Contents |
 |------|---------|
-| `tests/conftest.py` | `autouse` fixture resetting `MapObject._id_counter` to 0 before every test; shared tileset/map fixtures |
+| `tests/conftest.py` | `autouse` fixture resetting `MapObject._id_counter` to 0 before every test |
 | `tests/models/test_tileset.py` | 15 tests — tile definitions, placeholder PNG generation, sheet positions |
-| `tests/models/test_map_object.py` | 14 tests — factory methods, ID counter isolation, properties (incl. bool) |
-| `tests/models/test_layer.py` | 31 tests — tile access, flood fill (incl. 1×1), object hit-testing, from_flat edge cases |
-| `tests/models/test_tile_map.py` | 27 tests — GID resolution (incl. GID 0), layer management, coordinate helpers |
+| `tests/models/test_map_object.py` | 14 tests — factory methods, ID counter isolation, properties |
+| `tests/models/test_layer.py` | 31 tests — tile access, flood fill, object hit-testing |
+| `tests/models/test_tile_map.py` | 27 tests — GID resolution, layer management, coordinate helpers |
 | `tests/models/test_hex_map.py` | 28 tests — pixel↔hex round-trips, neighbour lookup, distance |
-| `tests/rendering/conftest.py` | Session-scoped `QApplication` fixture with `offscreen` platform |
-| `tests/rendering/test_tile_renderer.py` | 21 tests — image size, pixel colours, grid lines, object markers, `render_clipped` |
-| `tests/rendering/test_hex_renderer.py` | 16 tests — hex colours, orientations, grid, cache invalidation |
-| `tests/tools/test_tools.py` | 9 tests — headless `CanvasStub` exercising all four tools, undo, and same-GID no-op |
-| `tests/ui/test_ui.py` | 22 tests — UI smoke tests via `pytest-qt` (`qtbot`) |
-| `tests/io/test_tmj_io.py` | 23 tests — TMJ round-trips, all 5 object shapes, multi-tileset GIDs, POINTY_TOP hex, ObjectLayer props, source_path, external tileset stubs, PNG export |
+| `tests/io/test_tmj_io.py` | 20 tests — TMJ round-trips, object shapes, multi-tileset GIDs, POINTY_TOP hex |
+| `tests/api/conftest.py` | `client` fixture (httpx `AsyncClient`), isolated temp `maps/` dir |
+| `tests/api/test_api.py` | 14 tests — all CRUD endpoints, upload, download, error cases |
 
-Total: **233 tests**.
+**Total Python tests: 178**
 
----
+### Frontend tests (Vitest)
 
-## Headless Qt
+| Path | Contents |
+|------|---------|
+| `frontend/src/__tests__/fillTool.test.ts` | 6 tests — `bfsFloodFill`: 1×1, same-GID no-op, row fill, boundary stop, 2-D, no diagonal |
+| `frontend/src/__tests__/tileRenderer.test.ts` | 7 tests — `screenToTile` and `tileToScreen` with zoom/pan; inverse relationship |
+| `frontend/src/__tests__/mapStore.test.ts` | 12 tests — `loadMap`, `applyTile`, `commitPendingTiles`, undo (single/batch/no-op), redo, dirty flag |
 
-Rendering tests require a `QApplication` but not a physical display. The conftest sets
-`QT_QPA_PLATFORM=offscreen` before constructing the application so tests run in any
-environment, including CI servers with no GPU or display.
+**Total frontend tests: 25**
 
 ---
 
 ## Writing new tests
 
-**Model tests** — place in `tests/models/test_<module>.py`. No Qt fixtures needed. The
-`autouse` ID-reset fixture applies automatically.
+### Python model tests
 
-**Renderer tests** — place in `tests/rendering/test_<renderer>.py`. Accept `qapp` as a
-test parameter; the session fixture provides it automatically.
+Place in `tests/models/test_<module>.py`. No server fixtures needed. The `autouse`
+ID-reset fixture applies automatically.
+
+### API tests
+
+Place in `tests/api/test_<feature>.py`. Use the `client` fixture provided by
+`tests/api/conftest.py` — it supplies an `httpx.AsyncClient` wired to an in-process
+FastAPI app with an isolated temporary `maps/` directory.
 
 ```python
-def test_my_renderer_feature(qapp):
-    m = _make_tile_map()
-    img = TileRenderer().render(m)
-    # sample a pixel and assert its colour
-    color = QColor(img.pixel(cx, cy))
-    assert color.red() > 100
+import pytest
+
+@pytest.mark.asyncio
+async def test_my_endpoint(client):
+    response = await client.get("/api/maps")
+    assert response.status_code == 200
 ```
 
-**IO tests** — place in `tests/io/test_<feature>.py`. The `tests/io/conftest.py` provides
-the same session-scoped `qapp` fixture. Write/read tests are pure Python and don't need
-`qapp`; pass it as a parameter only for tests that call `exporter.*` or inspect pixel data.
+### Frontend tests
 
-**Bug regressions** — every fixed bug should have a corresponding test that would have
-caught it before the fix.
+Place in `frontend/src/__tests__/`. Import pure functions directly (no DOM setup needed
+for logic tests). Use `useMapStore.setState(...)` to reset Zustand state in `beforeEach`.
+
+```typescript
+import { describe, it, expect, beforeEach } from 'vitest';
+import { useMapStore } from '../store/mapStore';
+
+beforeEach(() => {
+  useMapStore.setState({ mapData: null, past: [], future: [] });
+});
+
+describe('my feature', () => {
+  it('does something', () => {
+    // ...
+  });
+});
+```
+
+---
+
+## Bug regressions
+
+Every fixed bug should have a corresponding test that would have caught it before the fix.

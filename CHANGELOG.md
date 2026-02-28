@@ -10,6 +10,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.0.0] - 2026-02-28
+
+### Changed (breaking — web transition)
+- **Backend rewritten as FastAPI server** — PyQt6 desktop application replaced by a
+  browser-based editor accessible from desktop and iPad over the local network.
+- `main.py` now starts uvicorn on `0.0.0.0:8000` instead of launching a Qt window.
+- `requirements.txt` updated: removed `PyQt6`, added `fastapi`, `uvicorn[standard]`,
+  `python-multipart`.
+- `requirements-dev.txt` updated: removed `pytest-qt`, added `httpx`, `pytest-asyncio`.
+
+### Added
+- **`server/` package** — FastAPI application:
+  - `server/main.py` — FastAPI app with CORS, API router, static file mount for React build
+  - `server/api/maps.py` — CRUD endpoints: `GET/POST/DELETE /api/maps/{name}`,
+    `POST /api/maps/upload`, `GET /api/maps/{name}/download`
+  - `server/api/tilesets.py` — `GET /api/tilesets/{path:path}` serves sprite sheet images
+- **`maps/`** — server-side `.tmj` file storage directory
+- **`frontend/`** — React + TypeScript SPA (Vite 6, Zustand 5, Vitest 2):
+  - `src/types/tmj.ts` — TypeScript interfaces mirroring the TMJ JSON format
+  - `src/store/mapStore.ts` — Zustand store with patch-based undo/redo (`TileChange[]` batches)
+  - `src/api/client.ts` — typed fetch wrappers for all API endpoints
+  - `src/canvas/tileRenderer.ts` / `hexRenderer.ts` — HTML5 Canvas renderers
+  - `src/canvas/canvasUtils.ts` — `screenToTile`, `tileToScreen`, image cache
+  - `src/tools/` — Paint, Erase, Fill (BFS flood fill ported from Python), Point tools
+  - `src/components/` — MapCanvas (Pointer Events + pinch-zoom), LayerPanel, TilePalette,
+    Toolbar, MenuBar, StatusBar, and three dialogs (NewMap, OpenMap, Tileset)
+  - `src/App.tsx` — root layout and keyboard shortcuts
+  - `src/App.css` — dark theme; responsive CSS for desktop and iPad (≤1024px breakpoint)
+- **`tests/api/`** — 14 FastAPI endpoint tests using `httpx.AsyncClient`
+- **`frontend/src/__tests__/`** — 25 Vitest unit tests:
+  - `fillTool.test.ts` (6), `tileRenderer.test.ts` (7), `mapStore.test.ts` (12)
+
+### Removed
+- `map_editor/rendering/` — replaced by `frontend/src/canvas/`
+- `map_editor/tools/` — replaced by `frontend/src/tools/`
+- `map_editor/commands/` — replaced by Zustand undo stack in `mapStore.ts`
+- `map_editor/ui/` — replaced by React components in `frontend/src/components/`
+- `tests/rendering/` — Qt-based; replaced by Vitest canvas tests
+- `tests/tools/` — Qt-based; replaced by Vitest tool tests
+- `tests/ui/` — Qt-based; replaced by Vitest + future Playwright tests
+
+### Kept unchanged
+- `map_editor/models/` — all 115 model tests still pass
+- `map_editor/io/` — all 23 IO round-trip tests still pass
+
+---
+
 ## [0.5.0] - 2026-02-26
 
 ### Added

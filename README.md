@@ -117,10 +117,6 @@ MapEditor_ClaudeCode/
 │   │   ├── hex_map.py           # Hex-grid map + coordinate math
 │   │   └── map_object.py        # Placed entities (NPCs, items, …)
 │   │
-│   ├── rendering/               # QPainter renderers → QImage
-│   │   ├── tile_renderer.py     # Square tile map renderer
-│   │   └── hex_renderer.py      # Hex map renderer
-│   │
 │   ├── commands/                # QUndoCommand subclasses (undo/redo)
 │   │   └── tile_commands.py     # SetTileRegionCommand, FloodFillCommand, Add/RemoveObjectCommand
 │   ├── tools/                   # Mouse interaction tools
@@ -130,6 +126,12 @@ MapEditor_ClaudeCode/
 │   │   ├── fill_tool.py         # FillTool
 │   │   └── point_tool.py        # PointObjectTool
 │   ├── io/                      # Tiled TMJ read/write
+│   │   ├── tmj_writer.py        # write_tile_map / write_hex_map → .tmj
+│   │   └── tmj_reader.py        # read_map(path) → TileMap | HexMap
+│   ├── rendering/               # QPainter renderers → QImage
+│   │   ├── tile_renderer.py     # Square tile map renderer
+│   │   ├── hex_renderer.py      # Hex map renderer
+│   │   └── exporter.py          # export_tile_map / export_hex_map → PNG/JPEG
 │   ├── ui/                      # PyQt6 windows, panels, dialogs
 │   │   ├── main_window.py       # MainWindow (QMdiArea workspace)
 │   │   ├── map_canvas.py        # Abstract QGraphicsView base
@@ -138,7 +140,8 @@ MapEditor_ClaudeCode/
 │   │   ├── tile_palette.py      # TilePaletteWidget (sprite sheet selector)
 │   │   ├── layer_panel.py       # LayerPanelWidget (layer list + visibility)
 │   │   └── dialogs/
-│   │       └── new_map_dialog.py  # New map creation dialog
+│   │       ├── new_map_dialog.py  # New map creation dialog
+│   │       └── tileset_dialog.py  # Manage Tilesets (Add / Remove)
 │   └── assets/
 │       └── placeholders/        # Auto-generated placeholder tilesets
 │
@@ -146,6 +149,7 @@ MapEditor_ClaudeCode/
 │   ├── models/                  # Unit tests for data models
 │   ├── rendering/               # Unit tests for renderers
 │   ├── tools/                   # Unit tests for editing tools
+│   ├── io/                      # TMJ round-trip and export tests
 │   └── ui/                      # UI smoke tests (pytest-qt)
 │
 └── docs/                        # MkDocs source (user guide)
@@ -161,7 +165,7 @@ MapEditor_ClaudeCode/
 | 2 | Done | Renderers (tile grid + hex grid via QPainter → QImage) |
 | 3 | Done | Core UI shell (main window, canvases, new map dialog) |
 | 4 | Done | Editing tools + undo/redo (paint, fill, erase, objects) |
-| 5 | Planned | File I/O (Tiled TMJ save/load) + PNG export |
+| 5 | Done | File I/O — Tiled TMJ save/load, PNG/JPEG export, tileset management |
 
 ---
 

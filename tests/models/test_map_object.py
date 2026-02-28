@@ -100,3 +100,11 @@ class TestMutation:
     def test_visible_default(self):
         obj = MapObject(name="X")
         assert obj.visible is True
+
+    def test_bool_property_stored_correctly(self):
+        """Bool properties are stored without coercion to int."""
+        obj = MapObject(name="Gate")
+        obj.set_property("is_open", True)
+        obj.set_property("is_locked", False)
+        assert obj.get_property("is_open") is True
+        assert obj.get_property("is_locked") is False

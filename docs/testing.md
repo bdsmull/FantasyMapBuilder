@@ -44,16 +44,19 @@ pytest --cov=map_editor --cov-report=html
 | Path | Contents |
 |------|---------|
 | `tests/conftest.py` | `autouse` fixture resetting `MapObject._id_counter` to 0 before every test; shared tileset/map fixtures |
-| `tests/models/test_tileset.py` | 15 tests — tile definitions, placeholder PNG generation, GID lookup |
-| `tests/models/test_map_object.py` | 13 tests — factory methods, ID counter isolation, properties |
-| `tests/models/test_layer.py` | 27 tests — tile access, flood fill, object hit-testing |
-| `tests/models/test_tile_map.py` | 25 tests — GID resolution, layer management, coordinate helpers |
+| `tests/models/test_tileset.py` | 15 tests — tile definitions, placeholder PNG generation, sheet positions |
+| `tests/models/test_map_object.py` | 14 tests — factory methods, ID counter isolation, properties (incl. bool) |
+| `tests/models/test_layer.py` | 31 tests — tile access, flood fill (incl. 1×1), object hit-testing, from_flat edge cases |
+| `tests/models/test_tile_map.py` | 27 tests — GID resolution (incl. GID 0), layer management, coordinate helpers |
 | `tests/models/test_hex_map.py` | 28 tests — pixel↔hex round-trips, neighbour lookup, distance |
 | `tests/rendering/conftest.py` | Session-scoped `QApplication` fixture with `offscreen` platform |
-| `tests/rendering/test_tile_renderer.py` | 18 tests — image size, pixel colours, grid lines, object markers |
+| `tests/rendering/test_tile_renderer.py` | 21 tests — image size, pixel colours, grid lines, object markers, `render_clipped` |
 | `tests/rendering/test_hex_renderer.py` | 16 tests — hex colours, orientations, grid, cache invalidation |
+| `tests/tools/test_tools.py` | 9 tests — headless `CanvasStub` exercising all four tools, undo, and same-GID no-op |
+| `tests/ui/test_ui.py` | 22 tests — UI smoke tests via `pytest-qt` (`qtbot`) |
+| `tests/io/test_tmj_io.py` | 23 tests — TMJ round-trips, all 5 object shapes, multi-tileset GIDs, POINTY_TOP hex, ObjectLayer props, source_path, external tileset stubs, PNG export |
 
-Total: **172 tests**.
+Total: **233 tests**.
 
 ---
 
@@ -81,6 +84,10 @@ def test_my_renderer_feature(qapp):
     color = QColor(img.pixel(cx, cy))
     assert color.red() > 100
 ```
+
+**IO tests** — place in `tests/io/test_<feature>.py`. The `tests/io/conftest.py` provides
+the same session-scoped `qapp` fixture. Write/read tests are pure Python and don't need
+`qapp`; pass it as a parameter only for tests that call `exporter.*` or inspect pixel data.
 
 **Bug regressions** — every fixed bug should have a corresponding test that would have
 caught it before the fix.

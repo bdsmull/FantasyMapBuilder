@@ -234,3 +234,40 @@ class TestCache:
         renderer._sheet_cache["fake_path"] = None
         renderer.invalidate_cache()
         assert renderer._sheet_cache == {}
+
+
+# ---------------------------------------------------------------------------
+# render_clipped
+# ---------------------------------------------------------------------------
+
+class TestRenderClipped:
+    def test_render_clipped_returns_tuple(self, qapp):
+        """render_clipped returns a 3-tuple of (QImage, float, float)."""
+        from PyQt6.QtCore import QRectF
+        m = _make_map()
+        result = TileRenderer().render_clipped(m, QRectF(0, 0, 64, 64))
+        assert isinstance(result, tuple)
+        assert len(result) == 3
+        img, ox, oy = result
+        assert isinstance(img, QImage)
+        assert not img.isNull()
+
+    def test_render_clipped_origin_aligns_to_tile_grid(self, qapp):
+        """Origin returned by render_clipped is a multiple of tile size."""
+        from PyQt6.QtCore import QRectF
+        m = _make_map(cols=8, rows=6, tw=32, th=32)
+        # Clip a region inside the map, not at the top-left corner
+        _, ox, oy = TileRenderer().render_clipped(m, QRectF(64.0, 64.0, 128.0, 96.0))
+        assert ox % 32 == 0.0
+        assert oy % 32 == 0.0
+
+    def test_render_clipped_smaller_than_full(self, qapp):
+        """A partial viewport clip yields an image smaller than the full render."""
+        from PyQt6.QtCore import QRectF
+        m = _make_map(cols=8, rows=6, tw=32, th=32)
+        full_img = TileRenderer().render(m, show_grid=False)
+        clip_img, _, _ = TileRenderer().render_clipped(
+            m, QRectF(32.0, 32.0, 64.0, 64.0), show_grid=False
+        )
+        assert clip_img.width() < full_img.width()
+        assert clip_img.height() < full_img.height()

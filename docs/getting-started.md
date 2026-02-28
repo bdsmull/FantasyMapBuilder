@@ -108,6 +108,42 @@ reconnects the Edit menu to the newly active canvas's undo stack.
 
 ---
 
+## Saving and Loading Maps
+
+Maps are saved in [Tiled's `.tmj` JSON format](file-format.md), which is compatible with
+Tiled itself and any Tiled-compatible game engine.
+
+| Action | Shortcut | Description |
+|--------|----------|-------------|
+| Open… | Ctrl+O | Load a `.tmj` file into a new canvas |
+| Save | Ctrl+S | Save to the current file path |
+| Save As… | Ctrl+Shift+S | Save to a new file path |
+| Export as Image… | — | Render the map to a PNG or JPEG |
+
+!!! note "First save"
+    A newly created map has no file path yet. The first **Ctrl+S** automatically opens
+    the Save As dialog.
+
+!!! tip "All layers exported"
+    The image exporter renders every layer regardless of its visibility toggle, so the
+    exported image always shows the complete map content.
+
+---
+
+## Managing Tilesets
+
+Go to **Edit → Manage Tilesets…** to open the tileset management dialog for the active map.
+
+**Add from PNG** — browse for a sprite-sheet image and enter a tileset name and tile
+dimensions. The editor computes the tile count and column layout automatically.
+
+**Remove** — removes the selected tileset. If any tile layer still references tiles from
+that tileset, the removal is blocked and a warning is shown.
+
+After adding or removing a tileset the Tile Palette updates automatically.
+
+---
+
 ## Installing Development Dependencies
 
 To run the test suite or build this documentation, install the dev dependencies

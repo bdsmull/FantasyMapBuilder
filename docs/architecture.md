@@ -16,10 +16,6 @@ MapEditor_ClaudeCode/
 │   │   ├── hex_map.py         # HexMap (hex grid) container + coordinate math
 │   │   └── map_object.py      # MapObject (free-form entities)
 │   │
-│   ├── rendering/             # QPainter → QImage (headless, no display needed)
-│   │   ├── tile_renderer.py   # TileRenderer
-│   │   └── hex_renderer.py    # HexRenderer
-│   │
 │   ├── commands/              # QUndoCommand subclasses
 │   │   └── tile_commands.py   # SetTileRegionCommand, FloodFillCommand, Add/RemoveObjectCommand
 │   ├── tools/                 # Mouse interaction tools (strategy pattern)
@@ -28,7 +24,13 @@ MapEditor_ClaudeCode/
 │   │   ├── erase_tool.py      # EraseTool
 │   │   ├── fill_tool.py       # FillTool
 │   │   └── point_tool.py      # PointObjectTool
-│   ├── io/                    # TMJ reader/writer (Phase 5)
+│   ├── io/                    # TMJ reader/writer
+│   │   ├── tmj_writer.py      # write_tile_map / write_hex_map → .tmj JSON
+│   │   └── tmj_reader.py      # read_map(path) → TileMap | HexMap
+│   ├── rendering/             # QPainter → QImage (headless, no display needed)
+│   │   ├── tile_renderer.py   # TileRenderer + render_clipped()
+│   │   ├── hex_renderer.py    # HexRenderer + render_clipped()
+│   │   └── exporter.py        # export_tile_map / export_hex_map → PNG/JPEG
 │   ├── ui/                    # PyQt6 windows, panels, dialogs
 │   │   ├── main_window.py     # MainWindow (QMdiArea workspace, menus, toolbar, status bar)
 │   │   ├── map_canvas.py      # Abstract QGraphicsView — zoom, pan, grid, undo stack, tool dispatch
@@ -37,7 +39,8 @@ MapEditor_ClaudeCode/
 │   │   ├── tile_palette.py    # TilePaletteWidget (sprite sheet tile selector)
 │   │   ├── layer_panel.py     # LayerPanelWidget (layer list with visibility checkboxes)
 │   │   └── dialogs/
-│   │       └── new_map_dialog.py  # New map dialog (tile or hex)
+│   │       ├── new_map_dialog.py   # New map dialog (tile or hex)
+│   │       └── tileset_dialog.py   # Manage Tilesets (Add from PNG / Remove)
 │   └── assets/
 │       └── placeholders/      # Auto-generated sprite sheets (git-ignored)
 │
@@ -46,6 +49,7 @@ MapEditor_ClaudeCode/
 │   ├── models/                # Unit tests for all data models
 │   ├── rendering/             # Pixel-level tests for both renderers
 │   ├── tools/                 # Unit tests for editing tools (headless CanvasStub)
+│   ├── io/                    # TMJ round-trip and export tests (15 tests)
 │   └── ui/                    # UI smoke tests (pytest-qt)
 │
 └── docs/                      # MkDocs source (this documentation)
@@ -61,7 +65,7 @@ MapEditor_ClaudeCode/
 | 2 | ✅ Done | `rendering/` — tile and hex renderers |
 | 3 | ✅ Done | `ui/main_window.py`, `ui/map_canvas.py`, `ui/tile_canvas.py`, `ui/hex_canvas.py`, `ui/dialogs/new_map_dialog.py` |
 | 4 | ✅ Done | `tools/` (BaseTool + 4 tools), `commands/tile_commands.py`, `ui/tile_palette.py`, `ui/layer_panel.py` |
-| 5 | Planned | `io/tmj_reader.py`, `io/tmj_writer.py`, `rendering/exporter.py`, `ui/dialogs/tileset_dialog.py` |
+| 5 | ✅ Done | `io/tmj_reader.py`, `io/tmj_writer.py`, `rendering/exporter.py`, `ui/dialogs/tileset_dialog.py` |
 
 ---
 

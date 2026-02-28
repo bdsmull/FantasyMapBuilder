@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
     QDockWidget,
+    QFileDialog,
     QMainWindow,
     QMdiArea,
     QMessageBox,
@@ -14,12 +15,16 @@ from PyQt6.QtWidgets import (
     QToolBar,
 )
 
+from map_editor.io import tmj_reader, tmj_writer
 from map_editor.models.layer import ObjectLayer, TileLayer
+from map_editor.models.tile_map import TileMap
+from map_editor.rendering import exporter
 from map_editor.tools.erase_tool import EraseTool
 from map_editor.tools.fill_tool import FillTool
 from map_editor.tools.paint_tool import PaintTool
 from map_editor.tools.point_tool import PointObjectTool
 from map_editor.ui.dialogs.new_map_dialog import NewMapDialog
+from map_editor.ui.dialogs.tileset_dialog import TilesetDialog
 from map_editor.ui.hex_canvas import HexCanvas
 from map_editor.ui.layer_panel import LayerPanelWidget
 from map_editor.ui.map_canvas import MapCanvas
@@ -52,6 +57,12 @@ class MainWindow(QMainWindow):
         # Undo/redo actions (set in _build_menu)
         self._undo_action: QAction | None = None
         self._redo_action: QAction | None = None
+
+        # File actions (set in _build_menu, enabled only when a map is open)
+        self._save_action: QAction | None = None
+        self._save_as_action: QAction | None = None
+        self._export_action: QAction | None = None
+        self._manage_tilesets_action: QAction | None = None
 
         # Tool actions (set in _build_toolbar)
         self._tool_actions: dict[str, QAction] = {}
@@ -160,6 +171,34 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        act_open = QAction("&Open…", self)
+        act_open.setShortcut("Ctrl+O")
+        act_open.triggered.connect(self._open_map)
+        file_menu.addAction(act_open)
+
+        file_menu.addSeparator()
+
+        self._save_action = QAction("&Save", self)
+        self._save_action.setShortcut("Ctrl+S")
+        self._save_action.setEnabled(False)
+        self._save_action.triggered.connect(self._save_map)
+        file_menu.addAction(self._save_action)
+
+        self._save_as_action = QAction("Save &As…", self)
+        self._save_as_action.setShortcut("Ctrl+Shift+S")
+        self._save_as_action.setEnabled(False)
+        self._save_as_action.triggered.connect(self._save_map_as)
+        file_menu.addAction(self._save_as_action)
+
+        file_menu.addSeparator()
+
+        self._export_action = QAction("&Export as Image…", self)
+        self._export_action.setEnabled(False)
+        self._export_action.triggered.connect(self._export_image)
+        file_menu.addAction(self._export_action)
+
+        file_menu.addSeparator()
+
         act_close = QAction("&Close Map", self)
         act_close.setShortcut("Ctrl+W")
         act_close.triggered.connect(self._mdi.closeActiveSubWindow)
@@ -194,6 +233,13 @@ class MainWindow(QMainWindow):
         act_fill_layer = QAction("&Fill Layer", self)
         act_fill_layer.triggered.connect(self._fill_layer)
         edit_menu.addAction(act_fill_layer)
+
+        edit_menu.addSeparator()
+
+        self._manage_tilesets_action = QAction("&Manage Tilesets…", self)
+        self._manage_tilesets_action.setEnabled(False)
+        self._manage_tilesets_action.triggered.connect(self._manage_tilesets)
+        edit_menu.addAction(self._manage_tilesets_action)
 
         # --- View ---
         view_menu = mb.addMenu("&View")
@@ -317,6 +363,7 @@ class MainWindow(QMainWindow):
             self._zoom_label.setText(f"Zoom: {canvas.zoom_factor() * 100:.0f}%")
             self._reconnect_undo_stack(canvas.undo_stack())
             self._populate_panel_and_palette(canvas)
+            self._update_file_actions(True)
         else:
             self._map_label.setText("No map open")
             self._cursor_label.clear()
@@ -325,6 +372,7 @@ class MainWindow(QMainWindow):
                 self._undo_action.setEnabled(False)
             if self._redo_action:
                 self._redo_action.setEnabled(False)
+            self._update_file_actions(False)
 
     def _on_cursor_moved(self, col: int, row: int) -> None:
         canvas = self._active_canvas()
@@ -341,7 +389,7 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self,
             "About Fantasy RPG Map Editor",
-            "<b>Fantasy RPG Map Editor</b> v0.4.0<br><br>"
+            "<b>Fantasy RPG Map Editor</b> v0.5.0<br><br>"
             "A dual-mode map editor for tile and hex RPG maps.<br>"
             "Built with Python and PyQt6.",
         )
@@ -463,3 +511,93 @@ class MainWindow(QMainWindow):
             return
         layer.fill(canvas._active_gid)
         canvas.refresh()
+
+    # ------------------------------------------------------------------
+    # Phase 5 — file actions
+    # ------------------------------------------------------------------
+
+    def _update_file_actions(self, has_canvas: bool) -> None:
+        for action in (
+            self._save_action,
+            self._save_as_action,
+            self._export_action,
+            self._manage_tilesets_action,
+        ):
+            if action is not None:
+                action.setEnabled(has_canvas)
+
+    def _open_map(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open Map", "", "Tiled Map (*.tmj)"
+        )
+        if not path:
+            return
+        try:
+            map_ = tmj_reader.read_map(path)
+        except Exception as e:
+            QMessageBox.critical(self, "Open Error", str(e))
+            return
+        canvas = TileCanvas(map_) if isinstance(map_, TileMap) else HexCanvas(map_)
+        self._open_canvas(canvas)
+
+    def _save_map(self) -> None:
+        canvas = self._active_canvas()
+        if canvas is None:
+            return
+        map_ = canvas.tile_map if isinstance(canvas, TileCanvas) else canvas.hex_map
+        if map_.source_path:
+            self._do_save(canvas, map_.source_path)
+        else:
+            self._save_map_as()
+
+    def _save_map_as(self) -> None:
+        canvas = self._active_canvas()  # capture before dialog steals focus
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Map As", "", "Tiled Map (*.tmj)"
+        )
+        if path:
+            self._do_save(canvas, path)
+
+    def _do_save(self, canvas: MapCanvas | None, path: str) -> None:
+        if canvas is None:
+            return
+        map_ = canvas.tile_map if isinstance(canvas, TileCanvas) else canvas.hex_map
+        try:
+            if isinstance(canvas, TileCanvas):
+                tmj_writer.write_tile_map(map_, path)
+            else:
+                tmj_writer.write_hex_map(map_, path)
+            canvas.undo_stack().setClean()
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", str(e))
+
+    def _export_image(self) -> None:
+        canvas = self._active_canvas()  # capture before dialog steals focus
+        if canvas is None:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Image",
+            "",
+            "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg)",
+        )
+        if not path:
+            return
+        map_ = canvas.tile_map if isinstance(canvas, TileCanvas) else canvas.hex_map
+        try:
+            if isinstance(canvas, TileCanvas):
+                exporter.export_tile_map(map_, path)
+            else:
+                exporter.export_hex_map(map_, path)
+            QMessageBox.information(self, "Export", f"Saved to:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", str(e))
+
+    def _manage_tilesets(self) -> None:
+        canvas = self._active_canvas()
+        if canvas is None:
+            return
+        map_ = canvas.tile_map if isinstance(canvas, TileCanvas) else canvas.hex_map
+        dlg = TilesetDialog(map_, self)
+        dlg.tilesets_changed.connect(lambda: self._populate_panel_and_palette(canvas))
+        dlg.exec()

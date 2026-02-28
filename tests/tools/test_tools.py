@@ -120,6 +120,31 @@ def test_undo_fill(canvas):
             assert layer.get_tile(col, row) == 0
 
 
+def test_erase_tool_undo(canvas):
+    """Undo after an erase stroke restores the original tile value."""
+    tool = EraseTool()
+    layer: TileLayer = canvas._active_layer
+
+    layer.set_tile(2, 2, 3)
+    tool.on_press(canvas, 2, 2)
+    assert layer.get_tile(2, 2) == 0
+
+    tool.on_release(canvas)
+    canvas._undo_stack.undo()
+    assert layer.get_tile(2, 2) == 3
+
+
+def test_fill_same_gid_noop(canvas):
+    """FillTool pushes no command when the target cell already has the active GID."""
+    tool = FillTool()
+    layer: TileLayer = canvas._active_layer
+
+    layer.set_tile(0, 0, 1)
+    canvas._active_gid = 1  # same as what's already there
+    tool.on_press(canvas, 0, 0)
+    assert canvas._undo_stack.count() == 0
+
+
 # ---------------------------------------------------------------------------
 # PointObjectTool tests
 # ---------------------------------------------------------------------------

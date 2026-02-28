@@ -8,8 +8,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Planned
-- Phase 5: Tiled `.tmj` save/load and PNG export
+---
+
+## [0.5.0] - 2026-02-26
+
+### Added
+- **TMJ file save/load** — maps round-trip through Tiled's `.tmj` JSON format:
+  - `map_editor/io/tmj_writer.py` — `write_tile_map()` and `write_hex_map()`
+  - `map_editor/io/tmj_reader.py` — `read_map(path)` returning `TileMap | HexMap`
+  - Tileset image paths stored relative to the `.tmj` file (Tiled convention)
+  - Full `TileDefinition` metadata (name, color, category) reconstructed on load via per-tile custom properties
+  - Hex map orientation, hex size, and stagger metadata round-trip correctly
+- **Image export** (`map_editor/rendering/exporter.py`) — `export_tile_map()` / `export_hex_map()` render the complete map (all layers, regardless of visibility) to PNG or JPEG
+- **Manage Tilesets dialog** (`map_editor/ui/dialogs/tileset_dialog.py`):
+  - Lists all tilesets with name, source path, tile size, and tile count
+  - **Add from PNG** — browse for a sprite sheet, configure tile size, auto-builds `TileDefinition` stubs
+  - **Remove** — blocked if any tile layer references the tileset; recomputes `first_gid` offsets after removal
+- **File menu additions** in `MainWindow`:
+  - **Open…** (Ctrl+O) — load a `.tmj` file into a new canvas sub-window
+  - **Save** (Ctrl+S) — save to `map_.source_path`; falls through to Save As if not yet saved
+  - **Save As…** (Ctrl+Shift+S) — save to a new path and update `source_path`
+  - **Export as Image…** — export to PNG/JPEG via a file dialog
+  - Save / Save As / Export / Manage Tilesets disabled when no map is open
+- **Edit → Manage Tilesets…** — opens the tileset management dialog for the active canvas
+- IO test suite (`tests/io/test_tmj_io.py`) — 15 tests covering metadata round-trips, tile data, layer properties, object shapes, custom properties, ID counter reset, hex maps, and PNG export
+
+### Changed
+- Viewport-culled rendering: `TileRenderer` and `HexRenderer` both gain `render_clipped()` which renders only the visible viewport region into a smaller `QImage`, then positions it correctly in the scene. Panning and zooming on large maps is now dramatically faster.
+- `MapCanvas` initial zoom caps at 60×60 visible cells on first open; maps smaller than this fit the view as before.
+- Scroll-wheel always zooms (no Ctrl modifier required).
 
 ---
 

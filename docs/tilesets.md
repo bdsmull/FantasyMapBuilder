@@ -96,11 +96,12 @@ and not committed to the repository.
 
 ## Custom sprite sheets
 
-To use your own artwork, set the `source` attribute on a `Tileset` to the path of a PNG
-sprite sheet. Each tile's `sheet_col` and `sheet_row` give its position in the sheet in
-units of `tile_width × tile_height` pixels.
+To use your own artwork, open **Edit → Manage Tilesets…** and click **Add from PNG**.
+Browse to any PNG sprite sheet, enter a tileset name and tile dimensions, and the editor
+builds `TileDefinition` stubs automatically — one per tile cell in the sheet.
 
-Full sprite-sheet import UI is planned for Phase 5.
+Each tile's `sheet_col` and `sheet_row` give its position in the sheet in units of
+`tile_width × tile_height` pixels. These are set automatically when the tileset is created.
 
 ---
 

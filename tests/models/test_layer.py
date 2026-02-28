@@ -129,6 +129,13 @@ class TestFloodFill:
         changed = layer.flood_fill(0, 0, 5)
         assert set(changed) == {(0, 0), (1, 0)}
 
+    def test_flood_fill_one_by_one(self):
+        """A 1×1 layer: flood fill changes the single cell and returns it."""
+        layer = TileLayer(name="L", width=1, height=1)
+        changed = layer.flood_fill(0, 0, 7)
+        assert changed == [(0, 0)]
+        assert layer.get_tile(0, 0) == 7
+
 
 class TestFlatSerialisation:
     def test_to_flat_order(self):
@@ -149,6 +156,15 @@ class TestFlatSerialisation:
         restored = TileLayer.from_flat("L", width=3, height=2, flat_data=[1, 2])
         assert restored.get_tile(2, 0) == 0
         assert restored.get_tile(0, 1) == 0
+
+    def test_from_flat_overlong_data_ignores_extra(self):
+        """Extra entries beyond width*height are silently ignored."""
+        restored = TileLayer.from_flat("L", width=2, height=2,
+                                       flat_data=[1, 2, 3, 4, 99, 99])
+        assert restored.get_tile(0, 0) == 1
+        assert restored.get_tile(1, 1) == 4
+        # Only width*height cells exist; no out-of-range access
+        assert restored.data == [[1, 2], [3, 4]]
 
 
 class TestCopy:
@@ -272,3 +288,9 @@ class TestObjectsAt:
         hits = layer.objects_at(0.0, 0.0, self.TILE_W, self.TILE_H)
         assert a in hits
         assert b in hits
+
+    def test_objects_at_empty_layer_returns_empty(self):
+        """Querying an empty ObjectLayer always returns an empty list."""
+        layer = ObjectLayer(name="Empty")
+        hits = layer.objects_at(0.0, 0.0, self.TILE_W, self.TILE_H)
+        assert hits == []

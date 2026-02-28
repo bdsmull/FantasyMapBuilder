@@ -19,7 +19,7 @@ Maps save and load in [Tiled](https://www.mapeditor.org/) `.tmj` format and can 
 | 2 | ✅ Done | Renderers — tile grid and hex grid via QPainter → QImage |
 | 3 | ✅ Done | Core UI shell — main window, dual canvases, new map dialog |
 | 4 | ✅ Done | Editing tools — paint, fill, erase, object placement, undo/redo |
-| 5 | Planned | File I/O — Tiled TMJ save/load and PNG export |
+| 5 | ✅ Done | File I/O — Tiled TMJ save/load, PNG/JPEG export, tileset management |
 
 ---
 
@@ -31,8 +31,9 @@ Maps save and load in [Tiled](https://www.mapeditor.org/) `.tmj` format and can 
 - Custom tileset support — load your own PNG sprite sheets
 - Object and entity placement (NPCs, chests, spawn points, triggers, …)
 - Full undo/redo history per canvas (independent stacks)
-- Tiled `.tmj` compatible save/load *(Phase 5)*
-- PNG image export *(Phase 5)*
+- Tiled `.tmj` compatible save/load — maps open in Tiled and any compatible engine
+- PNG/JPEG image export of the full map (all layers)
+- Tileset management — add from PNG sprite sheet or remove unused tilesets
 - Placeholder tile generator — usable out of the box with no external art
 
 ---

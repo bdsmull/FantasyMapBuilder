@@ -190,3 +190,17 @@ class TestLayerManagement:
     def test_move_layer_down_at_bottom_returns_false(self, small_tile_map):
         bottom = small_tile_map.layers[0]
         assert small_tile_map.move_layer_down(bottom) is False
+
+
+# ---------------------------------------------------------------------------
+# GID 0 edge cases
+# ---------------------------------------------------------------------------
+
+class TestGidEdgeCases:
+    def test_tileset_for_gid_zero_returns_none(self, small_tile_map):
+        """GID 0 is the empty-cell sentinel; no tileset should claim it."""
+        assert small_tile_map.tileset_for_gid(0) is None
+
+    def test_local_id_gid_zero_returns_zero(self, small_tile_map):
+        """local_id for the empty sentinel GID falls back to returning the raw GID."""
+        assert small_tile_map.local_id(0) == 0

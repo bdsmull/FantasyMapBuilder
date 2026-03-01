@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { tilesetImageUrl } from '../api/client';
 
@@ -7,6 +7,7 @@ export const TilePalette: React.FC = () => {
   const { mapData, activeGid, setActiveGid } = useMapStore();
 
   const tileset = mapData?.tilesets[0] ?? null;
+  const [tooltip, setTooltip] = useState<{ label: string; x: number; y: number } | null>(null);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -68,6 +69,31 @@ export const TilePalette: React.FC = () => {
 
   useEffect(() => { draw(); }, [draw]);
 
+  const tileAtEvent = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!tileset) return null;
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const col = Math.floor((e.clientX - rect.left) * scaleX / tileset.tilewidth);
+    const row = Math.floor((e.clientY - rect.top) * scaleY / tileset.tileheight);
+    const lid = row * (tileset.columns || 8) + col;
+    return (lid >= 0 && lid < tileset.tilecount) ? lid : null;
+  };
+
+  const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const lid = tileAtEvent(e);
+    if (lid === null) { setTooltip(null); return; }
+    const entry = tileset?.tiles.find((t) => t.id === lid);
+    if (entry?.type) {
+      setTooltip({ label: entry.type, x: e.clientX, y: e.clientY });
+    } else {
+      setTooltip(null);
+    }
+  }, [tileset]);
+
+  const onMouseLeave = useCallback(() => setTooltip(null), []);
+
   const onClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!tileset) return;
     const canvas = canvasRef.current!;
@@ -93,16 +119,36 @@ export const TilePalette: React.FC = () => {
   }
 
   return (
-    <div className="tile-palette">
-      <div className="panel-header">Tile Palette</div>
-      <div style={{ overflowY: 'auto', flex: 1 }}>
-        <canvas
-          ref={canvasRef}
-          onClick={onClick}
-          style={{ display: 'block', width: '100%', cursor: 'pointer', imageRendering: 'pixelated' }}
-          title="Click to select tile"
-        />
+    <>
+      <div className="tile-palette">
+        <div className="panel-header">Tile Palette</div>
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          <canvas
+            ref={canvasRef}
+            onClick={onClick}
+            onMouseMove={onMouseMove}
+            onMouseLeave={onMouseLeave}
+            style={{ display: 'block', width: '100%', cursor: 'pointer', imageRendering: 'pixelated' }}
+          />
+        </div>
       </div>
-    </div>
+      {tooltip && (
+        <div style={{
+          position: 'fixed',
+          left: tooltip.x + 14,
+          top: tooltip.y + 4,
+          background: 'rgba(0,0,0,0.82)',
+          color: '#fff',
+          padding: '2px 7px',
+          borderRadius: 3,
+          fontSize: 11,
+          pointerEvents: 'none',
+          zIndex: 1000,
+          whiteSpace: 'nowrap',
+        }}>
+          {tooltip.label}
+        </div>
+      )}
+    </>
   );
 };

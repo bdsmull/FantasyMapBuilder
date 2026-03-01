@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMapStore } from '../../store/mapStore';
 import type { TmjMap } from '../../types/tmj';
 import { saveMap as apiSaveMap } from '../../api/client';
+import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
 
 interface Props {
   onClose: () => void;
@@ -15,13 +16,15 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
   const [tileW, setTileW] = useState(32);
   const [tileH, setTileH] = useState(32);
   const [hexSize, setHexSize] = useState(40);
+  const [includeDefault, setIncludeDefault] = useState(true);
+  const [dirtyWarn, setDirtyWarn] = useState(false);
   const [error, setError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
-  const { loadMap } = useMapStore();
+  const { loadMap, isDirty, mapName: currentName, saveMapToServer } = useMapStore();
 
-  const handleCreate = async () => {
-    if (!name.trim()) { setError('Map name is required'); return; }
-
+  const doCreate = async () => {
+    setIsCreating(true);
     const isHex = mapType === 'hex';
     const mapData: TmjMap = {
       tiledversion: '1.10.0',
@@ -41,7 +44,7 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
         staggerindex: 'odd',
         hexsidelength: hexSize,
       } : {}),
-      tilesets: [],
+      tilesets: includeDefault ? [isHex ? DEFAULT_HEX_TILESET : DEFAULT_TILE_TILESET] : [],
       layers: [
         {
           type: 'tilelayer',
@@ -75,7 +78,25 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
       onClose();
     } catch (e) {
       setError(String(e));
+      setIsCreating(false);
     }
+  };
+
+  const handleCreate = () => {
+    if (!name.trim()) { setError('Map name is required'); return; }
+    if (isDirty && currentName) { setDirtyWarn(true); return; }
+    doCreate();
+  };
+
+  const handleSaveAndCreate = async () => {
+    try {
+      await saveMapToServer();
+    } catch (e) {
+      setError(`Save failed: ${e}`);
+      return;
+    }
+    setDirtyWarn(false);
+    doCreate();
   };
 
   return (
@@ -116,11 +137,36 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
           </div>
         )}
 
+        <div className="dialog-row">
+          <label>
+            <input
+              type="checkbox"
+              checked={includeDefault}
+              onChange={(e) => setIncludeDefault(e.target.checked)}
+              style={{ marginRight: 6 }}
+            />
+            Include default tileset
+          </label>
+        </div>
+
+        {dirtyWarn && (
+          <div className="dialog-warn">
+            <p>"{currentName}" has unsaved changes. Save before creating?</p>
+            <div className="dialog-buttons">
+              <button onClick={() => setDirtyWarn(false)}>Cancel</button>
+              <button onClick={() => { setDirtyWarn(false); doCreate(); }}>Discard & Create</button>
+              <button className="btn-primary" onClick={handleSaveAndCreate}>Save & Create</button>
+            </div>
+          </div>
+        )}
+
         {error && <div className="dialog-error">{error}</div>}
 
         <div className="dialog-buttons">
           <button onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleCreate} disabled={!name.trim()}>Create</button>
+          <button className="btn-primary" onClick={handleCreate} disabled={!name.trim() || isCreating}>
+            {isCreating ? 'Creating…' : 'Create'}
+          </button>
         </div>
       </div>
     </div>

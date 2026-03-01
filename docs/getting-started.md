@@ -97,8 +97,11 @@ Open `http://<your-pc-ip>:8000` on your iPad.
 
 ### Creating a map
 
-1. Go to **File → New Tile Map** or **File → New Hex Map**.
-2. Enter a name, choose dimensions and tile size, then click **OK**.
+1. Go to **File → New Map** (or press `Ctrl+N`).
+2. Choose **Tile Map** or **Hex Map**, enter a name, and set dimensions.
+3. Leave **Include default tileset** checked (recommended) to start with a ready-to-use
+   colour-coded tileset — 16 tiles for tile maps, 12 for hex maps.
+4. Click **Create**. If you have unsaved changes the editor will offer to save first.
 
 ### Editing tools
 
@@ -140,8 +143,7 @@ eye icon to show or hide it.
 
 | Action | Keyboard | Description |
 |--------|----------|-------------|
-| New Tile Map | `Ctrl+T` | Create a new tile map |
-| New Hex Map | `Ctrl+H` | Create a new hex map |
+| New Map | `Ctrl+N` | Open the New Map dialog |
 | Open… | `Ctrl+O` | Browse server-saved maps or upload a `.tmj` file |
 | Save | `Ctrl+S` | Save to the server |
 | Download | — | Download raw `.tmj` to your device |
@@ -153,9 +155,12 @@ Tiled-compatible game engine.
 
 ## Managing Tilesets
 
-Go to **Edit → Manage Tilesets…** to add or remove sprite sheets.
+Go to **Edit → Manage Tilesets…** to add or remove tilesets.
 
-- **Add from file** — browse for a PNG and enter a tileset name and tile dimensions.
+- **Load Built-in Default** — adds the built-in colour-coded tileset for the current map
+  type (tile or hex). Does nothing if it is already loaded.
+- **Add from PNG…** — browse for a PNG sprite sheet and enter a tileset name and tile
+  dimensions. Tile stubs are created automatically.
 - **Remove** — removes the selected tileset. Blocked if any tile layer still references it.
 
 ---

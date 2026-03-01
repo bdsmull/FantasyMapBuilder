@@ -8,7 +8,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { renderTileMap } from '../canvas/tileRenderer';
-import { renderHexMap } from '../canvas/hexRenderer';
+import { renderHexMap, pixelToHex, clearHexTileCache } from '../canvas/hexRenderer';
 import { screenToTile } from '../canvas/canvasUtils';
 import type { Tool } from '../tools/baseTool';
 import { paintTool } from '../tools/paintTool';
@@ -50,7 +50,7 @@ export const MapCanvas: React.FC = () => {
     const opts = {
       view,
       showGrid: store.showGrid,
-      onImageLoad: () => requestAnimationFrame(render),
+      onImageLoad: () => { clearHexTileCache(); requestAnimationFrame(render); },
     };
 
     if (store.mapData.orientation === 'hexagonal') {
@@ -92,6 +92,19 @@ export const MapCanvas: React.FC = () => {
     const { mapData, zoom, pan } = store;
     if (!mapData) return null;
     const pt = getCanvasPoint(e);
+
+    if (mapData.orientation === 'hexagonal') {
+      const hexSize = ((mapData.hexsidelength ?? 40) + mapData.tilewidth / 2) * zoom;
+      return pixelToHex(
+        pt.x - pan.x,
+        pt.y - pan.y,
+        hexSize,
+        mapData.staggeraxis ?? 'x',
+        mapData.width,
+        mapData.height,
+      );
+    }
+
     return screenToTile(pt.x, pt.y, { zoom, pan }, mapData.tilewidth, mapData.tileheight);
   }
 

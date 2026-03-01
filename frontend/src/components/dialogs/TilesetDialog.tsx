@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMapStore } from '../../store/mapStore';
 import type { TmjTileset, TmjTileEntry } from '../../types/tmj';
 import { isTileLayer } from '../../types/tmj';
+import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
 
 interface Props {
   onClose: () => void;
@@ -12,6 +13,20 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
   const [error, setError] = useState('');
 
   if (!mapData) return null;
+
+  const handleLoadBuiltin = () => {
+    const isHex = mapData.orientation === 'hexagonal';
+    const template = isHex ? DEFAULT_HEX_TILESET : DEFAULT_TILE_TILESET;
+    const alreadyLoaded = mapData.tilesets.some((ts) => ts.name === template.name);
+    if (alreadyLoaded) {
+      setError(`"${template.name}" is already loaded.`);
+      return;
+    }
+    const lastTs = mapData.tilesets[mapData.tilesets.length - 1];
+    const firstgid = lastTs ? lastTs.firstgid + lastTs.tilecount : 1;
+    addTileset({ ...template, firstgid });
+    setError('');
+  };
 
   const handleAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,7 +136,10 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
           </table>
         )}
 
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn-secondary" onClick={handleLoadBuiltin}>
+            Load Built-in Default
+          </button>
           <label className="btn-secondary">
             Add from PNG…
             <input type="file" accept="image/*" onChange={handleAdd} style={{ display: 'none' }} />

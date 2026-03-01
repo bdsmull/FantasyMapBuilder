@@ -245,6 +245,8 @@ body {
 .dialog-row input[type="text"] { width: 160px; }
 .dialog-section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
 .dialog-error { color: #f87171; font-size: 12px; margin-top: 8px; }
+.dialog-warn { background: #2a2000; border: 1px solid #a07000; border-radius: 6px; padding: 10px 14px; margin-top: 12px; font-size: 13px; color: #fbbf24; }
+.dialog-warn p { margin: 0 0 8px; }
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
 /* Map list in open dialog */

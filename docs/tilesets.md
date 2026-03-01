@@ -33,75 +33,86 @@ Each tile in a tileset is a `TileDefinition`:
 
 ---
 
-## Built-in placeholder tilesets
+## Built-in default tilesets
 
-The editor ships with two default tilesets generated automatically on first run. No external
-artwork is required.
+The editor ships two built-in tilesets. No external artwork is required — tiles render as
+solid-coloured blocks using the `color_r/g/b` properties defined on each tile entry.
 
-### Tile-map tileset (16 tiles)
+The appropriate default is offered automatically when creating a new map and can be added to
+an existing map at any time via **Manage Tilesets → Load Built-in Default**.
 
-| ID | Name | Category |
-|----|------|----------|
-| 1 | Stone Floor | Terrain |
-| 2 | Dirt | Terrain |
-| 3 | Grass | Terrain |
-| 4 | Sand | Terrain |
-| 5 | Water | Terrain |
-| 6 | Deep Water | Terrain |
+### Tile-map tileset — "Default Tile" (16 tiles, 8 columns)
+
+Intended for orthogonal (dungeon / overworld) maps.
+
+| Local ID | Name | Category |
+|----------|------|----------|
+| 0 | Grass | Terrain |
+| 1 | Dirt | Terrain |
+| 2 | Sand | Terrain |
+| 3 | Stone Floor | Terrain |
+| 4 | Water | Terrain |
+| 5 | Deep Water | Terrain |
+| 6 | Snow | Terrain |
 | 7 | Lava | Terrain |
-| 8 | Snow | Terrain |
-| 9 | Stone Wall | Wall |
-| 10 | Brick Wall | Wall |
-| 11 | Wood | Object |
-| 12 | Door | Special |
-| 13 | Stairs | Special |
-| 14 | Chest | Object |
-| 15 | Dark | Terrain |
-| 16 | Fog | Special |
+| 8 | Stone Wall | Wall |
+| 9 | Brick Wall | Wall |
+| 10 | Ice Wall | Wall |
+| 11 | Tree | Object |
+| 12 | Rock | Object |
+| 13 | Chest | Object |
+| 14 | Door | Object |
+| 15 | Spawn | Special |
 
-### Hex-map tileset (12 tiles)
+### Hex-map tileset — "Default Hex" (12 tiles, 8 columns)
 
-| ID | Name | Category |
-|----|------|----------|
-| 1 | Plains | Terrain |
-| 2 | Forest | Terrain |
-| 3 | Ocean | Terrain |
-| 4 | Mountain | Terrain |
-| 5 | Desert | Terrain |
-| 6 | Tundra | Terrain |
+Intended for hexagonal world-scale maps. Sprite-sheet cells are drawn as flat-top hexagons.
+
+| Local ID | Name | Category |
+|----------|------|----------|
+| 0 | Plains | Terrain |
+| 1 | Forest | Terrain |
+| 2 | Hills | Terrain |
+| 3 | Mountains | Terrain |
+| 4 | Ocean | Terrain |
+| 5 | Coast | Terrain |
+| 6 | Desert | Terrain |
 | 7 | Swamp | Terrain |
-| 8 | Hills | Terrain |
-| 9 | River | Terrain |
-| 10 | City | Special |
+| 8 | Tundra | Terrain |
+| 9 | Volcano | Terrain |
+| 10 | City | Object |
 | 11 | Dungeon | Special |
-| 12 | Volcano | Special |
 
-Hex placeholder tiles are drawn as flat-top hexagons in the sprite sheet so the shapes are
-visually recognisable even at a glance.
+> **Note:** Local IDs in the TMJ `tiles` array are 0-based. GIDs stored in layer data
+> are `firstgid + localId` (Tiled convention).
 
 ---
 
-## Placeholder PNG generation
+## Placeholder PNG generation (Python backend)
 
-When `Tileset.make_placeholder()` is called, the editor checks whether the PNG sprite sheet
-already exists. If not, it generates one using Pillow:
+The Python model (`map_editor/models/tileset.py`) can generate PNG sprite sheets via Pillow:
 
 - **Tile maps** — each cell is a coloured rectangle with a short text label.
 - **Hex maps** — each cell is a coloured flat-top hexagon polygon with a text label.
 
-Generated files are saved to `map_editor/assets/placeholders/` which is listed in `.gitignore`
-and not committed to the repository.
+Generated files are saved to `map_editor/assets/placeholders/`. The web frontend does not
+require these PNGs — it renders tiles as solid-coloured blocks directly from the
+`color_r/g/b` properties stored in the TMJ file.
 
 ---
 
 ## Custom sprite sheets
 
-To use your own artwork, open **Edit → Manage Tilesets…** and click **Add from PNG**.
+To use your own artwork, open **Manage Tilesets** and click **Add from PNG…**.
 Browse to any PNG sprite sheet, enter a tileset name and tile dimensions, and the editor
-builds `TileDefinition` stubs automatically — one per tile cell in the sheet.
+builds tile stubs automatically — one per cell in the sheet.
 
-Each tile's `sheet_col` and `sheet_row` give its position in the sheet in units of
-`tile_width × tile_height` pixels. These are set automatically when the tileset is created.
+Each tile's position in the sheet is derived from its local ID:
+
+```
+srcX = (localId % columns) * tilewidth
+srcY = floor(localId / columns) * tileheight
+```
 
 ---
 

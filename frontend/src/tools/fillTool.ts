@@ -25,10 +25,7 @@ export const fillTool: Tool = {
     const changed = bfsFloodFill(layer.data, layer.width, layer.height, col, row, targetGid, activeGid);
     if (changed.length === 0) return;
 
-    for (const [c, r] of changed) {
-      store.applyTile(activeLayerIndex, c, r, activeGid);
-    }
-    store.commitPendingTiles();
+    store.applyFill(activeLayerIndex, changed, activeGid);
   },
 
   onDrag() { /* intentional no-op */ },
@@ -52,23 +49,23 @@ export function bfsFloodFill(
 
   const changed: [number, number][] = [];
   const visited = new Uint8Array(width * height);
-  const queue: [number, number][] = [[startCol, startRow]];
+  // Flat interleaved [col, row, col, row, ...] with a head pointer — O(1) dequeue
+  const queue: number[] = [startCol, startRow];
+  let head = 0;
   visited[startRow * width + startCol] = 1;
 
-  while (queue.length > 0) {
-    const [c, r] = queue.shift()!;
+  while (head < queue.length) {
+    const c = queue[head++];
+    const r = queue[head++];
     if (data[r * width + c] !== targetGid) continue;
     changed.push([c, r]);
 
-    const neighbours: [number, number][] = [
-      [c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1],
-    ];
-    for (const [nc, nr] of neighbours) {
+    for (const [nc, nr] of [[c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1]] as [number, number][]) {
       if (nc < 0 || nr < 0 || nc >= width || nr >= height) continue;
       const ni = nr * width + nc;
       if (visited[ni]) continue;
       visited[ni] = 1;
-      if (data[ni] === targetGid) queue.push([nc, nr]);
+      if (data[ni] === targetGid) { queue.push(nc, nr); }
     }
   }
   return changed;

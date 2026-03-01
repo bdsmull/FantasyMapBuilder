@@ -77,6 +77,8 @@ export interface MapStore {
   applyTile: (layerIndex: number, col: number, row: number, newGid: number) => void;
   /** Commit the pending tile batch as one undo step (called on pointer-up). */
   commitPendingTiles: () => void;
+  /** Apply a flood-fill result as one atomic undo step (single data copy). */
+  applyFill: (layerIndex: number, cells: [number, number][], newGid: number) => void;
 
   // ---- Object editing ----
   addObject: (layerIndex: number, obj: TmjObject) => void;
@@ -226,6 +228,35 @@ export const useMapStore = create<MapStore>((set, get) => ({
       past: [...past, { type: 'tiles', changes: pendingTiles }],
       future: [],
       pendingTiles: [],
+    });
+  },
+
+  applyFill: (layerIndex, cells, newGid) => {
+    const { mapData, past } = get();
+    if (!mapData) return;
+    const layer = mapData.layers[layerIndex];
+    if (!layer || !isTileLayer(layer)) return;
+
+    // One data copy for the entire fill
+    const data = [...layer.data];
+    const changes: TileChange[] = [];
+    for (const [col, row] of cells) {
+      const idx = row * layer.width + col;
+      const oldGid = data[idx];
+      if (oldGid === newGid) continue;
+      changes.push({ layerIndex, col, row, oldGid, newGid });
+      data[idx] = newGid;
+    }
+    if (changes.length === 0) return;
+
+    const newLayers = mapData.layers.map((l, i) =>
+      i === layerIndex && isTileLayer(l) ? { ...l, data } : l,
+    );
+    set({
+      mapData: { ...mapData, layers: newLayers },
+      isDirty: true,
+      past: [...past, { type: 'tiles', changes }],
+      future: [],
     });
   },
 

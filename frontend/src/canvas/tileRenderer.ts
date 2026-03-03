@@ -29,8 +29,6 @@ export function renderTileMap(
 ): void {
   const { view, showGrid, onImageLoad } = options;
   const { zoom, pan } = view;
-  const tw = map.tilewidth * zoom;
-  const th = map.tileheight * zoom;
 
   // Background
   ctx.fillStyle = BACKGROUND;

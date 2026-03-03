@@ -16,7 +16,7 @@ const TOOLS: ToolButtonProps[] = [
 ];
 
 export const Toolbar: React.FC = () => {
-  const { selectedTool, setTool, zoom, setZoom, pan, setPan, showGrid, setShowGrid, mapData, undo, redo, past, future } = useMapStore();
+  const { selectedTool, setTool, zoom, setZoom, setPan, showGrid, setShowGrid, mapData, undo, redo, past, future } = useMapStore();
 
   const zoomIn = () => setZoom(zoom * 1.2);
   const zoomOut = () => setZoom(zoom / 1.2);

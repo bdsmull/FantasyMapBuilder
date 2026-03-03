@@ -5,7 +5,6 @@
  */
 
 import type { Tool } from './baseTool';
-import type { MapStore } from '../store/mapStore';
 import { isTileLayer } from '../types/tmj';
 
 export const fillTool: Tool = {

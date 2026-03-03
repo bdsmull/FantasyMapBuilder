@@ -5,7 +5,6 @@
  */
 
 import type { Tool } from './baseTool';
-import type { MapStore } from '../store/mapStore';
 import { isObjectLayer } from '../types/tmj';
 import type { TmjObject } from '../types/tmj';
 

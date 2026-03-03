@@ -4,7 +4,6 @@
  */
 
 import type { Tool } from './baseTool';
-import type { MapStore } from '../store/mapStore';
 import { isTileLayer } from '../types/tmj';
 
 let lastCell: { col: number; row: number } | null = null;

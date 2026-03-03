@@ -15,7 +15,7 @@ type Dialog = 'new' | 'open' | 'tilesets' | null;
 
 export const App: React.FC = () => {
   const [activeDialog, setActiveDialog] = useState<Dialog>(null);
-  const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer, mapName } = useMapStore();
+  const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
 
   // Global keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {

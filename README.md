@@ -1,4 +1,4 @@
-# Fantasy RPG Map Editor
+# Fantasy RPG Map Builder
 
 A web-based application for creating and editing fantasy RPG maps, built with FastAPI and React.
 
@@ -36,7 +36,7 @@ Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format. The editor 
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd MapEditor_ClaudeCode
+cd FantasyMapBuilder
 
 # Create a virtual environment
 python -m venv .venv
@@ -120,7 +120,7 @@ cd frontend && npm test
 ## Project Structure
 
 ```
-MapEditor_ClaudeCode/
+FantasyMapBuilder/
 ├── main.py                        # Entry point — starts uvicorn on :8000
 ├── requirements.txt               # Runtime: fastapi, uvicorn, Pillow, python-multipart
 ├── requirements-dev.txt           # Dev: pytest, httpx, pytest-asyncio, mkdocs

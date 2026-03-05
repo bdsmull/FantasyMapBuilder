@@ -1,8 +1,8 @@
 site_name: Fantasy RPG Map Editor
 site_description: A Python desktop application for creating and editing fantasy RPG maps with tile and hex grid support.
 
-# repo_url: https://github.com/<your-username>/MapEditor_ClaudeCode
-# repo_name: MapEditor_ClaudeCode
+# repo_url: https://github.com/<your-username>/FantasyMapBuilder
+# repo_name: FantasyMapBuilder
 
 theme:
   name: material

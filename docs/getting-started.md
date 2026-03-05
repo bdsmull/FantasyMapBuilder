@@ -14,7 +14,7 @@ Clone the repository and create a virtual environment:
 
 ```bash
 git clone <repo-url>
-cd MapEditor_ClaudeCode
+cd FantasyMapBuilder
 python -m venv .venv
 ```
 

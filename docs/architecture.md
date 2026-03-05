@@ -23,7 +23,7 @@ paint strokes.
 ## Project layout
 
 ```
-MapEditor_ClaudeCode/
+FantasyMapBuilder/
 ├── main.py                        # Entry point — starts uvicorn on :8000
 ├── requirements.txt               # Runtime: fastapi, uvicorn, Pillow, python-multipart
 ├── requirements-dev.txt           # Dev: pytest, httpx, pytest-asyncio, mkdocs

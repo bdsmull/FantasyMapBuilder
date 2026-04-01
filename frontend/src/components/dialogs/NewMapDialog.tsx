@@ -3,6 +3,7 @@ import { useMapStore } from '../../store/mapStore';
 import type { TmjMap } from '../../types/tmj';
 import { saveMap as apiSaveMap } from '../../api/client';
 import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
+import { MAP_SCALES } from '../../data/mapScales';
 
 interface Props {
   onClose: () => void;
@@ -10,6 +11,7 @@ interface Props {
 
 export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
   const [mapType, setMapType] = useState<'tile' | 'hex'>('tile');
+  const [scale, setScale] = useState('building');
   const [name, setName] = useState('');
   const [width, setWidth] = useState(20);
   const [height, setHeight] = useState(15);
@@ -27,6 +29,7 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
     setIsCreating(true);
     const isHex = mapType === 'hex';
     const mapData: TmjMap = {
+      scale,
       tiledversion: '1.10.0',
       version: '1.10',
       type: 'map',
@@ -105,10 +108,27 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
         <div className="dialog-title">New Map</div>
 
         <div className="dialog-row">
+          <label>Scale</label>
+          <select
+            value={scale}
+            onChange={(e) => {
+              const id = e.target.value;
+              setScale(id);
+              const preset = MAP_SCALES.find((s) => s.id === id);
+              if (preset) setMapType(preset.defaultShape);
+            }}
+          >
+            {MAP_SCALES.map((s) => (
+              <option key={s.id} value={s.id}>{s.label} ({s.unit})</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="dialog-row">
           <label>Type</label>
           <div>
-            <label><input type="radio" value="tile" checked={mapType === 'tile'} onChange={() => setMapType('tile')} /> Tile Map</label>
-            <label style={{ marginLeft: 16 }}><input type="radio" value="hex" checked={mapType === 'hex'} onChange={() => setMapType('hex')} /> Hex Map</label>
+            <label><input type="radio" value="tile" checked={mapType === 'tile'} onChange={() => { setMapType('tile'); setScale('building'); }} /> Tile Map</label>
+            <label style={{ marginLeft: 16 }}><input type="radio" value="hex" checked={mapType === 'hex'} onChange={() => { setMapType('hex'); setScale('town'); }} /> Hex Map</label>
           </div>
         </div>
 

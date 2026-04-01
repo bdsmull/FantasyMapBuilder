@@ -233,7 +233,8 @@ body {
 .dialog-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .dialog-row label { color: #aaa; font-size: 12px; min-width: 60px; }
 .dialog-row input[type="text"],
-.dialog-row input[type="number"] {
+.dialog-row input[type="number"],
+.dialog-row select {
   background: #1a1a1a;
   border: 1px solid #444;
   border-radius: 4px;
@@ -243,6 +244,7 @@ body {
   width: 80px;
 }
 .dialog-row input[type="text"] { width: 160px; }
+.dialog-row select { width: 220px; }
 .dialog-section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
 .dialog-error { color: #f87171; font-size: 12px; margin-top: 8px; }
 .dialog-warn { background: #2a2000; border: 1px solid #a07000; border-radius: 6px; padding: 10px 14px; margin-top: 12px; font-size: 13px; color: #fbbf24; }

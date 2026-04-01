@@ -1,5 +1,6 @@
 import React from 'react';
 import { useMapStore } from '../store/mapStore';
+import { scaleLabel } from '../data/mapScales';
 
 export const StatusBar: React.FC = () => {
   const { mapData, mapName, isDirty, zoom } = useMapStore();
@@ -16,6 +17,11 @@ export const StatusBar: React.FC = () => {
       <span className="status-map-info">
         {mapData.width}×{mapData.height} tiles
       </span>
+      {mapData.scale && (
+        <span className="status-scale">
+          {scaleLabel(mapData.scale)}
+        </span>
+      )}
       <span className="status-zoom">
         {Math.round(zoom * 100)}%
       </span>

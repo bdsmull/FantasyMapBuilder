@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/mapStore';
 import { listMaps, getMap, uploadMap, downloadMapUrl } from '../../api/client';
+import { MAP_SCALES, MAP_SCALE_BY_ID } from '../../data/mapScales';
+import type { TmjMap } from '../../types/tmj';
 
 interface Props {
   onClose: () => void;
@@ -13,7 +15,33 @@ export const OpenMapDialog: React.FC<Props> = ({ onClose }) => {
   const [error, setError] = useState('');
   const [dirtyWarn, setDirtyWarn] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null);
+  const [scalePrompt, setScalePrompt] = useState<{ data: TmjMap; name: string } | null>(null);
+  const [chosenScale, setChosenScale] = useState('');
   const { loadMap, isDirty, mapName: currentName, saveMapToServer } = useMapStore();
+
+  const scaleIsValid = (data: TmjMap) =>
+    !!data.scale && !!MAP_SCALE_BY_ID[data.scale];
+
+  const finishLoad = (data: TmjMap, name: string) => {
+    loadMap(data, name);
+    onClose();
+  };
+
+  const maybePromptScale = (data: TmjMap, name: string) => {
+    if (scaleIsValid(data)) {
+      finishLoad(data, name);
+      return;
+    }
+    const isHex = data.orientation === 'hexagonal';
+    const defaultScale = isHex ? 'town' : 'building';
+    setChosenScale(defaultScale);
+    setScalePrompt({ data, name });
+  };
+
+  const handleScaleConfirm = () => {
+    if (!scalePrompt) return;
+    finishLoad({ ...scalePrompt.data, scale: chosenScale }, scalePrompt.name);
+  };
 
   useEffect(() => {
     listMaps().then(setServerMaps).catch((e) => setError(String(e)));
@@ -46,8 +74,7 @@ export const OpenMapDialog: React.FC<Props> = ({ onClose }) => {
     setLoading(true);
     try {
       const data = await getMap(selected);
-      loadMap(data, selected);
-      onClose();
+      maybePromptScale(data, selected);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -65,8 +92,7 @@ export const OpenMapDialog: React.FC<Props> = ({ onClose }) => {
       try {
         const name = await uploadMap(file);
         const data = await getMap(name);
-        loadMap(data, name);
-        onClose();
+        maybePromptScale(data, name);
       } catch (err) {
         setError(String(err));
       } finally {
@@ -117,6 +143,32 @@ export const OpenMapDialog: React.FC<Props> = ({ onClose }) => {
               <button onClick={() => { setDirtyWarn(false); setPendingAction(null); }}>Cancel</button>
               <button onClick={handleDiscardAndProceed}>Discard & Open</button>
               <button className="btn-primary" onClick={handleSaveAndProceed}>Save & Open</button>
+            </div>
+          </div>
+        )}
+
+        {scalePrompt && (
+          <div className="dialog-warn">
+            <p>
+              <strong>"{scalePrompt.name}"</strong> has no map scale set
+              {scalePrompt.data.scale ? ` ("${scalePrompt.data.scale}" is not a recognised scale)` : ''}.
+              Choose the scale for this map:
+            </p>
+            <div className="dialog-row" style={{ marginBottom: 8 }}>
+              <select
+                value={chosenScale}
+                onChange={(e) => setChosenScale(e.target.value)}
+              >
+                {MAP_SCALES
+                  .filter((s) => s.defaultShape === (scalePrompt.data.orientation === 'hexagonal' ? 'hex' : 'tile'))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>{s.label} ({s.unit})</option>
+                  ))}
+              </select>
+            </div>
+            <div className="dialog-buttons">
+              <button onClick={() => setScalePrompt(null)}>Cancel</button>
+              <button className="btn-primary" onClick={handleScaleConfirm}>Open</button>
             </div>
           </div>
         )}

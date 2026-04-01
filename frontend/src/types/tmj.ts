@@ -90,6 +90,8 @@ export interface TmjMap {
   staggeraxis?: 'x' | 'y';
   staggerindex?: string;
   hexsidelength?: number;
+  /** Map scale preset ID (from MAP_SCALES in data/mapScales.ts). Optional — older maps omit it. */
+  scale?: string;
   nextlayerid: number;
   nextobjectid: number;
   tilesets: TmjTileset[];

@@ -12,7 +12,7 @@ This milestone adds the World Sets feature to a fully working brownfield web app
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Data Foundation** - Types, scale values, and pure computation utilities
+- [x] **Phase 1: Data Foundation** - Types, scale values, and pure computation utilities (completed 2026-04-06)
 - [ ] **Phase 2: Server API** - CRUD endpoints, client functions, and Python tests
 - [ ] **Phase 3: World Set Store** - Zustand store, navigation utility, and frontend tests
 - [ ] **Phase 4: Management Dialog** - Full world set CRUD and node editing UI
@@ -114,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 0/? | Not started | - |
+| 1. Data Foundation | 1/1 | Complete   | 2026-04-06 |
 | 2. Server API | 0/? | Not started | - |
 | 3. World Set Store | 0/? | Not started | - |
 | 4. Management Dialog | 0/? | Not started | - |

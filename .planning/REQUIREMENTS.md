@@ -7,12 +7,12 @@
 
 ### Data Model
 
-- [ ] **DATA-01**: `MapScale` interface has `feetPerUnit: number`; all 8 presets updated with correct feet-per-unit values
-- [ ] **DATA-02**: `TmjMap` has `feetPerUnit?: number` field; populated when a map scale preset is selected or manually set
-- [ ] **DATA-03**: `WorldSetNode` type defined with `mapName`, `parentMapName`, `parentAnchor`, `z`, `zLabel` fields
-- [ ] **DATA-04**: `WorldSet` type defined with `name`, `version`, `nodes` fields
-- [ ] **DATA-05**: `computeFootprint(childWidth, childHeight, childFPU, parentFPU, anchor)` returns `{colMin, colMax, rowMin, rowMax}` using floor-center anchoring rule
-- [ ] **DATA-06**: `detectOverlaps(nodes, candidate)` returns overlapping node pairs at the same Z level
+- [x] **DATA-01**: `MapScale` interface has `feetPerUnit: number`; all 8 presets updated with correct feet-per-unit values
+- [x] **DATA-02**: `TmjMap` has `feetPerUnit?: number` field; populated when a map scale preset is selected or manually set
+- [x] **DATA-03**: `WorldSetNode` type defined with `mapName`, `parentMapName`, `parentAnchor`, `z`, `zLabel` fields
+- [x] **DATA-04**: `WorldSet` type defined with `name`, `version`, `nodes` fields
+- [x] **DATA-05**: `computeFootprint(childWidth, childHeight, childFPU, parentFPU, anchor)` returns `{colMin, colMax, rowMin, rowMax}` using floor-center anchoring rule
+- [x] **DATA-06**: `detectOverlaps(nodes, candidate)` returns overlapping node pairs at the same Z level
 
 ### Server API
 
@@ -91,12 +91,12 @@
 
 | Requirement | Phase | Status |
 |---|---|---|
-| DATA-01 | Phase 1 — Data Foundation | Pending |
-| DATA-02 | Phase 1 — Data Foundation | Pending |
-| DATA-03 | Phase 1 — Data Foundation | Pending |
-| DATA-04 | Phase 1 — Data Foundation | Pending |
-| DATA-05 | Phase 1 — Data Foundation | Pending |
-| DATA-06 | Phase 1 — Data Foundation | Pending |
+| DATA-01 | Phase 1 — Data Foundation | Complete |
+| DATA-02 | Phase 1 — Data Foundation | Complete |
+| DATA-03 | Phase 1 — Data Foundation | Complete |
+| DATA-04 | Phase 1 — Data Foundation | Complete |
+| DATA-05 | Phase 1 — Data Foundation | Complete |
+| DATA-06 | Phase 1 — Data Foundation | Complete |
 | API-01 | Phase 2 — Server API | Pending |
 | API-02 | Phase 2 — Server API | Pending |
 | API-03 | Phase 2 — Server API | Pending |

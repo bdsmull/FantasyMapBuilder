@@ -55,6 +55,9 @@ map_editor/assets/placeholders/
 *.tmx
 *.json
 
+# GSD planning docs (override *.json above)
+!.planning/**/*.json
+
 # Exported images
 *.png
 *.jpg

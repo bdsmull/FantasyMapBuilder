@@ -91,13 +91,50 @@
 
 | Requirement | Phase | Status |
 |---|---|---|
-| DATA-01 – DATA-06 | Phase 1 | Pending |
-| API-01 – API-07 | Phase 2 | Pending |
-| STORE-01 – STORE-09 | Phase 3 | Pending |
-| DIALOG-01 – DIALOG-07 | Phase 4 | Pending |
-| PANEL-01 – PANEL-05 | Phase 5 | Pending |
-| CANVAS-01 – CANVAS-06 | Phase 6 | Pending |
-| CTX-01 – CTX-04 | Phase 7 | Pending |
+| DATA-01 | Phase 1 — Data Foundation | Pending |
+| DATA-02 | Phase 1 — Data Foundation | Pending |
+| DATA-03 | Phase 1 — Data Foundation | Pending |
+| DATA-04 | Phase 1 — Data Foundation | Pending |
+| DATA-05 | Phase 1 — Data Foundation | Pending |
+| DATA-06 | Phase 1 — Data Foundation | Pending |
+| API-01 | Phase 2 — Server API | Pending |
+| API-02 | Phase 2 — Server API | Pending |
+| API-03 | Phase 2 — Server API | Pending |
+| API-04 | Phase 2 — Server API | Pending |
+| API-05 | Phase 2 — Server API | Pending |
+| API-06 | Phase 2 — Server API | Pending |
+| API-07 | Phase 2 — Server API | Pending |
+| STORE-01 | Phase 3 — World Set Store | Pending |
+| STORE-02 | Phase 3 — World Set Store | Pending |
+| STORE-03 | Phase 3 — World Set Store | Pending |
+| STORE-04 | Phase 3 — World Set Store | Pending |
+| STORE-05 | Phase 3 — World Set Store | Pending |
+| STORE-06 | Phase 3 — World Set Store | Pending |
+| STORE-07 | Phase 3 — World Set Store | Pending |
+| STORE-08 | Phase 3 — World Set Store | Pending |
+| STORE-09 | Phase 3 — World Set Store | Pending |
+| DIALOG-01 | Phase 4 — Management Dialog | Pending |
+| DIALOG-02 | Phase 4 — Management Dialog | Pending |
+| DIALOG-03 | Phase 4 — Management Dialog | Pending |
+| DIALOG-04 | Phase 4 — Management Dialog | Pending |
+| DIALOG-05 | Phase 4 — Management Dialog | Pending |
+| DIALOG-06 | Phase 4 — Management Dialog | Pending |
+| DIALOG-07 | Phase 4 — Management Dialog | Pending |
+| PANEL-01 | Phase 5 — Hierarchy Panel | Pending |
+| PANEL-02 | Phase 5 — Hierarchy Panel | Pending |
+| PANEL-03 | Phase 5 — Hierarchy Panel | Pending |
+| PANEL-04 | Phase 5 — Hierarchy Panel | Pending |
+| PANEL-05 | Phase 5 — Hierarchy Panel | Pending |
+| CANVAS-01 | Phase 6 — Canvas Integration | Pending |
+| CANVAS-02 | Phase 6 — Canvas Integration | Pending |
+| CANVAS-03 | Phase 6 — Canvas Integration | Pending |
+| CANVAS-04 | Phase 6 — Canvas Integration | Pending |
+| CANVAS-05 | Phase 6 — Canvas Integration | Pending |
+| CANVAS-06 | Phase 6 — Canvas Integration | Pending |
+| CTX-01 | Phase 7 — Context Menu | Pending |
+| CTX-02 | Phase 7 — Context Menu | Pending |
+| CTX-03 | Phase 7 — Context Menu | Pending |
+| CTX-04 | Phase 7 — Context Menu | Pending |
 
 **Coverage:**
 - v1 requirements: 40 total
@@ -106,4 +143,4 @@
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after initialization*
+*Last updated: 2026-04-06 — traceability expanded to individual requirements after roadmap creation*

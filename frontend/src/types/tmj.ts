@@ -92,6 +92,8 @@ export interface TmjMap {
   hexsidelength?: number;
   /** Map scale preset ID (from MAP_SCALES in data/mapScales.ts). Optional — older maps omit it. */
   scale?: string;
+  /** Authoritative feet-per-tile/hex value. Optional for backward compat with older maps. */
+  feetPerUnit?: number;
   nextlayerid: number;
   nextobjectid: number;
   tilesets: TmjTileset[];

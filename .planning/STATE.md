@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 02-server-api/02-02-PLAN.md
-last_updated: "2026-04-20T13:12:53.670Z"
+stopped_at: Completed 02-server-api/02-01-PLAN.md
+last_updated: "2026-04-20T13:13:01.861Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 7
@@ -79,6 +79,8 @@ Recent decisions affecting current work:
 - [Phase 02-server-api]: worldSet.ts created in parallel worktree branch since 02-01 ran in different worktree — Rule 3 auto-fix
 - [Phase 02-server-api]: test_invalid_name_400 uses bad%21name (! char) not bad%2Fname (slash) — URL-encoded slash consumed by ASGI router before _safe_path validation
 - [Phase 02-server-api]: worldSet.ts created in worktree since branch predated type file — Rule 3 auto-fix
+- [Phase 02-server-api]: _bare_name() uses path.name.removesuffix('.worldset.json') — Path.stem only strips last extension, returning .worldset instead of bare name
+- [Phase 02-server-api]: test_invalid_name_400 uses %21 (!) not %2F (/) — ASGI router consumes URL-encoded slash before _safe_path validation
 
 ### Pending Todos
 
@@ -91,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T13:12:19.938Z
-Stopped at: Completed 02-server-api/02-02-PLAN.md
+Last session: 2026-04-20T13:13:01.858Z
+Stopped at: Completed 02-server-api/02-01-PLAN.md
 Resume file: None

@@ -5,6 +5,7 @@
  */
 
 import type { TmjMap } from '../types/tmj';
+import type { WorldSet } from '../types/worldSet';
 
 const BASE = '/api';
 
@@ -82,3 +83,38 @@ export function tilesetImageUrl(imagePath: string): string {
   // Strip leading slashes/drive letters for the path segment
   return `${BASE}/tilesets/${encodeURIComponent(imagePath)}`;
 }
+
+// ---------------------------------------------------------------------------
+// World Sets
+// ---------------------------------------------------------------------------
+
+/** List all saved world set names (without .worldset.json extension). */
+export async function listWorldSets(): Promise<string[]> {
+  const res = await fetch(`${BASE}/world_sets`);
+  return handleResponse<string[]>(res);
+}
+
+/** Load a world set from the server by name. */
+export async function getWorldSet(name: string): Promise<WorldSet> {
+  const res = await fetch(`${BASE}/world_sets/${encodeURIComponent(name)}`);
+  return handleResponse<WorldSet>(res);
+}
+
+/** Save (create or overwrite) a world set on the server. */
+export async function saveWorldSet(name: string, data: WorldSet): Promise<void> {
+  const res = await fetch(`${BASE}/world_sets/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  await handleResponse<unknown>(res);
+}
+
+/** Delete a saved world set from the server. */
+export async function deleteWorldSet(name: string): Promise<void> {
+  const res = await fetch(`${BASE}/world_sets/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  });
+  await handleResponse<unknown>(res);
+}
+

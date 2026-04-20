@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-server-api/02-02-PLAN.md
-last_updated: "2026-04-20T01:05:15.221Z"
+stopped_at: Completed 02-server-api/02-01-PLAN.md
+last_updated: "2026-04-20T01:06:13.350Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 7
@@ -56,6 +56,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 01-data-foundation P01 | 15 min | 6 tasks | 5 files |
 | Phase 02-server-api P01 | 10 min | 2 tasks | 4 files |
 | Phase 02-server-api P02 | 2 | 1 tasks | 2 files |
+| Phase 02-server-api P01 | 15 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,7 @@ Recent decisions affecting current work:
 - [Phase 02-server-api P01]: _bare_name() helper instead of Path.stem to strip .worldset.json — Path.stem only strips last extension
 - [Phase 02-server-api P01]: patch_world_sets_dir is autouse=True — prevents accidental writes to real world_sets/ dir
 - [Phase 02-server-api]: worldSet.ts created in parallel worktree branch since 02-01 ran in different worktree — Rule 3 auto-fix
+- [Phase 02-server-api]: test_invalid_name_400 uses bad%21name (! char) not bad%2Fname (slash) — URL-encoded slash consumed by ASGI router before _safe_path validation
 
 ### Pending Todos
 
@@ -86,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T01:05:11.871Z
-Stopped at: Completed 02-server-api/02-02-PLAN.md
+Last session: 2026-04-20T01:06:13.342Z
+Stopped at: Completed 02-server-api/02-01-PLAN.md
 Resume file: None

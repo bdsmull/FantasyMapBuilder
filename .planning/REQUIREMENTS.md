@@ -16,13 +16,13 @@
 
 ### Server API
 
-- [ ] **API-01**: `GET /api/world_sets` returns sorted list of world set names
-- [ ] **API-02**: `GET /api/world_sets/{name}` returns world set JSON
-- [ ] **API-03**: `POST /api/world_sets/{name}` creates or replaces a world set file
-- [ ] **API-04**: `DELETE /api/world_sets/{name}` deletes a world set file
-- [ ] **API-05**: World set files stored in `world_sets/` directory as `{name}.worldset.json`
-- [ ] **API-06**: World set API functions available in `frontend/src/api/client.ts` (`listWorldSets`, `getWorldSet`, `saveWorldSet`, `deleteWorldSet`)
-- [ ] **API-07**: Python tests cover all 4 endpoints including error cases
+- [x] **API-01**: `GET /api/world_sets` returns sorted list of world set names
+- [x] **API-02**: `GET /api/world_sets/{name}` returns world set JSON
+- [x] **API-03**: `POST /api/world_sets/{name}` creates or replaces a world set file
+- [x] **API-04**: `DELETE /api/world_sets/{name}` deletes a world set file
+- [x] **API-05**: World set files stored in `world_sets/` directory as `{name}.worldset.json`
+- [x] **API-06**: World set API functions available in `frontend/src/api/client.ts` (`listWorldSets`, `getWorldSet`, `saveWorldSet`, `deleteWorldSet`)
+- [x] **API-07**: Python tests cover all 4 endpoints including error cases
 
 ### Store
 
@@ -97,13 +97,13 @@
 | DATA-04 | Phase 1 — Data Foundation | Complete |
 | DATA-05 | Phase 1 — Data Foundation | Complete |
 | DATA-06 | Phase 1 — Data Foundation | Complete |
-| API-01 | Phase 2 — Server API | Pending |
-| API-02 | Phase 2 — Server API | Pending |
-| API-03 | Phase 2 — Server API | Pending |
-| API-04 | Phase 2 — Server API | Pending |
-| API-05 | Phase 2 — Server API | Pending |
-| API-06 | Phase 2 — Server API | Pending |
-| API-07 | Phase 2 — Server API | Pending |
+| API-01 | Phase 2 — Server API | Complete (Plan 02-01) |
+| API-02 | Phase 2 — Server API | Complete (Plan 02-01) |
+| API-03 | Phase 2 — Server API | Complete (Plan 02-01) |
+| API-04 | Phase 2 — Server API | Complete (Plan 02-01) |
+| API-05 | Phase 2 — Server API | Complete (Plan 02-01) |
+| API-06 | Phase 2 — Server API | Pending (Plan 02-02) |
+| API-07 | Phase 2 — Server API | Complete (Plan 02-01) |
 | STORE-01 | Phase 3 — World Set Store | Pending |
 | STORE-02 | Phase 3 — World Set Store | Pending |
 | STORE-03 | Phase 3 — World Set Store | Pending |

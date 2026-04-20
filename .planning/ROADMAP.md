@@ -115,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 1/1 | Complete   | 2026-04-06 |
-| 2. Server API | 0/? | Not started | - |
+| 2. Server API | 1/2 | In progress | - |
 | 3. World Set Store | 0/? | Not started | - |
 | 4. Management Dialog | 0/? | Not started | - |
 | 5. Hierarchy Panel | 0/? | Not started | - |

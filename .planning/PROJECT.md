@@ -26,18 +26,18 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 
 ### Active
 
-**World Sets — Phase 1: Data Foundation**
-- [ ] `TmjMap` stores `feetPerUnit: number` (feet per tile/hex cell); populated when a map scale preset is selected
-- [ ] `MapScale` interface has `feetPerUnit`; all 8 presets updated with correct values
-- [ ] `computeFootprint(childWidth, childHeight, childFeetPerUnit, parentFeetPerUnit, anchor)` utility returns bounding `{colMin, colMax, rowMin, rowMax}`
-- [ ] `detectOverlaps(nodes, candidate, maps)` utility returns overlapping node pairs at same Z level
-- [ ] `WorldSetNode` and `WorldSet` TypeScript types defined in `frontend/src/types/worldSet.ts`
+**World Sets — Phase 1: Data Foundation** *(Validated in Phase 1 — 2026-04-20)*
+- ✓ `TmjMap` stores `feetPerUnit: number` (feet per tile/hex cell); populated when a map scale preset is selected
+- ✓ `MapScale` interface has `feetPerUnit`; all 8 presets updated with correct values
+- ✓ `computeFootprint(childWidth, childHeight, childFeetPerUnit, parentFeetPerUnit, anchor)` utility returns bounding `{colMin, colMax, rowMin, rowMax}`
+- ✓ `detectOverlaps(nodes, candidate, maps)` utility returns overlapping node pairs at same Z level
+- ✓ `WorldSetNode` and `WorldSet` TypeScript types defined in `frontend/src/types/worldSet.ts`
 
-**World Sets — Phase 2: Server API**
-- [ ] `GET/POST/DELETE /api/world_sets/{name}` + `GET /api/world_sets` endpoints in `server/api/world_sets.py`
-- [ ] World set files stored in `world_sets/` directory as `.worldset.json`
-- [ ] World set API functions in `frontend/src/api/client.ts`
-- [ ] Python API tests covering all endpoints (`tests/api/test_world_sets.py`)
+**World Sets — Phase 2: Server API** *(Validated in Phase 2 — 2026-04-20)*
+- ✓ `GET/POST/DELETE /api/world_sets/{name}` + `GET /api/world_sets` endpoints in `server/api/world_sets.py`
+- ✓ World set files stored in `world_sets/` directory as `.worldset.json`
+- ✓ World set API functions in `frontend/src/api/client.ts`
+- ✓ Python API tests covering all endpoints (`tests/api/test_world_sets.py`)
 
 **World Sets — Phase 3: Store**
 - [ ] `worldSetStore.ts` with `activeWorldSetName`, `activeWorldSet`, `setActiveWorldSet()`, `addNode()`, `removeNode()`, `updateNode()`, `saveWorldSet()`
@@ -74,7 +74,7 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 ## Context
 
 - **Stack:** FastAPI (Python) + React/TypeScript (Vite), maps stored as Tiled-compatible `.tmj` JSON files in `maps/` on disk
-- **Codebase state:** Fully functional web app (migrated from PyQt6 desktop app). All core editing features are working. 178 Python tests + 25 Vitest frontend tests.
+- **Codebase state:** Fully functional web app (migrated from PyQt6 desktop app). All core editing features are working. Phase 2 complete — world_sets REST API, frontend client, 189 Python tests + 52 Vitest tests.
 - **Prior design work:** World Sets feature was fully designed in a planning session (2026-03-31). Design doc at `docs/world-sets-design.md`. During initialization, 6 issues were identified and resolved — see Key Decisions below.
 - **Known issues to address:** `object-add` redo is silently broken (skipped with TODO in `mapStore.ts:349`); `removeTileset()` mutates store state directly. Neither blocks World Sets work.
 - **Target usage:** Single GM on a local network; desktop browser primary, iPad secondary via LAN IP.

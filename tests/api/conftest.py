@@ -56,3 +56,29 @@ def sample_tmj() -> dict:
             }
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# World set fixtures
+# ---------------------------------------------------------------------------
+
+import server.api.world_sets as world_sets_module
+
+
+@pytest.fixture(autouse=True)
+def patch_world_sets_dir(tmp_path: Path, monkeypatch):
+    """Redirect all world set file I/O to a temp directory for test isolation."""
+    world_sets_dir = tmp_path / "world_sets"
+    world_sets_dir.mkdir()
+    monkeypatch.setattr(world_sets_module, "_WORLD_SETS_DIR", world_sets_dir)
+    return world_sets_dir
+
+
+@pytest.fixture
+def sample_world_set() -> dict:
+    """Minimal valid WorldSet dict."""
+    return {
+        "name": "test-world",
+        "version": "1.0",
+        "nodes": [],
+    }

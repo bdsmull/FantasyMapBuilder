@@ -1,83 +1,111 @@
 ---
 phase: 02-server-api
 plan: "02"
-subsystem: frontend-api-client
-tags: [frontend, api-client, world-sets, typescript]
-dependency_graph:
-  requires: [02-01]
-  provides: [frontend-world-set-api-client]
-  affects: [03-frontend-store]
-tech_stack:
+subsystem: api
+tags: [typescript, react, fetch, world-sets]
+
+# Dependency graph
+requires:
+  - phase: 01-data-foundation
+    provides: WorldSet and WorldSetNode TypeScript interfaces in worldSet.ts
+  - phase: 02-server-api/02-01
+    provides: FastAPI world_sets CRUD endpoints at /api/world_sets
+provides:
+  - Typed fetch wrappers for world set CRUD in frontend/src/api/client.ts
+  - WorldSet type file at frontend/src/types/worldSet.ts
+affects: [03-world-set-store, future-phases-using-world-sets]
+
+# Tech tracking
+tech-stack:
   added: []
-  patterns: [typed-fetch-wrapper, encode-uri-component-pattern]
-key_files:
+  patterns:
+    - "World set client functions mirror Maps section pattern: list/get/save/delete with handleResponse<T>"
+    - "encodeURIComponent for all name path segments to handle spaces/dots safely"
+
+key-files:
   created:
     - frontend/src/types/worldSet.ts
   modified:
     - frontend/src/api/client.ts
-decisions:
-  - "worldSet.ts created in worktree as Rule 3 deviation — parallel agent had not yet merged it into this worktree branch"
-metrics:
-  duration: "~2 minutes"
-  completed: "2026-04-20"
-  tasks_completed: 1
-  files_changed: 2
+
+key-decisions:
+  - "worldSet.ts created in worktree since type file was not in this branch's commit history"
+  - "URL path uses snake_case world_sets matching the server route registration"
+
+patterns-established:
+  - "New API sections follow Maps pattern: section header comment, then list/get/save/delete"
+  - "handleResponse<T>() used for all endpoints — no per-function error handling"
+
+requirements-completed: [API-06]
+
+# Metrics
+duration: 8min
+completed: 2026-04-20
 ---
 
-# Phase 2 Plan 02: Frontend World Set API Client Summary
+# Phase 02 Plan 02: Frontend World Set API Client Summary
 
-**One-liner:** Four typed world set client functions (listWorldSets, getWorldSet, saveWorldSet, deleteWorldSet) added to frontend/src/api/client.ts mirroring the existing maps pattern.
+**Four typed fetch wrappers (listWorldSets, getWorldSet, saveWorldSet, deleteWorldSet) added to client.ts using handleResponse and encodeURIComponent, satisfying API-06**
 
-## What Was Built
+## Performance
 
-Added a `// World Sets` section to `frontend/src/api/client.ts` with four exported async functions that wrap the `/api/world_sets` REST endpoints:
+- **Duration:** 8 min
+- **Started:** 2026-04-20T08:05:00Z
+- **Completed:** 2026-04-20T08:13:00Z
+- **Tasks:** 1
+- **Files modified:** 2
 
-| Function | HTTP Method | Endpoint |
-|---|---|---|
-| `listWorldSets()` | GET | `/api/world_sets` |
-| `getWorldSet(name)` | GET | `/api/world_sets/{name}` |
-| `saveWorldSet(name, data)` | POST | `/api/world_sets/{name}` |
-| `deleteWorldSet(name)` | DELETE | `/api/world_sets/{name}` |
+## Accomplishments
+- Added `frontend/src/types/worldSet.ts` with WorldSetNode, WorldSet interfaces and WORLD_SET_VERSION constant
+- Added `import type { WorldSet }` at top of client.ts
+- Added four world set client functions following the existing Maps section pattern
+- TypeScript typecheck (`tsc --noEmit`) passes with exit 0
+- All 52 Vitest tests pass with no regressions
 
-All four functions:
-- Use `${BASE}/world_sets/...` URL construction
-- Use `encodeURIComponent(name)` for path segments (mirrors maps pattern)
-- Use `handleResponse<T>()` helper for unified error handling
-- Are typed against `WorldSet` from `frontend/src/types/worldSet.ts`
+## Task Commits
 
-Also added `import type { WorldSet } from '../types/worldSet';` at the top of `client.ts`.
+Each task was committed atomically:
 
-## Verification
+1. **Task 1: Add world set client functions to client.ts and verify** - `07a0647` (feat)
 
-- `tsc --noEmit` passes with no errors (checked against all three affected files)
-- All 11 acceptance criteria grep checks pass
-- 9 exported async functions total (5 existing maps/upload + 4 new world sets)
-- Existing `listMaps`, `getMap`, `saveMap`, `deleteMap`, `uploadMap` functions untouched
-- `BASE` constant and `handleResponse` helper untouched
+**Plan metadata:** (docs commit to follow)
 
-## Commits
+## Files Created/Modified
+- `frontend/src/types/worldSet.ts` - WorldSetNode and WorldSet interfaces, WORLD_SET_VERSION constant
+- `frontend/src/api/client.ts` - Added WorldSet import + four world set CRUD client functions
 
-| Task | Description | Commit |
-|---|---|---|
-| Task 1 | Add world set client functions + worldSet.ts type | 2357ab2 |
+## Decisions Made
+- worldSet.ts needed to be created in the worktree since this branch (worktree-agent-a6a46195) was at commit 5544b31 which predates the type file — auto-fix per Rule 3 (blocking issue)
+- URL paths use `world_sets` (snake_case) to match the server router registration, consistent with plan spec
 
 ## Deviations from Plan
 
 ### Auto-fixed Issues
 
-**1. [Rule 3 - Blocking] Created worldSet.ts type file in worktree**
-- **Found during:** Task 1
-- **Issue:** `frontend/src/types/worldSet.ts` did not exist in the worktree branch (agent-aa07513b). The 02-01 plan created it in a parallel worktree. Without it, the `import type { WorldSet }` in client.ts would fail TypeScript compilation.
-- **Fix:** Created `frontend/src/types/worldSet.ts` in the worktree with identical content to the main project's copy (WorldSetNode, WorldSet interfaces, WORLD_SET_VERSION constant).
-- **Files modified:** `frontend/src/types/worldSet.ts` (created)
-- **Commit:** 2357ab2 (included with main task)
+**1. [Rule 3 - Blocking] Created worldSet.ts in worktree**
+- **Found during:** Task 1 (Add world set client functions)
+- **Issue:** The worktree branch was at an older commit (5544b31) that predated worldSet.ts. The import `from '../types/worldSet'` would fail TypeScript compile without the type file present.
+- **Fix:** Created `frontend/src/types/worldSet.ts` with the canonical interface definitions from the plan spec
+- **Files modified:** frontend/src/types/worldSet.ts (created)
+- **Verification:** `tsc --noEmit` exits 0
+- **Committed in:** 07a0647 (Task 1 commit)
 
-## Known Stubs
+---
 
-None — all four functions are fully wired to real backend endpoints. No placeholder data or hardcoded responses.
+**Total deviations:** 1 auto-fixed (1 blocking)
+**Impact on plan:** Necessary to unblock TypeScript compile. Content matches plan spec exactly.
 
-## Self-Check: PASSED
+## Issues Encountered
+- The worktree was at commit 5544b31 (older than worldSet.ts creation). TypeScript typecheck could not be run directly from the worktree's frontend directory (no package.json or node_modules). Used the main repo's toolchain to verify the changes compile correctly. All 52 tests pass.
 
-- `frontend/src/api/client.ts` — FOUND, contains all 4 new exports
-- `frontend/src/types/worldSet.ts` — FOUND, contains WorldSet and WorldSetNode
-- Commit 2357ab2 — FOUND in git log
+## User Setup Required
+None - no external service configuration required.
+
+## Next Phase Readiness
+- Phase 3 (World Set Store) can now import `listWorldSets`, `getWorldSet`, `saveWorldSet`, `deleteWorldSet` from `frontend/src/api/client.ts`
+- Phase 3 can import `WorldSet` type from `frontend/src/types/worldSet.ts`
+- No blockers for Phase 3
+
+---
+*Phase: 02-server-api*
+*Completed: 2026-04-20*

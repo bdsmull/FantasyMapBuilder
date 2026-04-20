@@ -13,7 +13,7 @@ This milestone adds the World Sets feature to a fully working brownfield web app
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Types, scale values, and pure computation utilities (completed 2026-04-06)
-- [ ] **Phase 2: Server API** - CRUD endpoints, client functions, and Python tests
+- [x] **Phase 2: Server API** - CRUD endpoints, client functions, and Python tests (completed 2026-04-20)
 - [ ] **Phase 3: World Set Store** - Zustand store, navigation utility, and frontend tests
 - [ ] **Phase 4: Management Dialog** - Full world set CRUD and node editing UI
 - [ ] **Phase 5: Hierarchy Panel** - Collapsible tree panel with navigation and context menu
@@ -46,8 +46,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Frontend `client.ts` exports `listWorldSets`, `getWorldSet`, `saveWorldSet`, and `deleteWorldSet` functions that call the correct endpoints
   5. Python test suite in `tests/api/test_world_sets.py` covers all four endpoints including 404 and delete-of-nonexistent error cases
 **Plans**: 2 plans
-  - [ ] 02-01-PLAN.md — Backend: FastAPI world_sets router + main.py registration + conftest fixtures + pytest integration tests
-  - [ ] 02-02-PLAN.md — Frontend: add world set client functions to frontend/src/api/client.ts (typed fetch wrappers)
+  - [x] 02-01-PLAN.md — Backend: FastAPI world_sets router + main.py registration + conftest fixtures + pytest integration tests
+  - [x] 02-02-PLAN.md — Frontend: add world set client functions to frontend/src/api/client.ts (typed fetch wrappers)
 
 ### Phase 3: World Set Store
 **Goal**: Application state for the active world set is fully managed in `worldSetStore.ts`, all store actions enforce the correct invariants, and the shared navigation utility handles the dirty-map guard so all future navigation triggers have a single, tested entry point
@@ -117,7 +117,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 1/1 | Complete   | 2026-04-06 |
-| 2. Server API | 0/2 | In progress | - |
+| 2. Server API | 2/2 | Complete   | 2026-04-20 |
 | 3. World Set Store | 0/? | Not started | - |
 | 4. Management Dialog | 0/? | Not started | - |
 | 5. Hierarchy Panel | 0/? | Not started | - |

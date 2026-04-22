@@ -13,7 +13,7 @@ This milestone adds the World Sets feature to a fully working brownfield web app
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Types, scale values, and pure computation utilities (completed 2026-04-06)
-- [x] **Phase 2: Server API** - CRUD endpoints, client functions, and Python tests (completed 2026-04-20)
+- [x] **Phase 2: Server API** - CRUD endpoints, client functions, and Python tests (completed 2026-04-20)
 - [ ] **Phase 3: World Set Store** - Zustand store, navigation utility, and frontend tests
 - [ ] **Phase 4: Management Dialog** - Full world set CRUD and node editing UI
 - [ ] **Phase 5: Hierarchy Panel** - Collapsible tree panel with navigation and context menu
@@ -59,7 +59,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `removeNode()` removes a node and all its descendants; `updateNode()` patches anchor, Z, and zLabel cleanly
   4. `navigateToMap(name, { saveFirst })` prompts Save / Discard / Cancel when the map is dirty before loading the new map
   5. Frontend tests verify store actions, `computeFootprint` edge cases (even/odd dimensions), and `detectOverlaps` with overlapping and non-overlapping pairs
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 03-01-PLAN.md — worldSetStore.ts: state, setActiveWorldSet, saveWorldSet, mutations (addNode/removeNode/updateNode), and computed helpers (STORE-01..07)
+  - [ ] 03-02-PLAN.md — navigation.ts: standalone navigateToMap utility with dirty-map guard (STORE-08)
+  - [ ] 03-03-PLAN.md — Vitest coverage: worldSetStore.test.ts + navigation.test.ts (STORE-09)
 
 ### Phase 4: Management Dialog
 **Goal**: A user can open a dialog from the menu bar to manage the full lifecycle of world sets — creating, deleting, and populating them with map nodes — including inline scale assignment for maps that lack one
@@ -118,7 +121,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 1/1 | Complete   | 2026-04-06 |
 | 2. Server API | 2/2 | Complete   | 2026-04-20 |
-| 3. World Set Store | 0/? | Not started | - |
+| 3. World Set Store | 0/3 | Planned | - |
 | 4. Management Dialog | 0/? | Not started | - |
 | 5. Hierarchy Panel | 0/? | Not started | - |
 | 6. Canvas Integration | 0/? | Not started | - |

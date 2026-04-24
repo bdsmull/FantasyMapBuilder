@@ -39,11 +39,11 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 - ✓ World set API functions in `frontend/src/api/client.ts`
 - ✓ Python API tests covering all endpoints (`tests/api/test_world_sets.py`)
 
-**World Sets — Phase 3: Store**
-- [ ] `worldSetStore.ts` with `activeWorldSetName`, `activeWorldSet`, `setActiveWorldSet()`, `addNode()`, `removeNode()`, `updateNode()`, `saveWorldSet()`
-- [ ] Computed helpers: `childrenOf(mapName)`, `parentOf(mapName)`, `rootNodes()`
-- [ ] Shared `navigateToMap(name, { saveFirst })` utility (handles dirty-map guard + load sequence)
-- [ ] Frontend tests for store actions, footprint utilities, and overlap detection
+**World Sets — Phase 3: Store** *(Validated in Phase 3 — 2026-04-24)*
+- ✓ `worldSetStore.ts` with `activeWorldSetName`, `activeWorldSet`, `setActiveWorldSet()`, `addNode()`, `removeNode()`, `updateNode()`, `saveWorldSet()`
+- ✓ Computed helpers: `childrenOf(mapName)`, `parentOf(mapName)`, `rootNodes()`
+- ✓ Shared `navigateToMap(name, { saveFirst })` utility (handles dirty-map guard + load sequence)
+- ✓ Frontend tests for store actions, footprint utilities, and overlap detection (87 Vitest tests total)
 
 **World Sets — Phase 4: Management Dialog**
 - [ ] `WorldSetDialog.tsx`: list world sets; create/rename/delete; add/remove map nodes with parent + anchor + Z + scale assignment; inline validation warnings
@@ -120,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-06 after initialization*
+*Last updated: 2026-04-24 — Phase 3 complete (world-set-store: Zustand store + navigation utility + 87 Vitest tests)*

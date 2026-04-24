@@ -61,7 +61,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Frontend tests verify store actions, `computeFootprint` edge cases (even/odd dimensions), and `detectOverlaps` with overlapping and non-overlapping pairs
 **Plans**: 3 plans
   - [x] 03-01-PLAN.md — worldSetStore.ts: state, setActiveWorldSet, saveWorldSet, mutations (addNode/removeNode/updateNode), and computed helpers (STORE-01..07)
-  - [ ] 03-02-PLAN.md — navigation.ts: standalone navigateToMap utility with dirty-map guard (STORE-08)
+  - [x] 03-02-PLAN.md — navigation.ts: standalone navigateToMap utility with dirty-map guard (STORE-08)
   - [ ] 03-03-PLAN.md — Vitest coverage: worldSetStore.test.ts + navigation.test.ts (STORE-09)
 
 ### Phase 4: Management Dialog
@@ -121,7 +121,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 1/1 | Complete   | 2026-04-06 |
 | 2. Server API | 2/2 | Complete   | 2026-04-20 |
-| 3. World Set Store | 1/3 | In Progress|  |
+| 3. World Set Store | 2/3 | In Progress|  |
 | 4. Management Dialog | 0/? | Not started | - |
 | 5. Hierarchy Panel | 0/? | Not started | - |
 | 6. Canvas Integration | 0/? | Not started | - |

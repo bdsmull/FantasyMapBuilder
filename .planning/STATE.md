@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-04-24T13:05:16.303Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-04-24T13:08:13.088Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 10
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 03 (world-set-store) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -60,6 +60,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 02-server-api P02 | 8 | 1 tasks | 2 files |
 | Phase 02-server-api P01 | 2 | 3 tasks | 4 files |
 | Phase 03-world-set-store P01 | 2 | 2 tasks | 1 files |
+| Phase 03-world-set-store P02 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 03-world-set-store]: AddNodeResult returned-result: addNode returns ok/warnings union, callers decide display
 - [Phase 03-world-set-store]: Store-level overlap = anchor-cell collision; Phase 4 dialog uses computeFootprint for spatial check
 - [Phase 03-world-set-store]: worldSetStore does not import mapStore; navigation utility (Plan 03-02) bridges cross-store behavior
+- [Phase 03-world-set-store]: navigation.ts lives in utils/ (not worldSetStore.ts) per D-01 — keeps store self-contained, avoids circular import risk
+- [Phase 03-world-set-store]: navigateToMap uses useMapStore.getState() — safe for non-React callers; useWorldSetStore not imported to avoid noUnusedLocals
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T13:05:16.296Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-04-24T13:08:13.084Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None

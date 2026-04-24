@@ -26,13 +26,13 @@
 
 ### Store
 
-- [ ] **STORE-01**: `worldSetStore` has `activeWorldSetName: string | null` and `activeWorldSet: WorldSet | null`
-- [ ] **STORE-02**: `setActiveWorldSet(name | null)` loads world set from server and sets it as active; null clears active
-- [ ] **STORE-03**: `addNode(node)` adds a node, enforcing no-duplicate and no-cycle invariants (hard block with error); warns on scale inversion and same-Z overlap
-- [ ] **STORE-04**: `removeNode(mapName)` removes a node and all its descendants from the world set
-- [ ] **STORE-05**: `updateNode(mapName, changes)` updates a node's anchor, Z, zLabel
-- [ ] **STORE-06**: `saveWorldSet()` persists current world set to server
-- [ ] **STORE-07**: Computed helpers `childrenOf(mapName)`, `parentOf(mapName)`, `rootNodes()` available
+- [x] **STORE-01**: `worldSetStore` has `activeWorldSetName: string | null` and `activeWorldSet: WorldSet | null`
+- [x] **STORE-02**: `setActiveWorldSet(name | null)` loads world set from server and sets it as active; null clears active
+- [x] **STORE-03**: `addNode(node)` adds a node, enforcing no-duplicate and no-cycle invariants (hard block with error); warns on scale inversion and same-Z overlap
+- [x] **STORE-04**: `removeNode(mapName)` removes a node and all its descendants from the world set
+- [x] **STORE-05**: `updateNode(mapName, changes)` updates a node's anchor, Z, zLabel
+- [x] **STORE-06**: `saveWorldSet()` persists current world set to server
+- [x] **STORE-07**: Computed helpers `childrenOf(mapName)`, `parentOf(mapName)`, `rootNodes()` available
 - [ ] **STORE-08**: `navigateToMap(name, { saveFirst })` utility handles dirty-map guard + fetch + `mapStore.loadMap()` sequence; used by all navigation triggers
 - [ ] **STORE-09**: Frontend tests cover store actions, `computeFootprint`, and `detectOverlaps`
 
@@ -104,13 +104,13 @@
 | API-05 | Phase 2 — Server API | Complete (Plan 02-01) |
 | API-06 | Phase 2 — Server API | Pending (Plan 02-02) |
 | API-07 | Phase 2 — Server API | Complete (Plan 02-01) |
-| STORE-01 | Phase 3 — World Set Store | Pending |
-| STORE-02 | Phase 3 — World Set Store | Pending |
-| STORE-03 | Phase 3 — World Set Store | Pending |
-| STORE-04 | Phase 3 — World Set Store | Pending |
-| STORE-05 | Phase 3 — World Set Store | Pending |
-| STORE-06 | Phase 3 — World Set Store | Pending |
-| STORE-07 | Phase 3 — World Set Store | Pending |
+| STORE-01 | Phase 3 — World Set Store | Complete |
+| STORE-02 | Phase 3 — World Set Store | Complete |
+| STORE-03 | Phase 3 — World Set Store | Complete |
+| STORE-04 | Phase 3 — World Set Store | Complete |
+| STORE-05 | Phase 3 — World Set Store | Complete |
+| STORE-06 | Phase 3 — World Set Store | Complete |
+| STORE-07 | Phase 3 — World Set Store | Complete |
 | STORE-08 | Phase 3 — World Set Store | Pending |
 | STORE-09 | Phase 3 — World Set Store | Pending |
 | DIALOG-01 | Phase 4 — Management Dialog | Pending |

@@ -34,7 +34,7 @@
 - [x] **STORE-06**: `saveWorldSet()` persists current world set to server
 - [x] **STORE-07**: Computed helpers `childrenOf(mapName)`, `parentOf(mapName)`, `rootNodes()` available
 - [x] **STORE-08**: `navigateToMap(name, { saveFirst })` utility handles dirty-map guard + fetch + `mapStore.loadMap()` sequence; used by all navigation triggers
-- [ ] **STORE-09**: Frontend tests cover store actions, `computeFootprint`, and `detectOverlaps`
+- [x] **STORE-09**: Frontend tests cover store actions, `computeFootprint`, and `detectOverlaps`
 
 ### Management Dialog
 
@@ -112,7 +112,7 @@
 | STORE-06 | Phase 3 — World Set Store | Complete |
 | STORE-07 | Phase 3 — World Set Store | Complete |
 | STORE-08 | Phase 3 — World Set Store | Complete |
-| STORE-09 | Phase 3 — World Set Store | Pending |
+| STORE-09 | Phase 3 — World Set Store | Complete |
 | DIALOG-01 | Phase 4 — Management Dialog | Pending |
 | DIALOG-02 | Phase 4 — Management Dialog | Pending |
 | DIALOG-03 | Phase 4 — Management Dialog | Pending |

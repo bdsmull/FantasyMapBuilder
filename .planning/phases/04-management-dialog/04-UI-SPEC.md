@@ -35,7 +35,7 @@ Declared values (multiples of 4 only — extracted from App.css):
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon gaps, inline element gaps (`.tool-group gap: 4px`) |
-| sm | 8px | Compact element spacing — `.dialog-row gap: 8px`, `.dialog-row margin-bottom: 10px` (rounds to 8) |
+| sm | 8px | Compact element spacing — `.dialog-row gap: 8px` |
 | md | 16px | Default section separation — `.dialog-title margin-bottom: 16px`, `.dialog-buttons margin-top: 16px` |
 | lg | 24px | Dialog horizontal padding — `.dialog padding: 20px 24px` (24px horizontal) |
 | xl | 32px | Not actively used in dialog context; reserved for layout gaps |
@@ -43,10 +43,12 @@ Declared values (multiples of 4 only — extracted from App.css):
 | 3xl | 64px | Not used in this phase |
 
 Exceptions:
-- Dialog vertical padding: 20px (nearest to `lg` — matches existing `.dialog` rule; do not change)
-- `.dialog-row margin-bottom`: 10px is the established value in App.css; keep as-is for pattern consistency
 - Touch targets on buttons: `min-height: 36px` for `.btn-primary` / `.btn-secondary`; `min-height: 44px` for `.toolbar` (toolbar exception, not dialog)
 - Map list max-height: 200px (hard-coded cap for `.map-list` — mirror this for world set list and node list)
+
+Inherited App.css implementation details (outside the design token system — do NOT use for new elements in this phase):
+- `.dialog` vertical padding: 20px — inherited from existing App.css rule; not a declared token
+- `.dialog-row margin-bottom`: 10px — inherited from existing App.css rule; not a declared token
 
 Source: `frontend/src/App.css` lines 233–252, 280–311.
 

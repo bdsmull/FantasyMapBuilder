@@ -74,7 +74,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can add a map to the active world set by choosing parent, anchor cell, Z, and optional Z label
   4. Maps without `feetPerUnit` show "No scale set — click to set" with an inline picker that writes the value back to the map before the node is added
   5. Inline validation warnings appear for scale inversion and footprint overlap as the user configures a node
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 04-01-PLAN.md — Vitest scaffold + WorldSetDialog list view (create/delete) + MenuBar/App wiring (DIALOG-01..03)
+  - [ ] 04-02-PLAN.md — Nodes view (DIALOG-07) + Configure view with scale picker and warnings (DIALOG-04..06)
+  - [ ] 04-03-PLAN.md — Manual smoke test checkpoint (DIALOG-01, DIALOG-05 visual gates)
 **UI hint**: yes
 
 ### Phase 5: Hierarchy Panel

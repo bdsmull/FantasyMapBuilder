@@ -5,11 +5,12 @@ interface MenuBarProps {
   onNew: () => void;
   onOpen: () => void;
   onManageTilesets: () => void;
+  onWorldSets: () => void;
 }
 
 type MenuName = 'file' | 'edit' | 'view' | null;
 
-export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTilesets }) => {
+export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTilesets, onWorldSets }) => {
   const [openMenu, setOpenMenu] = useState<MenuName>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const { mapData, mapName, isDirty, saveMapToServer, closeMap, undo, redo, past, future, showGrid, setShowGrid, zoom, setZoom, setPan } = useMapStore();
@@ -131,6 +132,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
             <li onClick={() => { close(); onManageTilesets(); }} className={!hasMap ? 'disabled' : ''}>
               Manage Tilesets…
             </li>
+            <li onClick={() => { close(); onWorldSets(); }}>World Sets…</li>
           </ul>
         )}
       </div>

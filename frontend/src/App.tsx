@@ -9,9 +9,10 @@ import { StatusBar } from './components/StatusBar';
 import { NewMapDialog } from './components/dialogs/NewMapDialog';
 import { OpenMapDialog } from './components/dialogs/OpenMapDialog';
 import { TilesetDialog } from './components/dialogs/TilesetDialog';
+import { WorldSetDialog } from './components/dialogs/WorldSetDialog';
 import { useMapStore } from './store/mapStore';
 
-type Dialog = 'new' | 'open' | 'tilesets' | null;
+type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | null;
 
 export const App: React.FC = () => {
   const [activeDialog, setActiveDialog] = useState<Dialog>(null);
@@ -50,6 +51,7 @@ export const App: React.FC = () => {
         onNew={() => setActiveDialog('new')}
         onOpen={() => setActiveDialog('open')}
         onManageTilesets={() => setActiveDialog('tilesets')}
+        onWorldSets={() => setActiveDialog('worldSets')}
       />
       <Toolbar />
       <div className="editor-body">
@@ -77,6 +79,7 @@ export const App: React.FC = () => {
       {activeDialog === 'new' && <NewMapDialog onClose={() => setActiveDialog(null)} />}
       {activeDialog === 'open' && <OpenMapDialog onClose={() => setActiveDialog(null)} />}
       {activeDialog === 'tilesets' && mapData && <TilesetDialog onClose={() => setActiveDialog(null)} />}
+      {activeDialog === 'worldSets' && <WorldSetDialog onClose={() => setActiveDialog(null)} />}
     </div>
   );
 };

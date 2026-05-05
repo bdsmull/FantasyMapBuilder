@@ -45,10 +45,10 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 - ✓ Shared `navigateToMap(name, { saveFirst })` utility (handles dirty-map guard + load sequence)
 - ✓ Frontend tests for store actions, footprint utilities, and overlap detection (87 Vitest tests total)
 
-**World Sets — Phase 4: Management Dialog**
-- [ ] `WorldSetDialog.tsx`: list world sets; create/rename/delete; add/remove map nodes with parent + anchor + Z + scale assignment; inline validation warnings
-- [ ] Map list shows each map's scale (`feetPerUnit`); maps with no scale show "No scale set — click to set" inline picker
-- [ ] "World Sets…" item in `MenuBar.tsx`; dialog wired in `App.tsx`
+**World Sets — Phase 4: Management Dialog** *(Validated in Phase 4 — 2026-05-05)*
+- ✓ `WorldSetDialog.tsx`: list world sets; create/rename/delete; add/remove map nodes with parent + anchor + Z + scale assignment; inline validation warnings
+- ✓ Map list shows each map's scale (`feetPerUnit`); maps with no scale show "No scale set — click to set" inline picker
+- ✓ "World Sets…" item in `MenuBar.tsx`; dialog wired in `App.tsx`
 
 **World Sets — Phase 5: Hierarchy Panel**
 - [ ] `WorldHierarchyPanel.tsx`: collapsible tree of the active world set; warning badges on nodes with scale/overlap issues; click to navigate (with dirty-map guard); context menu: Add child here, Remove from world set, Change parent
@@ -120,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 — Phase 3 complete (world-set-store: Zustand store + navigation utility + 87 Vitest tests)*
+*Last updated: 2026-05-05 — Phase 4 complete (management-dialog: WorldSetDialog with full CRUD UI, 95 Vitest tests)*

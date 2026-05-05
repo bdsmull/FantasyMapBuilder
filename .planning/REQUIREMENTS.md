@@ -38,9 +38,9 @@
 
 ### Management Dialog
 
-- [ ] **DIALOG-01**: User can open a "World Sets" dialog from the menu bar
-- [ ] **DIALOG-02**: Dialog lists all world sets; user can create a new world set with a name
-- [ ] **DIALOG-03**: User can delete a world set with confirmation
+- [x] **DIALOG-01**: User can open a "World Sets" dialog from the menu bar
+- [x] **DIALOG-02**: Dialog lists all world sets; user can create a new world set with a name
+- [x] **DIALOG-03**: User can delete a world set with confirmation
 - [ ] **DIALOG-04**: User can add a map to the active world set, selecting parent + anchor + Z + zLabel
 - [ ] **DIALOG-05**: Map picker in dialog shows each map's scale label (`feetPerUnit`); maps without `feetPerUnit` show "No scale set — click to set" with inline scale picker
 - [ ] **DIALOG-06**: Dialog shows inline validation warnings (scale inversion, overlap) when adding/editing a node
@@ -113,9 +113,9 @@
 | STORE-07 | Phase 3 — World Set Store | Complete |
 | STORE-08 | Phase 3 — World Set Store | Complete |
 | STORE-09 | Phase 3 — World Set Store | Complete |
-| DIALOG-01 | Phase 4 — Management Dialog | Pending |
-| DIALOG-02 | Phase 4 — Management Dialog | Pending |
-| DIALOG-03 | Phase 4 — Management Dialog | Pending |
+| DIALOG-01 | Phase 4 — Management Dialog | Complete |
+| DIALOG-02 | Phase 4 — Management Dialog | Complete |
+| DIALOG-03 | Phase 4 — Management Dialog | Complete |
 | DIALOG-04 | Phase 4 — Management Dialog | Pending |
 | DIALOG-05 | Phase 4 — Management Dialog | Pending |
 | DIALOG-06 | Phase 4 — Management Dialog | Pending |

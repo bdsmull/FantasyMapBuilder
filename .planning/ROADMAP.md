@@ -75,7 +75,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Maps without `feetPerUnit` show "No scale set — click to set" with an inline picker that writes the value back to the map before the node is added
   5. Inline validation warnings appear for scale inversion and footprint overlap as the user configures a node
 **Plans**: 3 plans
-  - [ ] 04-01-PLAN.md — Vitest scaffold + WorldSetDialog list view (create/delete) + MenuBar/App wiring (DIALOG-01..03)
+  - [x] 04-01-PLAN.md — Vitest scaffold + WorldSetDialog list view (create/delete) + MenuBar/App wiring (DIALOG-01..03)
   - [ ] 04-02-PLAN.md — Nodes view (DIALOG-07) + Configure view with scale picker and warnings (DIALOG-04..06)
   - [ ] 04-03-PLAN.md — Manual smoke test checkpoint (DIALOG-01, DIALOG-05 visual gates)
 **UI hint**: yes
@@ -125,7 +125,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Data Foundation | 1/1 | Complete   | 2026-04-06 |
 | 2. Server API | 2/2 | Complete   | 2026-04-20 |
 | 3. World Set Store | 3/3 | Complete   | 2026-04-24 |
-| 4. Management Dialog | 0/? | Not started | - |
+| 4. Management Dialog | 1/3 | In Progress|  |
 | 5. Hierarchy Panel | 0/? | Not started | - |
 | 6. Canvas Integration | 0/? | Not started | - |
 | 7. Context Menu | 0/? | Not started | - |

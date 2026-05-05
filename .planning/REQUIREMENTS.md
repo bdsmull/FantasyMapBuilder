@@ -41,10 +41,10 @@
 - [x] **DIALOG-01**: User can open a "World Sets" dialog from the menu bar
 - [x] **DIALOG-02**: Dialog lists all world sets; user can create a new world set with a name
 - [x] **DIALOG-03**: User can delete a world set with confirmation
-- [ ] **DIALOG-04**: User can add a map to the active world set, selecting parent + anchor + Z + zLabel
-- [ ] **DIALOG-05**: Map picker in dialog shows each map's scale label (`feetPerUnit`); maps without `feetPerUnit` show "No scale set — click to set" with inline scale picker
-- [ ] **DIALOG-06**: Dialog shows inline validation warnings (scale inversion, overlap) when adding/editing a node
-- [ ] **DIALOG-07**: User can remove a map node from the active world set via the dialog
+- [x] **DIALOG-04**: User can add a map to the active world set, selecting parent + anchor + Z + zLabel
+- [x] **DIALOG-05**: Map picker in dialog shows each map's scale label (`feetPerUnit`); maps without `feetPerUnit` show "No scale set — click to set" with inline scale picker
+- [x] **DIALOG-06**: Dialog shows inline validation warnings (scale inversion, overlap) when adding/editing a node
+- [x] **DIALOG-07**: User can remove a map node from the active world set via the dialog
 
 ### Hierarchy Panel
 
@@ -116,10 +116,10 @@
 | DIALOG-01 | Phase 4 — Management Dialog | Complete |
 | DIALOG-02 | Phase 4 — Management Dialog | Complete |
 | DIALOG-03 | Phase 4 — Management Dialog | Complete |
-| DIALOG-04 | Phase 4 — Management Dialog | Pending |
-| DIALOG-05 | Phase 4 — Management Dialog | Pending |
-| DIALOG-06 | Phase 4 — Management Dialog | Pending |
-| DIALOG-07 | Phase 4 — Management Dialog | Pending |
+| DIALOG-04 | Phase 4 — Management Dialog | Complete |
+| DIALOG-05 | Phase 4 — Management Dialog | Complete |
+| DIALOG-06 | Phase 4 — Management Dialog | Complete |
+| DIALOG-07 | Phase 4 — Management Dialog | Complete |
 | PANEL-01 | Phase 5 — Hierarchy Panel | Pending |
 | PANEL-02 | Phase 5 — Hierarchy Panel | Pending |
 | PANEL-03 | Phase 5 — Hierarchy Panel | Pending |

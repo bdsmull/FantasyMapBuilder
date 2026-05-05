@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-management-dialog 04-01-PLAN.md
-last_updated: "2026-05-05T22:58:10.758Z"
+stopped_at: Completed 04-management-dialog 04-02-PLAN.md
+last_updated: "2026-05-05T23:03:35.862Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 10
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 04 (management-dialog) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-05
 
@@ -63,6 +63,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 03-world-set-store P02 | 5 | 1 tasks | 1 files |
 | Phase 03-world-set-store P03 | 125 | 2 tasks | 2 files |
 | Phase 04-management-dialog P01 | 2 | 3 tasks | 4 files |
+| Phase 04-management-dialog P02 | 480 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Recent decisions affecting current work:
 - [Phase 03-world-set-store]: navigateToMap uses useMapStore.getState() — safe for non-React callers; useWorldSetStore not imported to avoid noUnusedLocals
 - [Phase 03-world-set-store]: Self-loop cycle test used as canonical cycle case — mapName===parentMapName; all real node names must be unique
 - [Phase 04-management-dialog]: WorldSetDialog type View declared inside component scope; nodes/configure views are stubs for plan 04-02; World Sets menu item not gated on mapData
+- [Phase 04-management-dialog]: effectiveChildFPU removed — computed but unused in JSX; noUnusedLocals would reject it
+- [Phase 04-management-dialog]: needsScale = !feetPerUnit AND !scale — a map with scale but no feetPerUnit is treated as already-scaled (Pitfall 1)
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T22:58:10.750Z
-Stopped at: Completed 04-management-dialog 04-01-PLAN.md
+Last session: 2026-05-05T23:03:35.857Z
+Stopped at: Completed 04-management-dialog 04-02-PLAN.md
 Resume file: None

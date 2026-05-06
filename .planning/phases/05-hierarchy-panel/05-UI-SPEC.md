@@ -43,9 +43,7 @@ Declared values (multiples of 4 only — inherited from Phase 4 / App.css):
 | 3xl | 64px | Not used in this phase |
 
 Exceptions:
-- Tree node row padding: `6px 10px` — matches existing `.layer-item` pattern; 6px is not a declared token but is an established App.css exception inherited from LayerPanel
 - Panel resize handle: 4px tall divider strip (xs) with 8px of pointer-event hit area (sm) on each side via pseudo-element or padding
-- Context menu item padding: `6px 16px` — matches `.menu-dropdown li` pattern
 - Minimum hierarchy panel height when split: 80px (prevents collapse to zero; not a spacing token — layout constraint)
 - Minimum layer panel height when split: 60px (same reasoning)
 
@@ -117,10 +115,10 @@ Source: `frontend/src/App.css` lines 9, 129–164, 67–89. Phase 4 UI-SPEC colo
 | `.dialog-backdrop` | Fixed overlay, 60% black scrim | Dirty-guard dialog overlay |
 | `.dialog` | Modal container, `background: #252525`, `border-radius: 8px` | Dirty-guard dialog |
 | `.dialog-title` | 16px/600 heading | Dirty-guard dialog: "Unsaved Changes" |
-| `.dialog-buttons` | `display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px` | Dirty-guard Save/Discard/Cancel row |
-| `.btn-primary` | Blue action, `min-height: 36px` | "Save" in dirty-guard dialog |
-| `.btn-secondary` | Neutral button, `min-height: 36px` | "Cancel" in dirty-guard dialog |
-| `.btn-danger` | Red destructive, `padding: 4px 10px; font-size: 12px` | "Discard" in dirty-guard dialog; "Remove from world set" in context menu |
+| `.dialog-buttons` | `display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px` | Dirty-guard Save Map/Discard Changes/Keep Editing row |
+| `.btn-primary` | Blue action, `min-height: 36px` | "Save Map" in dirty-guard dialog |
+| `.btn-secondary` | Neutral button, `min-height: 36px` | "Keep Editing" in dirty-guard dialog |
+| `.btn-danger` | Red destructive, `padding: 4px 12px; font-size: 12px` | "Discard Changes" in dirty-guard dialog; "Remove from world set" in context menu |
 
 ### New CSS Classes (add to `frontend/src/App.css`)
 
@@ -128,17 +126,17 @@ Source: `frontend/src/App.css` lines 9, 129–164, 67–89. Phase 4 UI-SPEC colo
 |-------|------|---------|
 | `.hierarchy-panel` | `display: flex; flex-direction: column; overflow: hidden` | Wrapper for the collapsible tree section inside the left panel |
 | `.hierarchy-header` | Extends `.panel-header`; adds `display: flex; align-items: center; justify-content: space-between` | Row with "WORLD SET" label + world set switcher |
-| `.hierarchy-switcher` | `background: #1a1a1a; border: 1px solid #444; border-radius: 3px; color: #e0e0e0; font-size: 12px; padding: 2px 6px; max-width: 120px` | `<select>` or static `<span>` for world set name |
+| `.hierarchy-switcher` | `background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 12px; padding: 4px 8px; max-width: 120px` | `<select>` or static `<span>` for world set name |
 | `.hierarchy-tree` | `list-style: none; flex: 1; overflow-y: auto` | Scrollable tree container |
-| `.hierarchy-node` | Extends `.layer-item`; adds `padding-left: calc(10px + {depth} * 16px)` for indent | One tree node row per map |
+| `.hierarchy-node` | Extends `.layer-item`; adds `padding: 8px 12px; padding-left: calc(12px + {depth} * 16px)` for indent | One tree node row per map |
 | `.hierarchy-node.active` | `background: #283a50` | Mirrors `.layer-item.active` |
 | `.hierarchy-toggle` | `color: #888; font-size: 10px; width: 12px; flex-shrink: 0; cursor: pointer` | ▶/▾ collapse toggle; hidden for leaf nodes (`visibility: hidden` to preserve layout) |
 | `.hierarchy-badge` | `color: #fbbf24; font-size: 11px; margin-left: 4px; flex-shrink: 0; cursor: default` | `⚠` warning glyph on nodes with issues |
-| `.hierarchy-tooltip` | `position: absolute; background: #2a2000; border: 1px solid #a07000; border-radius: 4px; padding: 6px 10px; font-size: 12px; color: #fbbf24; z-index: 1500; max-width: 240px; white-space: pre-line; pointer-events: none` | Tooltip shown on hover of `.hierarchy-badge` |
+| `.hierarchy-tooltip` | `position: absolute; background: #2a2000; border: 1px solid #a07000; border-radius: 4px; padding: 8px 12px; font-size: 12px; color: #fbbf24; z-index: 1500; max-width: 240px; white-space: pre-line; pointer-events: none` | Tooltip shown on hover of `.hierarchy-badge` |
 | `.panel-resize-handle` | `height: 4px; background: #333; cursor: ns-resize; flex-shrink: 0` | Drag divider between hierarchy panel and layer panel |
 | `.panel-resize-handle:hover` | `background: #444` | Visual feedback on hover |
 | `.hierarchy-ctx-menu` | `position: fixed; background: #2d2d2d; border: 1px solid #444; border-radius: 4px; list-style: none; min-width: 180px; z-index: 1500; box-shadow: 0 4px 12px rgba(0,0,0,0.5)` | Context menu popup (positioned at cursor via JS `style.top/left`) |
-| `.hierarchy-ctx-menu li` | `padding: 6px 16px; cursor: pointer; font-size: 13px; white-space: nowrap` | Context menu items |
+| `.hierarchy-ctx-menu li` | `padding: 8px 16px; cursor: pointer; font-size: 13px; white-space: nowrap` | Context menu items |
 | `.hierarchy-ctx-menu li:hover` | `background: #3d3d3d` | Item hover |
 | `.hierarchy-ctx-menu li.danger` | `color: #fcc` | "Remove from world set" item |
 | `.hierarchy-ctx-menu li.danger:hover` | `background: #3a2222` | Destructive item hover |
@@ -181,7 +179,7 @@ root nodes (depth=0)
   └─ child (depth=1)
 ```
 
-- Each node row is `.hierarchy-node` with `padding-left: calc(10px + depth * 16px)`
+- Each node row is `.hierarchy-node` with `padding-left: calc(12px + depth * 16px)`
 - Toggle: `.hierarchy-toggle` — shows `▾` (expanded) or `▶` (collapsed); leaf nodes render toggle with `visibility: hidden` (not `display: none`) to preserve column alignment
 - All nodes start expanded (D-03)
 - Collapse state: `Record<string, Set<string>>` keyed by world set name; inner set contains collapsed mapNames; survives map navigation within session; resets on page reload
@@ -218,11 +216,11 @@ Rendered as a `.dialog-backdrop` → `.dialog` modal when navigation is attempte
 1. `.dialog-title` — "Unsaved Changes"
 2. `<p>` body copy — "You have unsaved changes in the current map. What would you like to do?"
 3. `.dialog-buttons` — three buttons left to right:
-   - `.btn-secondary` "Cancel" → dismiss dialog, stay on current map
-   - `.btn-danger` "Discard" → `navigateToMap(targetName, { saveFirst: false })`
-   - `.btn-primary` "Save" → `navigateToMap(targetName, { saveFirst: true })`
+   - `.btn-secondary` "Keep Editing" → dismiss dialog, stay on current map
+   - `.btn-danger` "Discard Changes" → `navigateToMap(targetName, { saveFirst: false })`
+   - `.btn-primary` "Save Map" → `navigateToMap(targetName, { saveFirst: true })`
 
-Dialog dismisses when "Cancel" is clicked or Escape key is pressed. Clicking backdrop (`onClick` on `.dialog-backdrop`) dismisses (Cancel behavior — no navigation).
+Dialog dismisses when "Keep Editing" is clicked or Escape key is pressed. Clicking backdrop (`onClick` on `.dialog-backdrop`) dismisses (Keep Editing behavior — no navigation).
 
 ### Context Menu (D-07, PANEL-04)
 
@@ -245,9 +243,9 @@ Clicking a context menu item closes the menu after executing the action.
 
 | Element | Copy |
 |---------|------|
-| Primary CTA — save before navigate | "Save" |
-| Destructive CTA — discard and navigate | "Discard" |
-| Cancel navigation | "Cancel" |
+| Primary CTA — save before navigate | "Save Map" |
+| Destructive CTA — discard and navigate | "Discard Changes" |
+| Cancel navigation | "Keep Editing" |
 | Panel header label | "WORLD SET" (uppercase, matches `.panel-header` convention) |
 | Panel empty state (no world set active) | (not rendered — panel is absent entirely per PANEL-05) |
 | Dirty-guard dialog title | "Unsaved Changes" |
@@ -277,9 +275,9 @@ World set active, map not dirty
 
 World set active, map dirty
   → click tree node → dirty-guard dialog appears
-  → "Cancel" → dialog closes, no navigation
-  → "Discard" → navigateToMap(name, { saveFirst: false }) → map loads
-  → "Save" → navigateToMap(name, { saveFirst: true }) → map saves, then loads
+  → "Keep Editing" → dialog closes, no navigation
+  → "Discard Changes" → navigateToMap(name, { saveFirst: false }) → map loads
+  → "Save Map" → navigateToMap(name, { saveFirst: true }) → map saves, then loads
 
 Tree node with children
   → click ▾ → node collapses (children unmounted), toggle becomes ▶
@@ -302,9 +300,9 @@ Resize handle
 - Tree nodes are `<li>` elements within a `<ul>` — semantic list structure; screen readers announce as list
 - Toggle button is a `<button>` element (not a `<span>`) — keyboard activatable with Enter/Space
 - Warning badge `⚠` has `title` attribute containing the full tooltip text as fallback for screen readers (tooltip is also shown visually on hover)
-- Dirty-guard dialog: focus moves to "Cancel" button on open; Escape key dismisses
+- Dirty-guard dialog: focus moves to "Keep Editing" button on open; Escape key dismisses
 - Context menu: rendered as `<ul role="menu">` with `<li role="menuitem">` children; Escape key closes
-- Touch targets: tree node rows have `min-height: 28px` from `.layer-item` padding (acceptable for desktop; iPad users use left panel which is hidden on narrow screens per existing media query)
+- Touch targets: tree node rows have `min-height: 28px` from `.hierarchy-node` padding (acceptable for desktop; iPad users use left panel which is hidden on narrow screens per existing media query)
 - Pointer events on resize handle: use `setPointerCapture` on `pointerdown` to track drag across the full document
 
 ---

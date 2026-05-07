@@ -10,13 +10,44 @@ import { NewMapDialog } from './components/dialogs/NewMapDialog';
 import { OpenMapDialog } from './components/dialogs/OpenMapDialog';
 import { TilesetDialog } from './components/dialogs/TilesetDialog';
 import { WorldSetDialog } from './components/dialogs/WorldSetDialog';
+import { WorldHierarchyPanel } from './components/WorldHierarchyPanel';
+import type { OpenWorldSetDialogArgs } from './components/WorldHierarchyPanel';
 import { useMapStore } from './store/mapStore';
+import { useWorldSetStore } from './store/worldSetStore';
 
 type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | null;
 
 export const App: React.FC = () => {
   const [activeDialog, setActiveDialog] = useState<Dialog>(null);
+  const { activeWorldSetName } = useWorldSetStore();
+  const [hierarchyHeight, setHierarchyHeight] = useState<number>(240);
+  const [worldSetDialogArgs, setWorldSetDialogArgs] = useState<OpenWorldSetDialogArgs>({});
+  const [worldSetDialogKey, setWorldSetDialogKey] = useState<number>(0);
   const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
+
+  const handleOpenWorldSetDialog = useCallback((args: OpenWorldSetDialogArgs) => {
+    setWorldSetDialogArgs(args);
+    setWorldSetDialogKey((k) => k + 1); // force remount so useState seeds re-init (Pitfall 5)
+    setActiveDialog('worldSets');
+  }, []);
+
+  const handleResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const startY = e.clientY;
+    const startHeight = hierarchyHeight;
+    const onMove = (moveEvent: PointerEvent) => {
+      const delta = moveEvent.clientY - startY;
+      // Clamp to UI-SPEC minimums: 80px hierarchy minimum
+      const newHeight = Math.max(80, startHeight + delta);
+      setHierarchyHeight(newHeight);
+    };
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+    };
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  };
 
   // Global keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -51,12 +82,26 @@ export const App: React.FC = () => {
         onNew={() => setActiveDialog('new')}
         onOpen={() => setActiveDialog('open')}
         onManageTilesets={() => setActiveDialog('tilesets')}
-        onWorldSets={() => setActiveDialog('worldSets')}
+        onWorldSets={() => {
+          setWorldSetDialogArgs({});
+          setWorldSetDialogKey((k) => k + 1);
+          setActiveDialog('worldSets');
+        }}
       />
       <Toolbar />
       <div className="editor-body">
         <aside className="left-panel">
-          <LayerPanel />
+          {activeWorldSetName !== null && (
+            <>
+              <div style={{ flex: `0 0 ${hierarchyHeight}px`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <WorldHierarchyPanel onOpenWorldSetDialog={handleOpenWorldSetDialog} />
+              </div>
+              <div className="panel-resize-handle" onPointerDown={handleResizePointerDown} />
+            </>
+          )}
+          <div style={{ flex: '1 1 60px', minHeight: 60, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <LayerPanel />
+          </div>
         </aside>
         <main className="canvas-area">
           <MapCanvas />
@@ -79,7 +124,15 @@ export const App: React.FC = () => {
       {activeDialog === 'new' && <NewMapDialog onClose={() => setActiveDialog(null)} />}
       {activeDialog === 'open' && <OpenMapDialog onClose={() => setActiveDialog(null)} />}
       {activeDialog === 'tilesets' && mapData && <TilesetDialog onClose={() => setActiveDialog(null)} />}
-      {activeDialog === 'worldSets' && <WorldSetDialog onClose={() => setActiveDialog(null)} />}
+      {activeDialog === 'worldSets' && (
+        <WorldSetDialog
+          key={worldSetDialogKey}
+          onClose={() => { setActiveDialog(null); setWorldSetDialogArgs({}); }}
+          initialView={worldSetDialogArgs.initialView}
+          initialParentMapName={worldSetDialogArgs.initialParentMapName}
+          initialMapName={worldSetDialogArgs.initialMapName}
+        />
+      )}
     </div>
   );
 };

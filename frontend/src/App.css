@@ -339,3 +339,123 @@ button { cursor: pointer; }
   .tool-btn { padding: 8px; min-width: 44px; font-size: 12px; }
   .zoom-label { display: none; }
 }
+
+/* ============================================================
+   Hierarchy panel
+   ============================================================ */
+.hierarchy-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hierarchy-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 6px 10px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hierarchy-switcher {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 12px;
+  padding: 4px 8px;
+  max-width: 120px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.hierarchy-tree {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.hierarchy-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 13px;
+  min-height: 28px;
+}
+.hierarchy-node:hover { background: #2a2a2a; }
+.hierarchy-node.active { background: #283a50; }
+
+.hierarchy-toggle {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hierarchy-badge {
+  color: #fbbf24;
+  font-size: 11px;
+  margin-left: 4px;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.hierarchy-tooltip {
+  position: fixed;
+  background: #2a2000;
+  border: 1px solid #a07000;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #fbbf24;
+  z-index: 1500;
+  max-width: 240px;
+  white-space: pre-line;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.panel-resize-handle {
+  height: 4px;
+  background: #333;
+  cursor: ns-resize;
+  flex-shrink: 0;
+}
+.panel-resize-handle:hover { background: #444; }
+
+.hierarchy-ctx-menu {
+  position: fixed;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 4px;
+  list-style: none;
+  min-width: 180px;
+  z-index: 1500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  margin: 0;
+  padding: 0;
+}
+.hierarchy-ctx-menu li {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.hierarchy-ctx-menu li:hover { background: #3d3d3d; }
+.hierarchy-ctx-menu li.danger { color: #fcc; }
+.hierarchy-ctx-menu li.danger:hover { background: #3a2222; }

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-hierarchy-panel 05-02-PLAN.md
-last_updated: "2026-05-07T12:50:29.906Z"
+stopped_at: Completed 05-hierarchy-panel 05-03-PLAN.md
+last_updated: "2026-05-07T12:56:36.208Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 12
   percent: 10
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 05 (hierarchy-panel) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -66,6 +66,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 04-management-dialog P02 | 480 | 2 tasks | 2 files |
 | Phase 05-hierarchy-panel P01 | 3 | 2 tasks | 3 files |
 | Phase 05-hierarchy-panel P02 | 4 | 2 tasks | 2 files |
+| Phase 05-hierarchy-panel P03 | 8 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,8 @@ Recent decisions affecting current work:
 - [Phase 05-hierarchy-panel]: WarningContext consolidates lookup tables into one parameter — stable function signatures for future warning types
 - [Phase 05-hierarchy-panel]: Edit-mode parent change uses removeNode+addNode (not moveNode) — preserves addNode invariant enforcement
 - [Phase 05-hierarchy-panel]: WorldSetDialog edit-mode useEffect mount-only; callers use key prop to remount for different nodes (Pitfall 5)
+- [Phase 05-hierarchy-panel]: WorldHierarchyPanel uses mapDataCache with namesToFetch filter to prevent re-fetching already-loaded map data on re-renders
+- [Phase 05-hierarchy-panel]: handleRemove is async to await saveWorldSet() after removeNode — ensures persistence
 
 ### Pending Todos
 
@@ -114,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T12:50:29.899Z
-Stopped at: Completed 05-hierarchy-panel 05-02-PLAN.md
+Last session: 2026-05-07T12:56:36.202Z
+Stopped at: Completed 05-hierarchy-panel 05-03-PLAN.md
 Resume file: None

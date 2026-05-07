@@ -49,7 +49,7 @@
 ### Hierarchy Panel
 
 - [x] **PANEL-01**: Left panel shows collapsible tree of the active world set's map hierarchy
-- [ ] **PANEL-02**: Clicking a map node in the panel navigates to that map (with dirty-map guard: Save / Discard / Cancel prompt)
+- [x] **PANEL-02**: Clicking a map node in the panel navigates to that map (with dirty-map guard: Save / Discard / Cancel prompt)
 - [x] **PANEL-03**: Nodes with validation issues (missing scale, overlap, scale inversion, missing map) show warning badges
 - [x] **PANEL-04**: Node context menu: "Add child here", "Remove from world set", "Change parent"
 - [x] **PANEL-05**: Panel is hidden when no world set is active
@@ -121,7 +121,7 @@
 | DIALOG-06 | Phase 4 — Management Dialog | Complete |
 | DIALOG-07 | Phase 4 — Management Dialog | Complete |
 | PANEL-01 | Phase 5 — Hierarchy Panel | Complete |
-| PANEL-02 | Phase 5 — Hierarchy Panel | Pending |
+| PANEL-02 | Phase 5 — Hierarchy Panel | Complete |
 | PANEL-03 | Phase 5 — Hierarchy Panel | Complete |
 | PANEL-04 | Phase 5 — Hierarchy Panel | Complete |
 | PANEL-05 | Phase 5 — Hierarchy Panel | Complete |

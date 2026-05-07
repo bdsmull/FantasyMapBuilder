@@ -15,11 +15,23 @@ import type { WorldSet, WorldSetNode } from '../../types/worldSet';
 import { WORLD_SET_VERSION } from '../../types/worldSet';
 import type { TmjMap } from '../../types/tmj';
 
-interface Props { onClose: () => void; }
+interface Props {
+  onClose: () => void;
+  /** Initial view to open the dialog at. Default: 'list'. */
+  initialView?: 'list' | 'nodes' | 'configure';
+  /** When opening in configure view, pre-select this parent map. */
+  initialParentMapName?: string | null;
+  /**
+   * When set, configure view operates in EDIT mode for the named existing node:
+   * the form pre-populates from the node's current values, the Map select is
+   * disabled (identity is fixed), and submit calls updateNode() instead of addNode().
+   */
+  initialMapName?: string;
+}
 
-export const WorldSetDialog: React.FC<Props> = ({ onClose }) => {
+export const WorldSetDialog: React.FC<Props> = ({ onClose, initialView, initialParentMapName, initialMapName }) => {
   type View = 'list' | 'nodes' | 'configure';
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>(initialView ?? 'list');
   const [worldSets, setWorldSets] = useState<string[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,7 +46,9 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose }) => {
   const [allMaps, setAllMaps] = useState<string[]>([]);
   const [selectedMap, setSelectedMap] = useState('');
   const [selectedMapData, setSelectedMapData] = useState<TmjMap | null>(null);
-  const [parentMapName, setParentMapName] = useState<string | null>(null);
+  const [parentMapName, setParentMapName] = useState<string | null>(
+    initialParentMapName ?? null,
+  );
   const [anchorCol, setAnchorCol] = useState(0);
   const [anchorRow, setAnchorRow] = useState(0);
   const [z, setZ] = useState(0);
@@ -47,6 +61,7 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose }) => {
     activeWorldSet,
     setActiveWorldSet,
     addNode,
+    updateNode,
     removeNode,
     saveWorldSet,
   } = useWorldSetStore();
@@ -83,6 +98,27 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose }) => {
     if (allMaps.length > 0) return;
     listMaps().then(setAllMaps).catch((e) => setError(String(e)));
   }, [view]);
+
+  // Edit-mode pre-population: when initialMapName is set on mount, fetch its
+  // TmjMap and seed all configure form fields from the existing node.
+  useEffect(() => {
+    if (!initialMapName || !activeWorldSet) return;
+    const existing = activeWorldSet.nodes.find((n) => n.mapName === initialMapName);
+    if (!existing) return;
+    setSelectedMap(initialMapName);
+    setParentMapName(existing.parentMapName);
+    setAnchorCol(existing.parentAnchor?.col ?? 0);
+    setAnchorRow(existing.parentAnchor?.row ?? 0);
+    setZ(existing.z);
+    setZLabel(existing.zLabel ?? '');
+    // Fetch TmjMap for needsScale derivation and any future scale UI
+    getMap(initialMapName)
+      .then((data) => setSelectedMapData(data))
+      .catch((e) => setError(String(e)));
+    // Intentionally only on initial mount per dialog instance — Pitfall 5 requires
+    // callers to pass a `key` prop to remount when reopening for a different node.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelect = async (name: string) => {
     try {
@@ -280,22 +316,60 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose }) => {
         }
       }
 
-      // Step 3 — call addNode (store enforces hard blocks: dup, cycle).
-      const node: WorldSetNode = {
-        mapName: selectedMap,
-        parentMapName,
-        parentAnchor: parentMapName ? { col: anchorCol, row: anchorRow } : null,
-        z,
-        zLabel: zLabel.trim() || null,
-      };
-      const result = addNode(node);
-      if (!result.ok) {
-        setError(result.error);
-        setWarnings(localWarnings); // still surface soft warnings even on hard fail
-        return;
+      // Step 3 — submit: addNode for new nodes, updateNode for edit mode
+      if (initialMapName) {
+        // Edit mode — only parentAnchor, z, zLabel can change (mapName + parentMapName are identity for updateNode).
+        // To "change parent" we currently must remove + re-add. For now, scope updateNode strictly to the
+        // fields it supports; if parentMapName differs from existing, we delegate by remove+add.
+        const existing = activeWorldSet?.nodes.find((n) => n.mapName === initialMapName);
+        if (!existing) {
+          setError(`Node '${initialMapName}' no longer exists`);
+          return;
+        }
+        const parentChanged = existing.parentMapName !== parentMapName;
+        if (parentChanged) {
+          // Remove old, add new (preserves cycle/duplicate enforcement in addNode).
+          removeNode(initialMapName);
+          const result = addNode({
+            mapName: initialMapName,
+            parentMapName,
+            parentAnchor: parentMapName ? { col: anchorCol, row: anchorRow } : null,
+            z,
+            zLabel: zLabel.trim() || null,
+          });
+          if (!result.ok) {
+            setError(result.error);
+            setWarnings(localWarnings);
+            return;
+          }
+          const allWarnings = [...localWarnings, ...result.warnings];
+          if (allWarnings.length > 0) setWarnings(allWarnings);
+        } else {
+          updateNode(initialMapName, {
+            parentAnchor: parentMapName ? { col: anchorCol, row: anchorRow } : null,
+            z,
+            zLabel: zLabel.trim() || null,
+          });
+          if (localWarnings.length > 0) setWarnings(localWarnings);
+        }
+      } else {
+        // Create mode (existing behavior)
+        const node: WorldSetNode = {
+          mapName: selectedMap,
+          parentMapName,
+          parentAnchor: parentMapName ? { col: anchorCol, row: anchorRow } : null,
+          z,
+          zLabel: zLabel.trim() || null,
+        };
+        const result = addNode(node);
+        if (!result.ok) {
+          setError(result.error);
+          setWarnings(localWarnings); // still surface soft warnings even on hard fail
+          return;
+        }
+        const allWarnings = [...localWarnings, ...result.warnings];
+        if (allWarnings.length > 0) setWarnings(allWarnings);
       }
-      const allWarnings = [...localWarnings, ...result.warnings];
-      if (allWarnings.length > 0) setWarnings(allWarnings);
 
       // Step 4 — persist.
       await saveWorldSet();
@@ -416,14 +490,14 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose }) => {
         )}
         {view === 'configure' && (
           <>
-            <div className="dialog-title">Add Map Node</div>
+            <div className="dialog-title">{initialMapName ? 'Edit Map Node' : 'Add Map Node'}</div>
 
             <div className="dialog-row">
               <label>Map</label>
               <select
                 value={selectedMap}
                 onChange={(e) => handleMapSelect(e.target.value)}
-                disabled={loading}
+                disabled={loading || !!initialMapName}
               >
                 <option value="">Select a map…</option>
                 {allMaps.map((name) => (
@@ -533,7 +607,7 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose }) => {
                 onClick={handleAddNode}
                 disabled={!selectedMap || loading}
               >
-                {loading ? 'Adding…' : 'Add'}
+                {loading ? 'Saving…' : (initialMapName ? 'Save' : 'Add')}
               </button>
             </div>
           </>

@@ -90,7 +90,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Nodes with missing scale, overlap, scale inversion, or missing map show a visible warning badge
   4. Right-clicking a node shows a context menu with "Add child here", "Remove from world set", and "Change parent" options
 **Plans**: 4 plans
-  - [ ] 05-01-PLAN.md — CSS spec append + hierarchyPanelLogic utilities + Wave 0 unit tests (PANEL-01, PANEL-03, PANEL-05)
+  - [x] 05-01-PLAN.md — CSS spec append + hierarchyPanelLogic utilities + Wave 0 unit tests (PANEL-01, PANEL-03, PANEL-05)
   - [ ] 05-02-PLAN.md — Extend WorldSetDialog with edit-mode props (initialView/initialParentMapName/initialMapName) for context menu wiring (PANEL-04)
   - [ ] 05-03-PLAN.md — WorldHierarchyPanel component: tree render, collapse, dirty-guard navigation, context menu, warning badges (PANEL-01..05)
   - [ ] 05-04-PLAN.md — App.tsx integration + resize handle + manual smoke checkpoint (PANEL-01..05)
@@ -130,6 +130,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Server API | 2/2 | Complete   | 2026-04-20 |
 | 3. World Set Store | 3/3 | Complete   | 2026-04-24 |
 | 4. Management Dialog | 2/3 | In Progress|  |
-| 5. Hierarchy Panel | 0/4 | Not started | - |
+| 5. Hierarchy Panel | 1/4 | In Progress|  |
 | 6. Canvas Integration | 0/? | Not started | - |
 | 7. Context Menu | 0/? | Not started | - |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-05T23:27:17.349Z"
-last_activity: 2026-05-05
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-05-07T12:49:38.687Z"
+last_activity: 2026-05-07
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 13
+  completed_plans: 10
   percent: 10
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** A seamless, hierarchical map system where a GM can click from a world map down to a dungeon room and back, with every level of geography connected and browsable.
-**Current focus:** Phase 04 — management-dialog
+**Current focus:** Phase 05 — hierarchy-panel
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (hierarchy-panel) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-05
+Last activity: 2026-05-07
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -64,6 +64,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 03-world-set-store P03 | 125 | 2 tasks | 2 files |
 | Phase 04-management-dialog P01 | 2 | 3 tasks | 4 files |
 | Phase 04-management-dialog P02 | 480 | 2 tasks | 2 files |
+| Phase 05-hierarchy-panel P01 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 04-management-dialog]: WorldSetDialog type View declared inside component scope; nodes/configure views are stubs for plan 04-02; World Sets menu item not gated on mapData
 - [Phase 04-management-dialog]: effectiveChildFPU removed — computed but unused in JSX; noUnusedLocals would reject it
 - [Phase 04-management-dialog]: needsScale = !feetPerUnit AND !scale — a map with scale but no feetPerUnit is treated as already-scaled (Pitfall 1)
+- [Phase 05-hierarchy-panel]: getWarnings returns [] when map not in cache — prevents spurious badges before data loads (Pitfall 2)
+- [Phase 05-hierarchy-panel]: toggleCollapse returns new outer Record — immutability contract for React state
+- [Phase 05-hierarchy-panel]: WarningContext consolidates lookup tables into one parameter — stable function signatures for future warning types
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T23:27:17.344Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-hierarchy-panel/05-CONTEXT.md
+Last session: 2026-05-07T12:49:38.676Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None

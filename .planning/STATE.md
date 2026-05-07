@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-05-07T12:49:38.687Z"
+stopped_at: Completed 05-hierarchy-panel 05-02-PLAN.md
+last_updated: "2026-05-07T12:50:29.906Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 05 (hierarchy-panel) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-07
 
@@ -65,6 +65,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 04-management-dialog P01 | 2 | 3 tasks | 4 files |
 | Phase 04-management-dialog P02 | 480 | 2 tasks | 2 files |
 | Phase 05-hierarchy-panel P01 | 3 | 2 tasks | 3 files |
+| Phase 05-hierarchy-panel P02 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Recent decisions affecting current work:
 - [Phase 05-hierarchy-panel]: getWarnings returns [] when map not in cache — prevents spurious badges before data loads (Pitfall 2)
 - [Phase 05-hierarchy-panel]: toggleCollapse returns new outer Record — immutability contract for React state
 - [Phase 05-hierarchy-panel]: WarningContext consolidates lookup tables into one parameter — stable function signatures for future warning types
+- [Phase 05-hierarchy-panel]: Edit-mode parent change uses removeNode+addNode (not moveNode) — preserves addNode invariant enforcement
+- [Phase 05-hierarchy-panel]: WorldSetDialog edit-mode useEffect mount-only; callers use key prop to remount for different nodes (Pitfall 5)
 
 ### Pending Todos
 
@@ -111,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-07T12:49:38.676Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-05-07T12:50:29.899Z
+Stopped at: Completed 05-hierarchy-panel 05-02-PLAN.md
 Resume file: None

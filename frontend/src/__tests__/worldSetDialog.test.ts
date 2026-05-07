@@ -153,3 +153,56 @@ describe('WorldSetDialog Plan 04-02 contracts', () => {
     }));
   });
 });
+
+describe('WorldSetDialog edit-mode prop contract (Plan 05-02)', () => {
+  beforeEach(() => {
+    useWorldSetStore.setState({
+      activeWorldSetName: 'ws',
+      activeWorldSet: {
+        name: 'ws',
+        version: WORLD_SET_VERSION,
+        nodes: [
+          { mapName: 'root', parentMapName: null, parentAnchor: null, z: 0, zLabel: null },
+          { mapName: 'child', parentMapName: 'root', parentAnchor: { col: 1, row: 1 }, z: 0, zLabel: 'lobby' },
+        ],
+      },
+    });
+    vi.clearAllMocks();
+  });
+
+  it('PANEL-04 edit-mode: updateNode patches anchor/z/zLabel when parent unchanged', () => {
+    const { updateNode } = useWorldSetStore.getState();
+    // Simulate the edit-mode handleAddNode "no parent change" branch:
+    updateNode('child', { parentAnchor: { col: 5, row: 6 }, z: 1, zLabel: 'attic' });
+    const updated = useWorldSetStore.getState().activeWorldSet!.nodes.find((n) => n.mapName === 'child')!;
+    expect(updated.parentMapName).toBe('root'); // unchanged
+    expect(updated.parentAnchor).toEqual({ col: 5, row: 6 });
+    expect(updated.z).toBe(1);
+    expect(updated.zLabel).toBe('attic');
+  });
+
+  it('PANEL-04 edit-mode: parent-change path uses removeNode + addNode and preserves mapName', () => {
+    const { removeNode, addNode } = useWorldSetStore.getState();
+    // Simulate edit-mode handleAddNode "parent changed" branch:
+    removeNode('child');
+    const result = addNode({
+      mapName: 'child',
+      parentMapName: null, // moved to root
+      parentAnchor: null,
+      z: 0,
+      zLabel: 'lobby',
+    });
+    expect(result.ok).toBe(true);
+    const after = useWorldSetStore.getState().activeWorldSet!.nodes.find((n) => n.mapName === 'child')!;
+    expect(after.parentMapName).toBeNull();
+    expect(after.parentAnchor).toBeNull();
+  });
+
+  it('PANEL-04 edit-mode: updateNode does NOT change mapName (identity preserved)', () => {
+    const { updateNode } = useWorldSetStore.getState();
+    updateNode('child', { z: 99 });
+    const names = useWorldSetStore.getState().activeWorldSet!.nodes.map((n) => n.mapName);
+    expect(names).toContain('child'); // mapName preserved
+    expect(names.length).toBe(2);
+  });
+});

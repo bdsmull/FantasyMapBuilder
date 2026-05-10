@@ -115,8 +115,14 @@ None yet.
 - Known: `object-add` redo is silently broken (TODO in `mapStore.ts:349`) — does not block World Sets work
 - Known: `removeTileset()` mutates store state directly — does not block World Sets work
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260510-kcx | Fix Phase 5 smoke test bugs (localStorage persistence, resize clamp, deactivate button) | 2026-05-10 | 040e6db | [260510-kcx-fix-phase-5-smoke-test-bugs-resize-clamp](.planning/quick/260510-kcx-fix-phase-5-smoke-test-bugs-resize-clamp/) |
+
 ## Session Continuity
 
-Last session: 2026-05-07T12:56:36.202Z
-Stopped at: Completed 05-hierarchy-panel 05-03-PLAN.md
+Last session: 2026-05-10
+Stopped at: Completed quick task 260510-kcx — Phase 5 smoke test bug fixes
 Resume file: None

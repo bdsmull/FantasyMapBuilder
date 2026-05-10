@@ -120,9 +120,10 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260510-kcx | Fix Phase 5 smoke test bugs (localStorage persistence, resize clamp, deactivate button) | 2026-05-10 | 040e6db | [260510-kcx-fix-phase-5-smoke-test-bugs-resize-clamp](.planning/quick/260510-kcx-fix-phase-5-smoke-test-bugs-resize-clamp/) |
+| 260510-kup | Add left-panel toggle button for narrow viewports (iPad ≤1024px) | 2026-05-10 | d67c296 | [260510-kup-add-left-panel-toggle-button-for-narrow-](.planning/quick/260510-kup-add-left-panel-toggle-button-for-narrow-/) |
 
 ## Session Continuity
 
 Last session: 2026-05-10
-Stopped at: Completed quick task 260510-kcx — Phase 5 smoke test bug fixes
+Stopped at: Completed quick task 260510-kup — awaiting checkpoint human-verify for left-panel toggle
 Resume file: None

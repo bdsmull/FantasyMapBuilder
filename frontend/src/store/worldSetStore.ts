@@ -94,11 +94,13 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
 
   setActiveWorldSet: async (name) => {
     if (name === null) {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('activeWorldSetName');
       set({ activeWorldSetName: null, activeWorldSet: null });
       return;
     }
     const data = await apiGetWorldSet(name);
     set({ activeWorldSetName: name, activeWorldSet: data });
+    if (typeof localStorage !== 'undefined') localStorage.setItem('activeWorldSetName', name);
   },
 
   saveWorldSet: async () => {
@@ -244,3 +246,15 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
     return ws.nodes.filter((n) => n.parentMapName === null);
   },
 }));
+
+// Restore active world set from previous session (LAN persistence fix — SMOKE-01)
+// Guard against non-browser environments (e.g. Vitest running in node mode)
+if (typeof localStorage !== 'undefined') {
+  const _storedName = localStorage.getItem('activeWorldSetName');
+  if (_storedName) {
+    useWorldSetStore.getState().setActiveWorldSet(_storedName).catch(() => {
+      // If the stored name no longer exists on disk, silently clear it
+      localStorage.removeItem('activeWorldSetName');
+    });
+  }
+}

@@ -19,12 +19,17 @@ type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | null;
 
 export const App: React.FC = () => {
   const [activeDialog, setActiveDialog] = useState<Dialog>(null);
+  const [leftPanelOpen, setLeftPanelOpen] = useState<boolean>(false);
   const { activeWorldSetName } = useWorldSetStore();
   const [hierarchyHeight, setHierarchyHeight] = useState<number>(240);
   const leftPanelRef = useRef<HTMLElement>(null);
   const [worldSetDialogArgs, setWorldSetDialogArgs] = useState<OpenWorldSetDialogArgs>({});
   const [worldSetDialogKey, setWorldSetDialogKey] = useState<number>(0);
   const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
+
+  const toggleLeftPanel = useCallback(() => {
+    setLeftPanelOpen((prev) => !prev);
+  }, []);
 
   const handleOpenWorldSetDialog = useCallback((args: OpenWorldSetDialogArgs) => {
     setWorldSetDialogArgs(args);
@@ -79,6 +84,17 @@ export const App: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  useEffect(() => {
+    if (!leftPanelOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (leftPanelRef.current && !leftPanelRef.current.contains(e.target as Node)) {
+        setLeftPanelOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [leftPanelOpen]);
+
   return (
     <div className="app-layout">
       <MenuBar
@@ -91,9 +107,15 @@ export const App: React.FC = () => {
           setActiveDialog('worldSets');
         }}
       />
-      <Toolbar />
+      <Toolbar onToggleLeftPanel={toggleLeftPanel} showPanelToggle={true} />
       <div className="editor-body">
-        <aside className="left-panel" ref={leftPanelRef}>
+        {leftPanelOpen && (
+          <div className="left-panel-backdrop" onClick={() => setLeftPanelOpen(false)} />
+        )}
+        <aside
+          className={`left-panel${leftPanelOpen ? ' left-panel--open' : ''}`}
+          ref={leftPanelRef}
+        >
           {activeWorldSetName !== null && (
             <>
               <div style={{ flex: `0 0 ${hierarchyHeight}px`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

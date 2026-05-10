@@ -321,8 +321,20 @@ button { cursor: pointer; }
   }
 
   .left-panel {
-    display: none; /* hidden on narrow — accessed via menu */
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+    z-index: 900;
+    overflow-y: auto;
+    box-shadow: 4px 0 16px rgba(0,0,0,0.6);
   }
+  .left-panel--open {
+    display: flex;
+  }
+  .panel-toggle-btn { display: flex; }
 
   .right-panel {
     border-left: none;
@@ -338,6 +350,18 @@ button { cursor: pointer; }
   .toolbar { padding: 4px; gap: 3px; }
   .tool-btn { padding: 8px; min-width: 44px; font-size: 12px; }
   .zoom-label { display: none; }
+}
+
+/* ============================================================
+   Left panel overlay (narrow viewport toggle)
+   ============================================================ */
+.panel-toggle-btn { display: none; }
+
+.left-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  background: rgba(0,0,0,0.4);
 }
 
 /* ============================================================

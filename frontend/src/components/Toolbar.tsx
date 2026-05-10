@@ -15,7 +15,12 @@ const TOOLS: ToolButtonProps[] = [
   { name: 'point', label: 'Point', shortcut: '4' },
 ];
 
-export const Toolbar: React.FC = () => {
+interface ToolbarProps {
+  onToggleLeftPanel?: () => void;
+  showPanelToggle?: boolean;
+}
+
+export const Toolbar: React.FC<ToolbarProps> = ({ onToggleLeftPanel, showPanelToggle }) => {
   const { selectedTool, setTool, zoom, setZoom, setPan, showGrid, setShowGrid, mapData, undo, redo, past, future } = useMapStore();
 
   const zoomIn = () => setZoom(zoom * 1.2);
@@ -27,6 +32,19 @@ export const Toolbar: React.FC = () => {
 
   return (
     <div className="toolbar">
+      {showPanelToggle && (
+        <>
+          <button
+            className="tool-btn panel-toggle-btn"
+            onClick={onToggleLeftPanel}
+            title="Toggle layers panel"
+            aria-label="Toggle layers panel"
+          >
+            ☰
+          </button>
+          <div className="tool-separator" />
+        </>
+      )}
       <div className="tool-group">
         {TOOLS.map((t) => (
           <button

@@ -133,3 +133,32 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Hierarchy Panel | 3/4 | In Progress|  |
 | 6. Canvas Integration | 0/? | Not started | - |
 | 7. Context Menu | 0/? | Not started | - |
+
+## Backlog
+
+### Phase 999.1: Toggle icon mismatch in hierarchy panel (BACKLOG)
+
+**Goal:** Fix the ▾ (expand) toggle rendering as a tiny dot compared to ▶ (collapse) — likely a font-size or line-height issue on `.hierarchy-toggle` causing the down-pointing character to render at a different visual weight.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.2: WorldSetDialog nodes view missing Close/OK button (BACKLOG)
+
+**Goal:** Add a "Close" or "Done" button to the nodes view of WorldSetDialog so users have an explicit affordance to dismiss the dialog rather than relying on clicking outside or the "Back" button.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.3: "World Sets" menu item placement (BACKLOG)
+
+**Goal:** Move "World Sets" from the Edit menu to a more discoverable location — either top-level in the menu bar or under File — so users can find it without searching through submenus.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)

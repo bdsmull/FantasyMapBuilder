@@ -231,6 +231,15 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
         ) : (
           <span className="hierarchy-switcher">{activeWorldSetName}</span>
         )}
+        <button
+          type="button"
+          className="hierarchy-deactivate"
+          title="Deactivate world set"
+          onClick={() => setActiveWorldSet(null).catch(console.error)}
+          aria-label="Deactivate world set"
+        >
+          ×
+        </button>
       </div>
       {roots.length === 0 ? (
         <div className="panel-empty">No maps in this world set.</div>

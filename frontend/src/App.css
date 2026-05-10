@@ -415,6 +415,21 @@ button { cursor: pointer; }
   cursor: default;
 }
 
+.hierarchy-deactivate {
+  background: none;
+  border: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+.hierarchy-deactivate:hover {
+  color: var(--text, #ccc);
+}
+
 .hierarchy-tooltip {
   position: fixed;
   background: #2a2000;

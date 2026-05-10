@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import { MapCanvas } from './components/MapCanvas';
 import { LayerPanel } from './components/LayerPanel';
@@ -21,6 +21,7 @@ export const App: React.FC = () => {
   const [activeDialog, setActiveDialog] = useState<Dialog>(null);
   const { activeWorldSetName } = useWorldSetStore();
   const [hierarchyHeight, setHierarchyHeight] = useState<number>(240);
+  const leftPanelRef = useRef<HTMLElement>(null);
   const [worldSetDialogArgs, setWorldSetDialogArgs] = useState<OpenWorldSetDialogArgs>({});
   const [worldSetDialogKey, setWorldSetDialogKey] = useState<number>(0);
   const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
@@ -37,8 +38,10 @@ export const App: React.FC = () => {
     const startHeight = hierarchyHeight;
     const onMove = (moveEvent: PointerEvent) => {
       const delta = moveEvent.clientY - startY;
-      // Clamp to UI-SPEC minimums: 80px hierarchy minimum
-      const newHeight = Math.max(80, startHeight + delta);
+      const maxHeight = leftPanelRef.current
+        ? leftPanelRef.current.clientHeight - 60   // 60px minimum for LayerPanel
+        : 9999;
+      const newHeight = Math.min(maxHeight, Math.max(80, startHeight + delta));
       setHierarchyHeight(newHeight);
     };
     const onUp = () => {
@@ -90,7 +93,7 @@ export const App: React.FC = () => {
       />
       <Toolbar />
       <div className="editor-body">
-        <aside className="left-panel">
+        <aside className="left-panel" ref={leftPanelRef}>
           {activeWorldSetName !== null && (
             <>
               <div style={{ flex: `0 0 ${hierarchyHeight}px`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

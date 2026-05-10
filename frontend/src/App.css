@@ -312,6 +312,18 @@ button { cursor: pointer; }
 .btn-danger:hover { background: #8a3a3a; }
 
 /* ============================================================
+   Left panel overlay (narrow viewport toggle)
+   ============================================================ */
+.panel-toggle-btn { display: none; }
+
+.left-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  background: rgba(0,0,0,0.4);
+}
+
+/* ============================================================
    Responsive — iPad / narrow screens
    ============================================================ */
 @media (max-width: 1024px) {
@@ -350,18 +362,6 @@ button { cursor: pointer; }
   .toolbar { padding: 4px; gap: 3px; }
   .tool-btn { padding: 8px; min-width: 44px; font-size: 12px; }
   .zoom-label { display: none; }
-}
-
-/* ============================================================
-   Left panel overlay (narrow viewport toggle)
-   ============================================================ */
-.panel-toggle-btn { display: none; }
-
-.left-panel-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 850;
-  background: rgba(0,0,0,0.4);
 }
 
 /* ============================================================

@@ -44,7 +44,7 @@ Declared values (must be multiples of 4):
 Exceptions:
 - Status bar height is 24px (existing fixed value — do not change)
 - Touch targets (footprint picker items, breadcrumb button): minimum 44px height on touch viewports (iPad ≤1024px)
-- Footprint label padding: 4px horizontal, 2px vertical (fits within compact canvas overlay)
+- Footprint label horizontal padding: 4px on each side (spacing contract value). No vertical padding is declared — vertical centering is achieved by `ctx.textBaseline = 'middle'` in the canvas renderer (implementation detail, not a spacing contract value).
 
 > Source: `App.css` `.status-bar { height: 24px }`, `.toolbar { min-height: 44px }` — 44px touch target minimum is an established project pattern.
 

@@ -105,7 +105,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Children with no `feetPerUnit` show a 1×1 placeholder footprint in warning color with a `?` label rather than being silently omitted
   3. Hovering a footprint shows a tooltip with the child map name and scale; clicking it navigates to that child (with dirty-map guard)
   4. The status bar shows a parent breadcrumb when the current map has a parent in the active world set; clicking the breadcrumb navigates up to the parent
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 06-01-PLAN.md — footprintOverlay.ts canvas module (render + hit-test) + App.css Phase 6 CSS classes
+  - [ ] 06-02-PLAN.md — MapCanvas.tsx integration: hover, click-to-navigate, touch two-tap, overlap picker
+  - [ ] 06-03-PLAN.md — StatusBar.tsx parent breadcrumb with click navigation
+  - [ ] 06-04-PLAN.md — Manual smoke test checkpoint (all CANVAS requirements)
 **UI hint**: yes
 
 ### Phase 7: Context Menu
@@ -131,7 +135,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. World Set Store | 3/3 | Complete   | 2026-04-24 |
 | 4. Management Dialog | 2/3 | In Progress|  |
 | 5. Hierarchy Panel | 3/4 | In Progress|  |
-| 6. Canvas Integration | 0/? | Not started | - |
+| 6. Canvas Integration | 0/4 | Planned | - |
 | 7. Context Menu | 0/? | Not started | - |
 
 ## Backlog

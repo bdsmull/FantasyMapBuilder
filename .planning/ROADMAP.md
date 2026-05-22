@@ -108,7 +108,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
   - [x] 06-01-PLAN.md — footprintOverlay.ts canvas module (render + hit-test) + App.css Phase 6 CSS classes
   - [ ] 06-02-PLAN.md — MapCanvas.tsx integration: hover, click-to-navigate, touch two-tap, overlap picker
-  - [ ] 06-03-PLAN.md — StatusBar.tsx parent breadcrumb with click navigation
+  - [x] 06-03-PLAN.md — StatusBar.tsx parent breadcrumb with click navigation
   - [ ] 06-04-PLAN.md — Manual smoke test checkpoint (all CANVAS requirements)
 **UI hint**: yes
 
@@ -135,7 +135,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. World Set Store | 3/3 | Complete   | 2026-04-24 |
 | 4. Management Dialog | 2/3 | In Progress|  |
 | 5. Hierarchy Panel | 3/4 | In Progress|  |
-| 6. Canvas Integration | 1/4 | In Progress|  |
+| 6. Canvas Integration | 2/4 | In Progress|  |
 | 7. Context Menu | 0/? | Not started | - |
 
 ## Backlog
@@ -144,7 +144,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 **Goal:** Fix the ▾ (expand) toggle rendering as a tiny dot compared to ▶ (collapse) — likely a font-size or line-height issue on `.hierarchy-toggle` causing the down-pointing character to render at a different visual weight.
 **Requirements:** TBD
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)

@@ -61,7 +61,7 @@
 - [x] **CANVAS-03**: Children with no `feetPerUnit` show a 1×1 placeholder footprint in warning color with `?` label
 - [ ] **CANVAS-04**: Hovering a footprint shows a tooltip with child map name and scale
 - [ ] **CANVAS-05**: Clicking a footprint navigates to that child map (with dirty-map guard)
-- [ ] **CANVAS-06**: Status bar shows parent breadcrumb when the current map has a parent in the active world set; clicking it navigates to the parent
+- [x] **CANVAS-06**: Status bar shows parent breadcrumb when the current map has a parent in the active world set; clicking it navigates to the parent
 
 ### Context Menu
 
@@ -130,7 +130,7 @@
 | CANVAS-03 | Phase 6 — Canvas Integration | Complete |
 | CANVAS-04 | Phase 6 — Canvas Integration | Pending |
 | CANVAS-05 | Phase 6 — Canvas Integration | Pending |
-| CANVAS-06 | Phase 6 — Canvas Integration | Pending |
+| CANVAS-06 | Phase 6 — Canvas Integration | Complete |
 | CTX-01 | Phase 7 — Context Menu | Pending |
 | CTX-02 | Phase 7 — Context Menu | Pending |
 | CTX-03 | Phase 7 — Context Menu | Pending |

@@ -498,3 +498,85 @@ button { cursor: pointer; }
 .hierarchy-ctx-menu li:hover { background: #3d3d3d; }
 .hierarchy-ctx-menu li.danger { color: #fcc; }
 .hierarchy-ctx-menu li.danger:hover { background: #3a2222; }
+
+/* ============================================================
+   Canvas footprint overlay (Phase 6)
+   ============================================================ */
+
+/* Hover/touch tooltip — neutral informational style (not warning) */
+.footprint-tooltip {
+  position: fixed;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #e0e0e0;
+  z-index: 1500;
+  max-width: 200px;
+  white-space: pre-line;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.footprint-tooltip .tooltip-scale {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
+}
+.footprint-tooltip .tooltip-warn {
+  color: #fbbf24;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* Overlap picker popup — reuses hierarchy-ctx-menu visual style */
+.footprint-picker {
+  position: fixed;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 4px;
+  list-style: none;
+  min-width: 160px;
+  z-index: 1500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  margin: 0;
+  padding: 0;
+}
+.footprint-picker li {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+.footprint-picker li:hover { background: #3d3d3d; }
+
+/* Status bar breadcrumb (Phase 6) */
+.status-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #666;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.status-breadcrumb-link {
+  background: none;
+  border: none;
+  color: #5a8ec5;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+.status-breadcrumb-link:hover { color: #7aaedf; }
+
+@media (max-width: 1024px) {
+  .status-breadcrumb-link {
+    max-width: 80px;
+  }
+}

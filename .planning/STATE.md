@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 plans verified — ready to execute
-last_updated: "2026-05-20T00:00:00.000Z"
-last_activity: 2026-05-20
+stopped_at: Completed 06-canvas-integration 06-01-PLAN.md
+last_updated: "2026-05-22T13:04:11.860Z"
+last_activity: 2026-05-22
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 14
   percent: 10
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** A seamless, hierarchical map system where a GM can click from a world map down to a dungeon room and back, with every level of geography connected and browsable.
-**Current focus:** Phase 05 — hierarchy-panel
+**Current focus:** Phase 06 — canvas-integration
 
 ## Current Position
 
-Phase: 05 (hierarchy-panel) — EXECUTING
-Plan: 4 of 4
+Phase: 06 (canvas-integration) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-07
+Last activity: 2026-05-22
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -67,6 +67,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 05-hierarchy-panel P01 | 3 | 2 tasks | 3 files |
 | Phase 05-hierarchy-panel P02 | 4 | 2 tasks | 2 files |
 | Phase 05-hierarchy-panel P03 | 8 | 2 tasks | 2 files |
+| Phase 06-canvas-integration P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,9 @@ Recent decisions affecting current work:
 - [Phase 05-hierarchy-panel]: WorldSetDialog edit-mode useEffect mount-only; callers use key prop to remount for different nodes (Pitfall 5)
 - [Phase 05-hierarchy-panel]: WorldHierarchyPanel uses mapDataCache with namesToFetch filter to prevent re-fetching already-loaded map data on re-renders
 - [Phase 05-hierarchy-panel]: handleRemove is async to await saveWorldSet() after removeNode — ensures persistence
+- [Phase 06-canvas-integration]: No ctx.translate() in renderFootprintOverlay — tileToScreen includes pan so drawing and hit-test coords match pointer events
+- [Phase 06-canvas-integration]: footprintMap optional param — absent gives 1x1 placeholder, present gives real sizing; MapCanvas populates it in Plan 02
+- [Phase 06-canvas-integration]: isPlaceholder = !precomputed || !parentMap.feetPerUnit — covers both missing child data and missing parent scale
 
 ### Pending Todos
 
@@ -124,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-14T13:24:14.025Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-canvas-integration/06-UI-SPEC.md
+Last session: 2026-05-22T13:04:11.854Z
+Stopped at: Completed 06-canvas-integration 06-01-PLAN.md
+Resume file: None

@@ -56,9 +56,9 @@
 
 ### Canvas Integration
 
-- [ ] **CANVAS-01**: When a world set is active, the canvas renders child footprint outlines for children of the current map
-- [ ] **CANVAS-02**: Each footprint is labeled with the child map's name
-- [ ] **CANVAS-03**: Children with no `feetPerUnit` show a 1×1 placeholder footprint in warning color with `?` label
+- [x] **CANVAS-01**: When a world set is active, the canvas renders child footprint outlines for children of the current map
+- [x] **CANVAS-02**: Each footprint is labeled with the child map's name
+- [x] **CANVAS-03**: Children with no `feetPerUnit` show a 1×1 placeholder footprint in warning color with `?` label
 - [ ] **CANVAS-04**: Hovering a footprint shows a tooltip with child map name and scale
 - [ ] **CANVAS-05**: Clicking a footprint navigates to that child map (with dirty-map guard)
 - [ ] **CANVAS-06**: Status bar shows parent breadcrumb when the current map has a parent in the active world set; clicking it navigates to the parent
@@ -125,9 +125,9 @@
 | PANEL-03 | Phase 5 — Hierarchy Panel | Complete |
 | PANEL-04 | Phase 5 — Hierarchy Panel | Complete |
 | PANEL-05 | Phase 5 — Hierarchy Panel | Complete |
-| CANVAS-01 | Phase 6 — Canvas Integration | Pending |
-| CANVAS-02 | Phase 6 — Canvas Integration | Pending |
-| CANVAS-03 | Phase 6 — Canvas Integration | Pending |
+| CANVAS-01 | Phase 6 — Canvas Integration | Complete |
+| CANVAS-02 | Phase 6 — Canvas Integration | Complete |
+| CANVAS-03 | Phase 6 — Canvas Integration | Complete |
 | CANVAS-04 | Phase 6 — Canvas Integration | Pending |
 | CANVAS-05 | Phase 6 — Canvas Integration | Pending |
 | CANVAS-06 | Phase 6 — Canvas Integration | Pending |

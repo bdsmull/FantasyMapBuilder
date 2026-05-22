@@ -129,6 +129,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260510-kcx | Fix Phase 5 smoke test bugs (localStorage persistence, resize clamp, deactivate button) | 2026-05-10 | 040e6db | [260510-kcx-fix-phase-5-smoke-test-bugs-resize-clamp](.planning/quick/260510-kcx-fix-phase-5-smoke-test-bugs-resize-clamp/) |
 | 260510-kup | Add left-panel toggle button for narrow viewports (iPad ≤1024px) | 2026-05-10 | d67c296 | [260510-kup-add-left-panel-toggle-button-for-narrow-](.planning/quick/260510-kup-add-left-panel-toggle-button-for-narrow-/) |
+| 260522-bs6 | Add Map Properties dialog — File menu item to change map scale | 2026-05-22 | 6630504 | [260522-bs6-add-map-properties-dialog-file-menu-item](.planning/quick/260522-bs6-add-map-properties-dialog-file-menu-item/) |
 
 ## Session Continuity
 

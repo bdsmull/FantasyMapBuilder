@@ -6,11 +6,12 @@ interface MenuBarProps {
   onOpen: () => void;
   onManageTilesets: () => void;
   onWorldSets: () => void;
+  onMapProperties: () => void;
 }
 
 type MenuName = 'file' | 'edit' | 'view' | null;
 
-export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTilesets, onWorldSets }) => {
+export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTilesets, onWorldSets, onMapProperties }) => {
   const [openMenu, setOpenMenu] = useState<MenuName>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const { mapData, mapName, isDirty, saveMapToServer, closeMap, undo, redo, past, future, showGrid, setShowGrid, zoom, setZoom, setPan } = useMapStore();
@@ -111,6 +112,8 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
             <li onClick={handleDownload} className={!hasMap ? 'disabled' : ''}>Download .tmj</li>
             <li className="menu-sep" />
             <li onClick={handleExportPng} className={!hasMap ? 'disabled' : ''}>Export as PNG</li>
+            <li className="menu-sep" />
+            <li onClick={() => { close(); onMapProperties(); }} className={!hasMap ? 'disabled' : ''}>Map Properties…</li>
             <li className="menu-sep" />
             <li onClick={() => { close(); closeMap(); }} className={!hasMap ? 'disabled' : ''}>Close Map</li>
           </ul>

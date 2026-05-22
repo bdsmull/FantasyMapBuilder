@@ -10,12 +10,13 @@ import { NewMapDialog } from './components/dialogs/NewMapDialog';
 import { OpenMapDialog } from './components/dialogs/OpenMapDialog';
 import { TilesetDialog } from './components/dialogs/TilesetDialog';
 import { WorldSetDialog } from './components/dialogs/WorldSetDialog';
+import { MapPropertiesDialog } from './components/dialogs/MapPropertiesDialog';
 import { WorldHierarchyPanel } from './components/WorldHierarchyPanel';
 import type { OpenWorldSetDialogArgs } from './components/WorldHierarchyPanel';
 import { useMapStore } from './store/mapStore';
 import { useWorldSetStore } from './store/worldSetStore';
 
-type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | null;
+type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | 'mapProperties' | null;
 
 export const App: React.FC = () => {
   const [activeDialog, setActiveDialog] = useState<Dialog>(null);
@@ -106,6 +107,7 @@ export const App: React.FC = () => {
           setWorldSetDialogKey((k) => k + 1);
           setActiveDialog('worldSets');
         }}
+        onMapProperties={() => setActiveDialog('mapProperties')}
       />
       <Toolbar onToggleLeftPanel={toggleLeftPanel} showPanelToggle={true} />
       <div className="editor-body">
@@ -157,6 +159,9 @@ export const App: React.FC = () => {
           initialParentMapName={worldSetDialogArgs.initialParentMapName}
           initialMapName={worldSetDialogArgs.initialMapName}
         />
+      )}
+      {activeDialog === 'mapProperties' && mapData && (
+        <MapPropertiesDialog onClose={() => setActiveDialog(null)} />
       )}
     </div>
   );

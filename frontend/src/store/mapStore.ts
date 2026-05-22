@@ -14,6 +14,7 @@ import { create } from 'zustand';
 import type { TmjMap, TmjLayer, TmjTileLayer, TmjObjectLayer, TmjObject } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
 import { saveMap as apiSaveMap } from '../api/client';
+import { MAP_SCALE_BY_ID } from '../data/mapScales';
 
 // ---------------------------------------------------------------------------
 // Undo step types
@@ -70,6 +71,7 @@ export interface MapStore {
   setZoom: (zoom: number) => void;
   setPan: (pan: { x: number; y: number }) => void;
   setShowGrid: (show: boolean) => void;
+  setMapScale: (scaleId: string) => void;
   setLayerVisible: (layerIndex: number, visible: boolean) => void;
 
   // ---- Tile editing ----
@@ -180,6 +182,17 @@ export const useMapStore = create<MapStore>((set, get) => ({
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(16, zoom)) }),
   setPan: (pan) => set({ pan }),
   setShowGrid: (show) => set({ showGrid: show }),
+
+  setMapScale: (scaleId) => {
+    const { mapData } = get();
+    if (!mapData) return;
+    const preset = MAP_SCALE_BY_ID[scaleId];
+    if (!preset) return;
+    set({
+      mapData: { ...mapData, scale: scaleId, feetPerUnit: preset.feetPerUnit },
+      isDirty: true,
+    });
+  },
 
   setLayerVisible: (layerIndex, visible) => {
     const { mapData } = get();

@@ -58,6 +58,7 @@ export const MapCanvas: React.FC = () => {
   const [pickerCandidates, setPickerCandidates] = useState<string[]>([]);
   // Track last render's footprints for hit-testing (ref to avoid stale closure)
   const renderedFootprintsRef = useRef<RenderedFootprint[]>([]);
+  const pickerRef = useRef<HTMLUListElement>(null);
   // Dirty-map guard modal state
   const [dirtyGuardTarget, setDirtyGuardTarget] = useState<string | null>(null);
 
@@ -180,8 +181,11 @@ export const MapCanvas: React.FC = () => {
 
   useEffect(() => {
     if (!pickerPos) return;
-    const dismiss = () => { setPickerPos(null); setPickerCandidates([]); };
-    document.addEventListener('pointerdown', dismiss, { capture: true, once: true });
+    const dismiss = (e: PointerEvent) => {
+      if (pickerRef.current?.contains(e.target as Node)) return;
+      setPickerPos(null); setPickerCandidates([]);
+    };
+    document.addEventListener('pointerdown', dismiss, { capture: true });
     return () => document.removeEventListener('pointerdown', dismiss, { capture: true });
   }, [pickerPos]);
 
@@ -456,6 +460,7 @@ export const MapCanvas: React.FC = () => {
       {/* Overlap picker popup */}
       {pickerPos !== null && pickerCandidates.length > 0 && (
         <ul
+          ref={pickerRef}
           className="footprint-picker"
           style={{ left: pickerPos.x, top: pickerPos.y }}
         >

@@ -24,6 +24,7 @@ import type { Footprint } from '../utils/worldSetUtils';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { navigateToMap } from '../utils/navigation';
 import { getMap } from '../api/client';
+import { MAP_SCALE_BY_ID } from '../data/mapScales';
 
 const TOOLS: Record<string, Tool> = {
   paint: paintTool,
@@ -108,7 +109,8 @@ export const MapCanvas: React.FC = () => {
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent feetPerUnit changes. Results are cached so navigation doesn't re-fetch.
   useEffect(() => {
-    const parentFPU = store.mapData?.feetPerUnit;
+    const md = store.mapData;
+    const parentFPU = md?.feetPerUnit ?? (md?.scale ? MAP_SCALE_BY_ID[md.scale]?.feetPerUnit : undefined);
     if (!mapName || !parentFPU) {
       setFootprintMap(new Map());
       return;
@@ -128,9 +130,10 @@ export const MapCanvas: React.FC = () => {
       for (const child of children) {
         if (!child.parentAnchor) continue;
         const data = childMapCacheRef.current.get(child.mapName);
-        if (!data?.feetPerUnit) continue;
+        const childFPU = data?.feetPerUnit ?? (data?.scale ? MAP_SCALE_BY_ID[data.scale]?.feetPerUnit : undefined);
+        if (!data || !childFPU) continue;
         fp.set(child.mapName, computeFootprint(
-          data.width, data.height, data.feetPerUnit, parentFPU, child.parentAnchor,
+          data.width, data.height, childFPU, parentFPU, child.parentAnchor,
         ));
       }
       setFootprintMap(fp);
@@ -150,7 +153,7 @@ export const MapCanvas: React.FC = () => {
       .catch(() => { if (!cancelled) setFootprintMap(new Map()); });
 
     return () => { cancelled = true; };
-  }, [mapName, worldSetStore, store.mapData?.feetPerUnit]);
+  }, [mapName, worldSetStore, store.mapData?.feetPerUnit, store.mapData?.scale]);
 
   useEffect(() => {
     // Resize canvas to fill its container

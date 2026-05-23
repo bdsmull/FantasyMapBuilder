@@ -139,9 +139,9 @@ export function renderFootprintOverlay(
       rowMax: child.parentAnchor.row,
     };
 
-    // A footprint is a placeholder when no pre-computed data is available
-    // OR when the parent map has no feetPerUnit (so scale-based sizing is impossible)
-    const isPlaceholder = !precomputed || !parentMap.feetPerUnit;
+    // A footprint is a placeholder when no pre-computed data is available.
+    // If precomputed exists, the caller already resolved both FPUs successfully.
+    const isPlaceholder = !precomputed;
 
     const { x, y, w, h } = _computeScreenRect(fp, parentMap, view);
     const isHovered = child.mapName === hoveredMapName;

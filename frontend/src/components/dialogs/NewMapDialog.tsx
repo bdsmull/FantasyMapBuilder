@@ -3,7 +3,7 @@ import { useMapStore } from '../../store/mapStore';
 import type { TmjMap } from '../../types/tmj';
 import { saveMap as apiSaveMap } from '../../api/client';
 import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
-import { MAP_SCALES } from '../../data/mapScales';
+import { MAP_SCALES, MAP_SCALE_BY_ID } from '../../data/mapScales';
 
 interface Props {
   onClose: () => void;
@@ -30,6 +30,7 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
     const isHex = mapType === 'hex';
     const mapData: TmjMap = {
       scale,
+      feetPerUnit: MAP_SCALE_BY_ID[scale]?.feetPerUnit,
       tiledversion: '1.10.0',
       version: '1.10',
       type: 'map',

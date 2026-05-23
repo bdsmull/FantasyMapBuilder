@@ -9,6 +9,7 @@ body {
   background: #1a1a1a;
   color: #e0e0e0;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -19,6 +20,7 @@ body {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
 }
 
@@ -198,9 +200,10 @@ body {
   background: #252525;
   border-top: 1px solid #333;
   padding: 3px 12px;
+  padding-bottom: max(3px, env(safe-area-inset-bottom));
   font-size: 11px;
   color: #888;
-  height: 24px;
+  min-height: 24px;
 }
 .status-name { flex: 1; }
 .status-map-info, .status-zoom { white-space: nowrap; }

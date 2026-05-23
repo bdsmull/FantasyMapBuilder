@@ -18,10 +18,12 @@ import { paintTool } from '../tools/paintTool';
 import { eraseTool } from '../tools/eraseTool';
 import { fillTool } from '../tools/fillTool';
 import { pointTool } from '../tools/pointTool';
-import { renderFootprintOverlay, footprintAtPoint } from '../canvas/footprintOverlay';
+import { renderFootprintOverlay, footprintAtPoint, computeFootprint } from '../canvas/footprintOverlay';
 import type { RenderedFootprint } from '../canvas/footprintOverlay';
+import type { Footprint } from '../utils/worldSetUtils';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { navigateToMap } from '../utils/navigation';
+import { getMap } from '../api/client';
 
 const TOOLS: Record<string, Tool> = {
   paint: paintTool,
@@ -58,6 +60,12 @@ export const MapCanvas: React.FC = () => {
   // Dirty-map guard modal state
   const [dirtyGuardTarget, setDirtyGuardTarget] = useState<string | null>(null);
 
+  // Pre-computed footprint map: child mapName → tile-space Footprint on the parent grid.
+  // Rebuilt whenever the children list or parent feetPerUnit changes.
+  const [footprintMap, setFootprintMap] = useState<Map<string, Footprint>>(new Map());
+  // Cache of fetched child TmjMap data so we don't re-fetch on every hover re-render.
+  const childMapCacheRef = useRef<Map<string, import('../types/tmj').TmjMap>>(new Map());
+
   // --------------------------------------------------------------------------
   // Render
   // --------------------------------------------------------------------------
@@ -90,11 +98,59 @@ export const MapCanvas: React.FC = () => {
         store.mapData,
         view,
         hoveredFootprint,
+        footprintMap,
       );
     } else {
       renderedFootprintsRef.current = [];
     }
-  }, [store.mapData, store.zoom, store.pan, store.showGrid, hoveredFootprint, worldSetStore, mapName]);
+  }, [store.mapData, store.zoom, store.pan, store.showGrid, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+
+  // Fetch child map data and pre-compute footprints whenever the children or
+  // parent feetPerUnit changes. Results are cached so navigation doesn't re-fetch.
+  useEffect(() => {
+    const parentFPU = store.mapData?.feetPerUnit;
+    if (!mapName || !parentFPU) {
+      setFootprintMap(new Map());
+      return;
+    }
+    const children = worldSetStore.childrenOf(mapName).filter((c) => c.parentAnchor !== null);
+    if (children.length === 0) {
+      setFootprintMap(new Map());
+      return;
+    }
+
+    const toFetch = children.filter((c) => !childMapCacheRef.current.has(c.mapName));
+    let cancelled = false;
+
+    const buildMap = () => {
+      if (cancelled) return;
+      const fp = new Map<string, Footprint>();
+      for (const child of children) {
+        if (!child.parentAnchor) continue;
+        const data = childMapCacheRef.current.get(child.mapName);
+        if (!data?.feetPerUnit) continue;
+        fp.set(child.mapName, computeFootprint(
+          data.width, data.height, data.feetPerUnit, parentFPU, child.parentAnchor,
+        ));
+      }
+      setFootprintMap(fp);
+    };
+
+    if (toFetch.length === 0) {
+      buildMap();
+      return;
+    }
+
+    Promise.all(toFetch.map((c) => getMap(c.mapName).then((d) => [c.mapName, d] as const)))
+      .then((entries) => {
+        if (cancelled) return;
+        for (const [name, data] of entries) childMapCacheRef.current.set(name, data);
+        buildMap();
+      })
+      .catch(() => { if (!cancelled) setFootprintMap(new Map()); });
+
+    return () => { cancelled = true; };
+  }, [mapName, worldSetStore, store.mapData?.feetPerUnit]);
 
   useEffect(() => {
     // Resize canvas to fill its container

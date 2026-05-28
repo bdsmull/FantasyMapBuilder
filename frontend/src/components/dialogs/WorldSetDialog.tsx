@@ -27,9 +27,22 @@ interface Props {
    * disabled (identity is fixed), and submit calls updateNode() instead of addNode().
    */
   initialMapName?: string;
+  /** Pre-seed anchor col/row from a canvas right-click cell (Plan 7-02). */
+  initialAnchor?: { col: number; row: number };
+  /** When true, hides (not disables) the Parent field in configure view (Plan 7-02). */
+  hideParent?: boolean;
+  /**
+   * When provided, renders a "Create new map…" button in configure view.
+   * The callback receives a function the caller uses to supply the new map name
+   * back to this dialog via handleMapSelect.
+   */
+  onRequestNewMap?: (onCreated: (name: string) => void) => void;
 }
 
-export const WorldSetDialog: React.FC<Props> = ({ onClose, initialView, initialParentMapName, initialMapName }) => {
+export const WorldSetDialog: React.FC<Props> = ({
+  onClose, initialView, initialParentMapName, initialMapName,
+  initialAnchor, hideParent, onRequestNewMap,
+}) => {
   type View = 'list' | 'nodes' | 'configure';
   const [view, setView] = useState<View>(initialView ?? 'list');
   const [worldSets, setWorldSets] = useState<string[]>([]);
@@ -49,8 +62,8 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose, initialView, initialP
   const [parentMapName, setParentMapName] = useState<string | null>(
     initialParentMapName ?? null,
   );
-  const [anchorCol, setAnchorCol] = useState(0);
-  const [anchorRow, setAnchorRow] = useState(0);
+  const [anchorCol, setAnchorCol] = useState(initialAnchor?.col ?? 0);
+  const [anchorRow, setAnchorRow] = useState(initialAnchor?.row ?? 0);
   const [z, setZ] = useState(0);
   const [zLabel, setZLabel] = useState('');
   const [chosenScale, setChosenScale] = useState('building');
@@ -506,6 +519,18 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose, initialView, initialP
               </select>
             </div>
 
+            {onRequestNewMap && !initialMapName && (
+              <div className="dialog-row">
+                <button
+                  className="btn-secondary"
+                  onClick={() => onRequestNewMap((name) => handleMapSelect(name))}
+                  disabled={loading}
+                >
+                  Create new map…
+                </button>
+              </div>
+            )}
+
             {needsScale && (
               <div className="dialog-row">
                 <label>Scale</label>
@@ -527,21 +552,23 @@ export const WorldSetDialog: React.FC<Props> = ({ onClose, initialView, initialP
               </div>
             )}
 
-            <div className="dialog-row">
-              <label>Parent</label>
-              <select
-                value={parentMapName ?? ''}
-                onChange={(e) => setParentMapName(e.target.value || null)}
-                disabled={loading}
-              >
-                <option value="">None (root)</option>
-                {(activeWorldSet?.nodes ?? [])
-                  .filter((n) => n.mapName !== selectedMap)
-                  .map((n) => (
-                    <option key={n.mapName} value={n.mapName}>{n.mapName}</option>
-                  ))}
-              </select>
-            </div>
+            {!hideParent && (
+              <div className="dialog-row">
+                <label>Parent</label>
+                <select
+                  value={parentMapName ?? ''}
+                  onChange={(e) => setParentMapName(e.target.value || null)}
+                  disabled={loading}
+                >
+                  <option value="">None (root)</option>
+                  {(activeWorldSet?.nodes ?? [])
+                    .filter((n) => n.mapName !== selectedMap)
+                    .map((n) => (
+                      <option key={n.mapName} value={n.mapName}>{n.mapName}</option>
+                    ))}
+                </select>
+              </div>
+            )}
 
             {parentMapName !== null && (
               <>

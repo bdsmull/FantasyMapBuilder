@@ -16,6 +16,8 @@ export interface OpenWorldSetDialogArgs {
   initialView?: 'list' | 'nodes' | 'configure';
   initialParentMapName?: string | null;
   initialMapName?: string;
+  initialAnchor?: { col: number; row: number };
+  hideParent?: boolean;
 }
 
 interface Props {

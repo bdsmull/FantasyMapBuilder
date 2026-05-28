@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-05-25T22:03:55.706Z"
-last_activity: 2026-05-23
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-05-28T12:59:40.510Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 10
   completed_phases: 6
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
   percent: 10
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** A seamless, hierarchical map system where a GM can click from a world map down to a dungeon room and back, with every level of geography connected and browsable.
-**Current focus:** Phase 06 — canvas-integration
+**Current focus:** Phase 07 — context-menu
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
+Phase: 07 (context-menu) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-23
+Last activity: 2026-05-28
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -70,6 +70,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 06-canvas-integration P01 | 2 | 2 tasks | 2 files |
 | Phase 06-canvas-integration P03 | 5 | 1 tasks | 1 files |
 | Phase 06-canvas-integration P02 | 5 | 1 tasks | 1 files |
+| Phase 07-context-menu P01 | 4 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Recent decisions affecting current work:
 - [Phase 06-canvas-integration]: isPlaceholder = !precomputed || !parentMap.feetPerUnit — covers both missing child data and missing parent scale
 - [Phase 06-canvas-integration]: StatusBar breadcrumb uses React fragment so dirty-guard modal renders as backdrop sibling outside .status-bar div
 - [Phase 06-canvas-integration]: JSX wrapped in React fragment to allow sibling overlay elements (tooltip, picker, modal) alongside canvas element
+- [Phase 07-context-menu]: useState initial value (not useEffect) used for anchorCol/anchorRow seeding — dialog remounts via key increment
+- [Phase 07-context-menu]: pendingNewMapCreatedRef uses useRef in App.tsx to broker NewMapDialog chain without cross-dialog imports
 
 ### Pending Todos
 
@@ -133,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-25T22:03:55.684Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-context-menu/07-CONTEXT.md
+Last session: 2026-05-28T12:59:40.496Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None

@@ -121,7 +121,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. The mini-dialog that opens has the anchor pre-filled from the right-clicked cell; the user can pick an existing map or indicate a new one, and set Z and optional label
   3. If the selected map has no `feetPerUnit`, the dialog includes a scale picker that writes `feetPerUnit` back to the map before adding the node to the world set
 **Plans**: 3 plans
-  - [ ] 07-01-PLAN.md — WorldSetDialog/NewMapDialog prop extensions + App.tsx chain wiring (CTX-02, CTX-03, CTX-04)
+  - [x] 07-01-PLAN.md — WorldSetDialog/NewMapDialog prop extensions + App.tsx chain wiring (CTX-02, CTX-03, CTX-04)
   - [ ] 07-02-PLAN.md — MapCanvas right-click handler + context menu overlay + App.css styles (CTX-01, CTX-02, CTX-03)
   - [ ] 07-03-PLAN.md — Vitest coverage: canvasContextMenu.test.ts + worldSetDialog Phase 7 contracts (CTX-01..CTX-04)
 **UI hint**: yes
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Management Dialog | 2/3 | In Progress|  |
 | 5. Hierarchy Panel | 3/4 | In Progress|  |
 | 6. Canvas Integration | 3/4 | In Progress|  |
-| 7. Context Menu | 0/3 | Not started | - |
+| 7. Context Menu | 1/3 | In Progress|  |
 
 ## Backlog
 
@@ -147,7 +147,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 **Goal:** Fix the ▾ (expand) toggle rendering as a tiny dot compared to ▶ (collapse) — likely a font-size or line-height issue on `.hierarchy-toggle` causing the down-pointing character to render at a different visual weight.
 **Requirements:** TBD
-**Plans:** 3/4 plans executed
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)

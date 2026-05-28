@@ -123,7 +123,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
   - [x] 07-01-PLAN.md — WorldSetDialog/NewMapDialog prop extensions + App.tsx chain wiring (CTX-02, CTX-03, CTX-04)
   - [x] 07-02-PLAN.md — MapCanvas right-click handler + context menu overlay + App.css styles (CTX-01, CTX-02, CTX-03)
-  - [ ] 07-03-PLAN.md — Vitest coverage: canvasContextMenu.test.ts + worldSetDialog Phase 7 contracts (CTX-01..CTX-04)
+  - [x] 07-03-PLAN.md — Vitest coverage: canvasContextMenu.test.ts + worldSetDialog Phase 7 contracts (CTX-01..CTX-04)
 **UI hint**: yes
 
 ## Progress

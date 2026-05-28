@@ -50,18 +50,21 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 - ✓ Map list shows each map's scale (`feetPerUnit`); maps with no scale show "No scale set — click to set" inline picker
 - ✓ "World Sets…" item in `MenuBar.tsx`; dialog wired in `App.tsx`
 
-**World Sets — Phase 5: Hierarchy Panel**
-- [ ] `WorldHierarchyPanel.tsx`: collapsible tree of the active world set; warning badges on nodes with scale/overlap issues; click to navigate (with dirty-map guard); context menu: Add child here, Remove from world set, Change parent
-- [ ] Panel integrated into left panel layout in `App.tsx` (below LayerPanel)
+**World Sets — Phase 5: Hierarchy Panel** *(Validated in Phase 5 — 2026-05-10)*
+- ✓ `WorldHierarchyPanel.tsx`: collapsible tree of the active world set; warning badges on nodes with scale/overlap issues; click to navigate (with dirty-map guard)
+- ✓ Panel integrated into left panel layout in `App.tsx` (below LayerPanel); collapsible toggle button
 
-**World Sets — Phase 6: Canvas Integration**
-- [ ] `worldSetOverlay.ts`: renders child footprint outlines on the canvas; labels each footprint with child map name; highlights on hover; placeholder footprint (1×1 with `?` label, warning color) for children with no `feetPerUnit`
-- [ ] `MapCanvas.tsx` draws overlay; pointer events on footprints: click → navigate (with dirty-map guard), hover → tooltip
-- [ ] Parent breadcrumb in `StatusBar.tsx`; clicking it navigates to parent map
+**World Sets — Phase 6: Canvas Integration** *(Validated in Phase 6 — 2026-05-22)*
+- ✓ `worldSetOverlay.ts`: renders child footprint outlines on the canvas; labels each footprint with child map name; placeholder footprint for children with no `feetPerUnit`
+- ✓ `MapCanvas.tsx` draws overlay; pointer events on footprints: click → navigate (with dirty-map guard), hover → tooltip
+- ✓ Parent breadcrumb in `StatusBar.tsx`; clicking it navigates to parent map
 
-**World Sets — Phase 7: "Add Child Here" Context Menu**
-- [ ] Right-click context menu on `MapCanvas.tsx` when a world set is active
-- [ ] "Add child map here" mini-dialog: anchor pre-filled from clicked cell; pick existing map or create new; set Z, optional label; scale picker (writes `feetPerUnit` to map if not set)
+**World Sets — Phase 7: "Add Child Here" Context Menu** *(Validated in Phase 7 — 2026-05-28)*
+- ✓ Right-click context menu on `MapCanvas.tsx` when a world set is active (CTX-01 gate logic)
+- ✓ Context menu anchor pre-fills `anchorCol`/`anchorRow` in WorldSetDialog (CTX-02)
+- ✓ `hideParent` and `initialAnchor` props on WorldSetDialog; `onCreated` callback on NewMapDialog (CTX-03)
+- ✓ "Create new map" chain: NewMapDialog → onCreated → WorldSetDialog with pre-filled anchor, skips loadMap (CTX-04)
+- ✓ 18 new tests across `canvasContextMenu.test.ts` and `worldSetDialog.test.ts`; 152 total tests pass
 
 ### Out of Scope
 
@@ -120,4 +123,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-05 — Phase 4 complete (management-dialog: WorldSetDialog with full CRUD UI, 95 Vitest tests)*
+*Last updated: 2026-05-28 — Phase 7 complete (context-menu: right-click "Add child here" flow, 152 Vitest tests)*

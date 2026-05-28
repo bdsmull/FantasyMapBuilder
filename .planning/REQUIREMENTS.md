@@ -65,7 +65,7 @@
 
 ### Context Menu
 
-- [ ] **CTX-01**: Right-clicking the canvas when a world set is active shows a context menu
+- [x] **CTX-01**: Right-clicking the canvas when a world set is active shows a context menu
 - [x] **CTX-02**: "Add child map here" option pre-fills anchor from the clicked cell
 - [x] **CTX-03**: Mini-dialog lets user pick an existing map (or create new) and set Z + optional label
 - [x] **CTX-04**: If the selected map has no `feetPerUnit`, the dialog includes a scale picker that writes `feetPerUnit` back to the map before adding the node
@@ -131,7 +131,7 @@
 | CANVAS-04 | Phase 6 — Canvas Integration | Complete |
 | CANVAS-05 | Phase 6 — Canvas Integration | Complete |
 | CANVAS-06 | Phase 6 — Canvas Integration | Complete |
-| CTX-01 | Phase 7 — Context Menu | Pending |
+| CTX-01 | Phase 7 — Context Menu | Complete |
 | CTX-02 | Phase 7 — Context Menu | Complete |
 | CTX-03 | Phase 7 — Context Menu | Complete |
 | CTX-04 | Phase 7 — Context Menu | Complete |

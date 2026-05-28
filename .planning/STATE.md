@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-05-28T12:59:40.510Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-05-28T13:05:00.663Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 10
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 07 (context-menu) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -71,6 +71,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 06-canvas-integration P03 | 5 | 1 tasks | 1 files |
 | Phase 06-canvas-integration P02 | 5 | 1 tasks | 1 files |
 | Phase 07-context-menu P01 | 4 | 2 tasks | 5 files |
+| Phase 07-context-menu P02 | 6 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,8 @@ Recent decisions affecting current work:
 - [Phase 06-canvas-integration]: JSX wrapped in React fragment to allow sibling overlay elements (tooltip, picker, modal) alongside canvas element
 - [Phase 07-context-menu]: useState initial value (not useEffect) used for anchorCol/anchorRow seeding — dialog remounts via key increment
 - [Phase 07-context-menu]: pendingNewMapCreatedRef uses useRef in App.tsx to broker NewMapDialog chain without cross-dialog imports
+- [Phase 07-context-menu]: mousedown (not pointerdown) for context menu dismiss — avoids conflict with MapCanvas onPointerDown handler
+- [Phase 07-context-menu]: setTimeout delay on dismiss registration — prevents opening right-click from immediately dismissing the context menu
 
 ### Pending Todos
 
@@ -136,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T12:59:40.496Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-05-28T13:05:00.657Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

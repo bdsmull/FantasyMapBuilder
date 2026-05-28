@@ -5,7 +5,7 @@
  * CTX-02: "Add child map here" pre-fills anchor from clicked tile coordinates
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { WORLD_SET_VERSION } from '../types/worldSet';
 

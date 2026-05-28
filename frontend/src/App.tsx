@@ -26,6 +26,7 @@ export const App: React.FC = () => {
   const leftPanelRef = useRef<HTMLElement>(null);
   const [worldSetDialogArgs, setWorldSetDialogArgs] = useState<OpenWorldSetDialogArgs>({});
   const [worldSetDialogKey, setWorldSetDialogKey] = useState<number>(0);
+  const pendingNewMapCreatedRef = useRef<((name: string) => void) | null>(null);
   const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
 
   const toggleLeftPanel = useCallback(() => {
@@ -36,6 +37,11 @@ export const App: React.FC = () => {
     setWorldSetDialogArgs(args);
     setWorldSetDialogKey((k) => k + 1); // force remount so useState seeds re-init (Pitfall 5)
     setActiveDialog('worldSets');
+  }, []);
+
+  const handleRequestNewMap = useCallback((onCreated: (name: string) => void) => {
+    pendingNewMapCreatedRef.current = onCreated;
+    setActiveDialog('new');
   }, []);
 
   const handleResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -148,7 +154,15 @@ export const App: React.FC = () => {
       </div>
       <StatusBar />
 
-      {activeDialog === 'new' && <NewMapDialog onClose={() => setActiveDialog(null)} />}
+      {activeDialog === 'new' && (
+        <NewMapDialog
+          onClose={() => {
+            pendingNewMapCreatedRef.current = null;
+            setActiveDialog(null);
+          }}
+          onCreated={pendingNewMapCreatedRef.current ?? undefined}
+        />
+      )}
       {activeDialog === 'open' && <OpenMapDialog onClose={() => setActiveDialog(null)} />}
       {activeDialog === 'tilesets' && mapData && <TilesetDialog onClose={() => setActiveDialog(null)} />}
       {activeDialog === 'worldSets' && (
@@ -158,6 +172,9 @@ export const App: React.FC = () => {
           initialView={worldSetDialogArgs.initialView}
           initialParentMapName={worldSetDialogArgs.initialParentMapName}
           initialMapName={worldSetDialogArgs.initialMapName}
+          initialAnchor={worldSetDialogArgs.initialAnchor}
+          hideParent={worldSetDialogArgs.hideParent}
+          onRequestNewMap={handleRequestNewMap}
         />
       )}
       {activeDialog === 'mapProperties' && mapData && (

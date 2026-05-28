@@ -7,9 +7,11 @@ import { MAP_SCALES, MAP_SCALE_BY_ID } from '../../data/mapScales';
 
 interface Props {
   onClose: () => void;
+  /** When provided, called with the new map name instead of loadMap (Plan 7-01 chain context). */
+  onCreated?: (name: string) => void;
 }
 
-export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
+export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
   const [mapType, setMapType] = useState<'tile' | 'hex'>('tile');
   const [scale, setScale] = useState('building');
   const [name, setName] = useState('');
@@ -78,7 +80,11 @@ export const NewMapDialog: React.FC<Props> = ({ onClose }) => {
 
     try {
       await apiSaveMap(name.trim(), mapData);
-      loadMap(mapData, name.trim());
+      if (onCreated) {
+        onCreated(name.trim()); // signal caller with new map name; skip loadMap in chain context
+      } else {
+        loadMap(mapData, name.trim()); // standard standalone flow
+      }
       onClose();
     } catch (e) {
       setError(String(e));

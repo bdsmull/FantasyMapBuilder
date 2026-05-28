@@ -350,7 +350,28 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     }
 
     if (e.button === 2 || (e.pointerType === 'touch' && e.buttons === 2)) {
-      // Right-click or secondary touch
+      // Phase 7: world-set context menu gate (D-01)
+      const isCurrentMapInWorldSet =
+        !!worldSetStore.activeWorldSetName &&
+        !!worldSetStore.activeWorldSet?.nodes.find((n) => n.mapName === mapName);
+
+      if (isCurrentMapInWorldSet && store.mapData && tile) {
+        const canvasPt = getCanvasPoint(e.nativeEvent);
+        const hits = footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);
+        // Dismiss picker first to avoid z-index conflict
+        setPickerPos(null);
+        setPickerCandidates([]);
+        setCanvasCtxMenu({
+          x: e.clientX,
+          y: e.clientY,
+          col: tile.col,
+          row: tile.row,
+          footprintMapName: hits.length > 0 ? hits[0] : undefined,
+        });
+        return; // gate passed — do NOT dispatch to tool
+      }
+
+      // Gate failed — existing behavior
       const tool = TOOLS[store.selectedTool];
       tool.onRightPress?.(tile.col, tile.row, store);
       return;
@@ -545,6 +566,60 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Canvas right-click context menu (Phase 7) */}
+      {canvasCtxMenu !== null && (
+        <ul
+          ref={ctxMenuRef}
+          className="canvas-ctx-menu"
+          role="menu"
+          style={{ left: canvasCtxMenu.x, top: canvasCtxMenu.y }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <li
+            role="menuitem"
+            onClick={() => {
+              setCanvasCtxMenu(null);
+              props.onOpenWorldSetDialog({
+                initialView: 'configure',
+                initialParentMapName: mapName,
+                initialAnchor: { col: canvasCtxMenu.col, row: canvasCtxMenu.row },
+                hideParent: true,
+              });
+            }}
+          >
+            Add child map here
+          </li>
+          {canvasCtxMenu.footprintMapName && (
+            <>
+              <li role="separator" className="separator" />
+              <li
+                role="menuitem"
+                onClick={() => {
+                  const fp = canvasCtxMenu.footprintMapName!;
+                  setCanvasCtxMenu(null);
+                  props.onOpenWorldSetDialog({ initialView: 'configure', initialMapName: fp });
+                }}
+              >
+                Edit {canvasCtxMenu.footprintMapName}…
+              </li>
+              <li
+                role="menuitem"
+                className="danger"
+                onClick={async () => {
+                  const fp = canvasCtxMenu.footprintMapName!;
+                  setCanvasCtxMenu(null);
+                  worldSetStore.removeNode(fp);
+                  await worldSetStore.saveWorldSet();
+                }}
+              >
+                Remove {canvasCtxMenu.footprintMapName} from world set
+              </li>
+            </>
+          )}
+        </ul>
       )}
     </>
   );

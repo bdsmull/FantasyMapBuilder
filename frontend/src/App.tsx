@@ -137,7 +137,7 @@ export const App: React.FC = () => {
           </div>
         </aside>
         <main className="canvas-area">
-          <MapCanvas />
+          <MapCanvas onOpenWorldSetDialog={handleOpenWorldSetDialog} />
           {!mapData && (
             <div className="canvas-placeholder">
               <div>

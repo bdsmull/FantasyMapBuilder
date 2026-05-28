@@ -25,6 +25,7 @@ import { useWorldSetStore } from '../store/worldSetStore';
 import { navigateToMap } from '../utils/navigation';
 import { getMap } from '../api/client';
 import { MAP_SCALE_BY_ID } from '../data/mapScales';
+import type { OpenWorldSetDialogArgs } from './WorldHierarchyPanel';
 
 const TOOLS: Record<string, Tool> = {
   paint: paintTool,
@@ -37,7 +38,11 @@ const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 16;
 const ZOOM_STEP = 1.2;
 
-export const MapCanvas: React.FC = () => {
+interface MapCanvasProps {
+  onOpenWorldSetDialog: (args: OpenWorldSetDialogArgs) => void;
+}
+
+export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const store = useMapStore();
   const activePointers = useRef<Map<number, PointerEvent>>(new Map());
@@ -61,6 +66,17 @@ export const MapCanvas: React.FC = () => {
   const pickerRef = useRef<HTMLUListElement>(null);
   // Dirty-map guard modal state
   const [dirtyGuardTarget, setDirtyGuardTarget] = useState<string | null>(null);
+
+  // Canvas right-click context menu (Phase 7)
+  type CanvasCtxMenuState = {
+    x: number;
+    y: number;
+    col: number;
+    row: number;
+    footprintMapName?: string;
+  } | null;
+  const [canvasCtxMenu, setCanvasCtxMenu] = useState<CanvasCtxMenuState>(null);
+  const ctxMenuRef = useRef<HTMLUListElement>(null);
 
   // Pre-computed footprint map: child mapName → tile-space Footprint on the parent grid.
   // Rebuilt whenever the children list or parent feetPerUnit changes.
@@ -197,6 +213,22 @@ export const MapCanvas: React.FC = () => {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [pickerPos]);
+
+  // Dismiss canvas context menu on outside mousedown or Escape
+  useEffect(() => {
+    if (!canvasCtxMenu) return;
+    const onMouseDown = () => setCanvasCtxMenu(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCanvasCtxMenu(null); };
+    const t = setTimeout(() => {
+      document.addEventListener('mousedown', onMouseDown);
+      document.addEventListener('keydown', onKey);
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [canvasCtxMenu]);
 
   // --------------------------------------------------------------------------
   // Coordinate helpers

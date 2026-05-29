@@ -38,9 +38,9 @@ export interface HexRenderOptions {
 // Hex geometry
 // ---------------------------------------------------------------------------
 
-type HexOrientation = 'flat' | 'pointy';
+export type HexOrientation = 'flat' | 'pointy';
 
-function hexOrientation(map: TmjMap): HexOrientation {
+export function hexOrientation(map: TmjMap): HexOrientation {
   return map.staggeraxis === 'x' ? 'flat' : 'pointy';
 }
 
@@ -67,7 +67,7 @@ function hexCorners(
  * Pixel centre of hex cell (col, row).
  * Mirrors HexMap.hex_center() / HexMap.hex_to_pixel() in hex_map.py.
  */
-function hexCenter(
+export function hexCenter(
   col: number,
   row: number,
   hexSize: number,

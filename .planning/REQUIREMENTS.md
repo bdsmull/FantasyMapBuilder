@@ -41,16 +41,24 @@
 
 ## Traceability
 
-*(Populated by roadmapper)*
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| BUG-01 | Phase 8 | Pending |
+| BUG-02 | Phase 8 | Pending |
+| BUG-03 | Phase 8 | Pending |
+| POL-01 | Phase 9 | Pending |
+| POL-02 | Phase 9 | Pending |
+| POL-03 | Phase 9 | Pending |
+| VIS-01 | Phase 10 | Pending |
+| VIS-02 | Phase 10 | Pending |
+| DEBT-01 | Phase 11 | Pending |
+| DEBT-02 | Phase 11 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 ⚠️
+- Mapped to phases: 10
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-30*
-*Last updated: 2026-05-30 — initial v1.1 definition*
+*Last updated: 2026-05-30 — traceability populated by roadmapper*

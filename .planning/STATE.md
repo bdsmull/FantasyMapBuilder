@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Fixes
-status: planning
-stopped_at: Milestone v1.1 started
+status: roadmapped
+stopped_at: Roadmap created — ready to plan Phase 8
 last_updated: "2026-05-30T00:00:00.000Z"
 last_activity: 2026-05-30
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,20 +18,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-06)
+See: .planning/PROJECT.md (updated 2026-05-30)
 
 **Core value:** A seamless, hierarchical map system where a GM can click from a world map down to a dungeon room and back, with every level of geography connected and browsable.
 **Current focus:** v1.1 — Polish & Fixes
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 8 — Bug Fixes (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-30 — Milestone v1.1 started
-Last activity: 2026-05-30
+Status: Roadmap created; ready to plan Phase 8
+Last activity: 2026-05-30 — v1.1 roadmap created
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -126,12 +125,11 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-- Known: `object-add` redo is silently broken (TODO in `mapStore.ts:349`) — does not block World Sets work
-- Known: `removeTileset()` mutates store state directly — does not block World Sets work
+None — all known blockers are the v1.1 requirements themselves.
 
 ### Quick Tasks Completed
 
@@ -143,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T13:11:00.135Z
-Stopped at: Completed 07-03-PLAN.md
+Last session: 2026-05-30
+Stopped at: v1.1 roadmap created
 Resume file: None

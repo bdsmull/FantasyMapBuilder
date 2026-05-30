@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-05-28T13:14:06.657Z"
-last_activity: 2026-05-28
+milestone: v1.1
+milestone_name: Polish & Fixes
+status: planning
+stopped_at: Milestone v1.1 started
+last_updated: "2026-05-30T00:00:00.000Z"
+last_activity: 2026-05-30
 progress:
-  total_phases: 10
-  completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
-  percent: 10
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** A seamless, hierarchical map system where a GM can click from a world map down to a dungeon room and back, with every level of geography connected and browsable.
-**Current focus:** Phase 07 — context-menu
+**Current focus:** v1.1 — Polish & Fixes
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-28
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-30 — Milestone v1.1 started
+Last activity: 2026-05-30
 
 Progress: [█░░░░░░░░░] 10%
 

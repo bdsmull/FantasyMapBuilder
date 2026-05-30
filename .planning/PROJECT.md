@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A web-based tile map editor for fantasy RPG worldbuilding, accessible from desktop and tablet (iPad) on a local network. Users create and edit tile maps and hex maps at different geographic scales — from individual rooms up to world maps — and link them into a navigable hierarchy called a World Set.
+A web-based tile map editor for fantasy RPG worldbuilding, accessible from desktop and tablet (iPad) on a local network. Users create and edit tile maps and hex maps at different geographic scales — from individual rooms up to world maps — and link them into a navigable hierarchy called a World Set. The GM can click from a world map down to a dungeon room and back, with every level of geography connected and browsable.
 
 ## Core Value
 
@@ -12,6 +12,7 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 
 ### Validated
 
+**Core editing (pre-v1.0 — existing at v1.0 start):**
 - ✓ Create, open, save, and delete maps in Tiled TMJ format — existing
 - ✓ Upload and download `.tmj` map files — existing
 - ✓ Paint, erase, and flood-fill tiles on tile and hex maps — existing
@@ -24,63 +25,40 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 - ✓ Map scale presets (Room → World, 8 levels) stored per map — existing
 - ✓ FastAPI backend serving maps + tileset images; React SPA frontend — existing
 
+**World Sets (v1.0):**
+- ✓ `WorldSetNode` and `WorldSet` TypeScript types; `.worldset.json` file format — v1.0
+- ✓ `TmjMap.feetPerUnit` for scale-aware footprint computation; all 8 presets updated — v1.0
+- ✓ `computeFootprint` and `detectOverlaps` pure utilities — v1.0
+- ✓ World set REST API (GET/POST/DELETE `/api/world_sets/{name}`) + Python tests — v1.0
+- ✓ World set client functions (`listWorldSets`, `getWorldSet`, `saveWorldSet`, `deleteWorldSet`) — v1.0
+- ✓ `worldSetStore.ts` with full CRUD actions, invariant enforcement, computed helpers — v1.0
+- ✓ Shared `navigateToMap()` utility with dirty-map guard used by all navigation triggers — v1.0
+- ✓ Management dialog (World Sets…): create/delete world sets, add/remove map nodes, inline scale picker, validation warnings — v1.0
+- ✓ Hierarchy panel: collapsible tree, warning badges, click-to-navigate, node context menu — v1.0
+- ✓ Canvas footprint overlay: child outlines, labels, hover tooltip, click-to-navigate, amber placeholder for unscaled children — v1.0
+- ✓ Status bar parent breadcrumb: shows parent map when current map is a child; click navigates up — v1.0
+- ✓ Canvas right-click context menu: "Add child map here" with anchor pre-fill; scale picker for unscaled maps; "Create new map" chain — v1.0
+
 ### Active
 
-**World Sets — Phase 1: Data Foundation** *(Validated in Phase 1 — 2026-04-20)*
-- ✓ `TmjMap` stores `feetPerUnit: number` (feet per tile/hex cell); populated when a map scale preset is selected
-- ✓ `MapScale` interface has `feetPerUnit`; all 8 presets updated with correct values
-- ✓ `computeFootprint(childWidth, childHeight, childFeetPerUnit, parentFeetPerUnit, anchor)` utility returns bounding `{colMin, colMax, rowMin, rowMax}`
-- ✓ `detectOverlaps(nodes, candidate, maps)` utility returns overlapping node pairs at same Z level
-- ✓ `WorldSetNode` and `WorldSet` TypeScript types defined in `frontend/src/types/worldSet.ts`
-
-**World Sets — Phase 2: Server API** *(Validated in Phase 2 — 2026-04-20)*
-- ✓ `GET/POST/DELETE /api/world_sets/{name}` + `GET /api/world_sets` endpoints in `server/api/world_sets.py`
-- ✓ World set files stored in `world_sets/` directory as `.worldset.json`
-- ✓ World set API functions in `frontend/src/api/client.ts`
-- ✓ Python API tests covering all endpoints (`tests/api/test_world_sets.py`)
-
-**World Sets — Phase 3: Store** *(Validated in Phase 3 — 2026-04-24)*
-- ✓ `worldSetStore.ts` with `activeWorldSetName`, `activeWorldSet`, `setActiveWorldSet()`, `addNode()`, `removeNode()`, `updateNode()`, `saveWorldSet()`
-- ✓ Computed helpers: `childrenOf(mapName)`, `parentOf(mapName)`, `rootNodes()`
-- ✓ Shared `navigateToMap(name, { saveFirst })` utility (handles dirty-map guard + load sequence)
-- ✓ Frontend tests for store actions, footprint utilities, and overlap detection (87 Vitest tests total)
-
-**World Sets — Phase 4: Management Dialog** *(Validated in Phase 4 — 2026-05-05)*
-- ✓ `WorldSetDialog.tsx`: list world sets; create/rename/delete; add/remove map nodes with parent + anchor + Z + scale assignment; inline validation warnings
-- ✓ Map list shows each map's scale (`feetPerUnit`); maps with no scale show "No scale set — click to set" inline picker
-- ✓ "World Sets…" item in `MenuBar.tsx`; dialog wired in `App.tsx`
-
-**World Sets — Phase 5: Hierarchy Panel** *(Validated in Phase 5 — 2026-05-10)*
-- ✓ `WorldHierarchyPanel.tsx`: collapsible tree of the active world set; warning badges on nodes with scale/overlap issues; click to navigate (with dirty-map guard)
-- ✓ Panel integrated into left panel layout in `App.tsx` (below LayerPanel); collapsible toggle button
-
-**World Sets — Phase 6: Canvas Integration** *(Validated in Phase 6 — 2026-05-22)*
-- ✓ `worldSetOverlay.ts`: renders child footprint outlines on the canvas; labels each footprint with child map name; placeholder footprint for children with no `feetPerUnit`
-- ✓ `MapCanvas.tsx` draws overlay; pointer events on footprints: click → navigate (with dirty-map guard), hover → tooltip
-- ✓ Parent breadcrumb in `StatusBar.tsx`; clicking it navigates to parent map
-
-**World Sets — Phase 7: "Add Child Here" Context Menu** *(Validated in Phase 7 — 2026-05-28)*
-- ✓ Right-click context menu on `MapCanvas.tsx` when a world set is active (CTX-01 gate logic)
-- ✓ Context menu anchor pre-fills `anchorCol`/`anchorRow` in WorldSetDialog (CTX-02)
-- ✓ `hideParent` and `initialAnchor` props on WorldSetDialog; `onCreated` callback on NewMapDialog (CTX-03)
-- ✓ "Create new map" chain: NewMapDialog → onCreated → WorldSetDialog with pre-filled anchor, skips loadMap (CTX-04)
-- ✓ 18 new tests across `canvasContextMenu.test.ts` and `worldSetDialog.test.ts`; 152 total tests pass
+*(No active requirements — next milestone not yet defined. Use `/gsd:new-milestone` to start planning.)*
 
 ### Out of Scope
 
-- Map rename endpoint — maps are identified by filename; renaming requires delete + re-upload; world set references update via the "map not found" warning flow
-- Server-side world set validation — invariants (no cycles, no duplicates) are enforced in the frontend store; server is simple CRUD
-- Collaborative/multi-user editing — this is a single-user local tool
-- Cloud storage or remote sync — server binds to LAN only
-- Sub-tile anchor precision for footprints — center-cell anchor only; no fractional positioning
+- Map rename endpoint — maps are identified by filename; renaming requires delete + re-upload; world set references show "map not found" warning
+- Server-side world set validation — invariants enforced in frontend store; server is simple CRUD for a local tool
+- Collaborative/multi-user editing — single-user local tool; no auth, no conflict resolution
+- Cloud storage or remote sync — server binds to LAN only (`0.0.0.0:8000`)
+- Sub-tile anchor precision for footprints — center-cell anchor only; fractional positioning adds complexity with minimal benefit at these scales
+- Hex footprint exact geometry — treated as rectangular for footprint math (accepted approximation)
+- Canvas right-click on iPad — `e.pointerType === 'touch' && e.buttons === 2` does not fire on real iOS; canvas context menu is desktop-only (iPad uses the hierarchy panel context menu)
 
 ## Context
 
-- **Stack:** FastAPI (Python) + React/TypeScript (Vite), maps stored as Tiled-compatible `.tmj` JSON files in `maps/` on disk
-- **Codebase state:** Fully functional web app (migrated from PyQt6 desktop app). All core editing features are working. Phase 2 complete — world_sets REST API, frontend client, 189 Python tests + 52 Vitest tests.
-- **Prior design work:** World Sets feature was fully designed in a planning session (2026-03-31). Design doc at `docs/world-sets-design.md`. During initialization, 6 issues were identified and resolved — see Key Decisions below.
-- **Known issues to address:** `object-add` redo is silently broken (skipped with TODO in `mapStore.ts:349`); `removeTileset()` mutates store state directly. Neither blocks World Sets work.
-- **Target usage:** Single GM on a local network; desktop browser primary, iPad secondary via LAN IP.
+- **Stack:** FastAPI (Python 3.14) + React 18/TypeScript (Vite), maps stored as Tiled-compatible `.tmj` JSON files in `maps/` on disk; world sets as `.worldset.json` in `world_sets/`
+- **Codebase state (v1.0):** ~7,500 TypeScript LOC + ~12,300 Python LOC. 152 Vitest frontend tests + 178 Python backend tests. All World Sets features shipped and verified.
+- **Target usage:** Single GM on a local network; desktop browser primary, iPad secondary via LAN IP
+- **Known tech debt:** `object-add` redo is silently broken (TODO in `mapStore.ts`); `removeTileset()` mutates store state directly; canvas right-click not reachable on iOS touch
 
 ## Constraints
 
@@ -94,16 +72,16 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 
 | Decision | Rationale | Outcome |
 |---|---|---|
-| World set files separate from TMJ | Maps stay Tiled-compatible; world set is a separate concern | — Pending |
-| Flat node list with parent references | Easier to query and update than nested tree; no recursive parsing needed | — Pending |
-| `feetPerUnit` stored on `TmjMap` (not `scaleId` on `WorldSetNode`) | Map is self-describing; supports custom values; no lookup table needed at render time | — Pending |
-| Scale validation is warn-but-allow | GMs know their world; strict enforcement creates friction for creative choices | — Pending |
-| Overlap detection is warn-but-allow | Same reasoning; show persistent badges, don't block | — Pending |
-| Dirty-map guard on all navigation | Silent data loss is worse than an extra click; applies to hierarchy panel, canvas footprint, status bar breadcrumb | — Pending |
-| Cross-store navigation via shared `navigateToMap()` utility | Stores don't import each other; components wire them; utility avoids duplicating save+load sequence | — Pending |
-| `worldSetStore` has explicit `activeWorldSetName` | Multiple world sets possible; UI needs to know which is open; no world set active on startup | — Pending |
-| Maps without `feetPerUnit` show placeholder footprint | Degrade gracefully; prompt to fix rather than silently skip or hard-fail | — Pending |
-| Phase 1 split into 3 phases (Data → Server → Store) | Each phase independently testable; cleaner commit boundaries | — Pending |
+| World set files separate from TMJ | Maps stay Tiled-compatible; world set is a separate concern | ✓ Good — clean separation; maps openable in Tiled editor without modification |
+| Flat node list with parent references | Easier to query and update than nested tree; no recursive parsing needed | ✓ Good — simple to traverse; `childrenOf`/`parentOf`/`rootNodes` helpers cover all UI needs |
+| `feetPerUnit` stored on `TmjMap` (not scaleId on WorldSetNode) | Map is self-describing; supports custom values; no lookup table needed at render time | ✓ Good — worked cleanly across all 7 phases |
+| Scale validation is warn-but-allow | GMs know their world; strict enforcement creates friction for creative choices | ✓ Good — badges in hierarchy panel + warnings in dialog are sufficient |
+| Overlap detection is warn-but-allow | Same reasoning; show persistent badges, don't block | ✓ Good — same as above |
+| Dirty-map guard on all navigation | Silent data loss is worse than an extra click | ✓ Good — single `navigateToMap()` entry point covers hierarchy panel, canvas, breadcrumb consistently |
+| Cross-store navigation via shared `navigateToMap()` utility | Stores don't import each other; utility avoids duplicating save+load sequence | ✓ Good — Phase 3 decision paid off across phases 5, 6, 7 |
+| `worldSetStore` has explicit `activeWorldSetName` | Multiple world sets possible; UI needs to know which is open | ✓ Good — localStorage persistence across reloads works cleanly |
+| Maps without `feetPerUnit` show placeholder footprint | Degrade gracefully; prompt to fix rather than silently skip or hard-fail | ✓ Good — amber 1×1 placeholder with `?` label is clear and non-blocking |
+| Canvas context menu desktop-only (no iOS right-click) | `e.buttons === 2` on touch is non-standard; hierarchy panel context menu covers iPad use case | ✓ Acceptable — iPad users have an alternative path |
 
 ## Evolution
 
@@ -123,4 +101,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-28 — Phase 7 complete (context-menu: right-click "Add child here" flow, 152 Vitest tests)*
+*Last updated: 2026-05-30 — v1.0 World Sets shipped (7 phases, 20 plans, 152 frontend tests, 178 Python tests)*

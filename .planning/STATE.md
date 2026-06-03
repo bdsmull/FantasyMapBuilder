@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Polish & Fixes
-status: roadmapped
-stopped_at: Roadmap created — ready to plan Phase 8
-last_updated: "2026-05-30T00:00:00.000Z"
-last_activity: 2026-05-30
+status: planning
+stopped_at: Phase 8 context gathered
+last_updated: "2026-06-03T13:23:33.554Z"
+last_activity: 2026-05-30 — v1.1 roadmap created
 progress:
   total_phases: 4
   completed_phases: 0
@@ -141,6 +141,6 @@ None — all known blockers are the v1.1 requirements themselves.
 
 ## Session Continuity
 
-Last session: 2026-05-30
-Stopped at: v1.1 roadmap created
-Resume file: None
+Last session: 2026-06-03T13:23:33.550Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-bug-fixes/08-CONTEXT.md

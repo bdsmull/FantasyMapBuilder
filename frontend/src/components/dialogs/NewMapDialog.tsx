@@ -3,7 +3,10 @@ import { useMapStore } from '../../store/mapStore';
 import type { TmjMap } from '../../types/tmj';
 import { saveMap as apiSaveMap } from '../../api/client';
 import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
-import { MAP_SCALES, MAP_SCALE_BY_ID } from '../../data/mapScales';
+import { useWorldSetStore } from '../../store/worldSetStore';
+import { MAP_SCALES, MAP_SCALE_BY_ID, DEFAULT_UNIT_SYSTEM, defaultScaleForShape } from '../../data/mapScales';
+import type { UnitSystem } from '../../data/mapScales';
+import { UnitsSelect } from './UnitsSelect';
 
 interface Props {
   onClose: () => void;
@@ -13,7 +16,11 @@ interface Props {
 
 export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
   const [mapType, setMapType] = useState<'tile' | 'hex'>('tile');
-  const [scale, setScale] = useState('building');
+  // Once the user picks a type explicitly, scale changes stop suggesting one.
+  const [typeChosen, setTypeChosen] = useState(false);
+  const [scale, setScale] = useState(defaultScaleForShape('tile'));
+  const [units, setUnits] = useState<UnitSystem | undefined>(undefined);
+  const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units) ?? DEFAULT_UNIT_SYSTEM;
   const [name, setName] = useState('');
   const [width, setWidth] = useState(20);
   const [height, setHeight] = useState(15);
@@ -32,7 +39,7 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
     const isHex = mapType === 'hex';
     const mapData: TmjMap = {
       scale,
-      feetPerUnit: MAP_SCALE_BY_ID[scale]?.feetPerUnit,
+      ...(units ? { units } : {}),
       tiledversion: '1.10.0',
       version: '1.10',
       type: 'map',
@@ -115,18 +122,23 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
         <div className="dialog-title">New Map</div>
 
         <div className="dialog-row">
+          <label>Units</label>
+          <UnitsSelect value={units} worldSetUnits={worldSetUnits} onChange={setUnits} />
+        </div>
+
+        <div className="dialog-row">
           <label>Scale</label>
           <select
             value={scale}
             onChange={(e) => {
               const id = e.target.value;
               setScale(id);
-              const preset = MAP_SCALES.find((s) => s.id === id);
-              if (preset) setMapType(preset.defaultShape);
+              const preset = MAP_SCALE_BY_ID[id];
+              if (preset && !typeChosen) setMapType(preset.defaultShape);
             }}
           >
             {MAP_SCALES.map((s) => (
-              <option key={s.id} value={s.id}>{s.label} ({s.unit})</option>
+              <option key={s.id} value={s.id}>{s.label} ({s[units ?? worldSetUnits].unit})</option>
             ))}
           </select>
         </div>
@@ -134,8 +146,8 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
         <div className="dialog-row">
           <label>Type</label>
           <div>
-            <label><input type="radio" value="tile" checked={mapType === 'tile'} onChange={() => { setMapType('tile'); setScale('building'); }} /> Tile Map</label>
-            <label style={{ marginLeft: 16 }}><input type="radio" value="hex" checked={mapType === 'hex'} onChange={() => { setMapType('hex'); setScale('town'); }} /> Hex Map</label>
+            <label><input type="radio" value="tile" checked={mapType === 'tile'} onChange={() => { setMapType('tile'); setTypeChosen(true); }} /> Square Map</label>
+            <label style={{ marginLeft: 16 }}><input type="radio" value="hex" checked={mapType === 'hex'} onChange={() => { setMapType('hex'); setTypeChosen(true); }} /> Hex Map</label>
           </div>
         </div>
 

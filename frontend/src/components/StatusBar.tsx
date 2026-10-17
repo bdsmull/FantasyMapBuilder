@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
-import { scaleLabel } from '../data/mapScales';
+import { scaleLabel, resolveUnits } from '../data/mapScales';
 import { navigateToMap } from '../utils/navigation';
 
 export const StatusBar: React.FC = () => {
@@ -47,7 +47,7 @@ export const StatusBar: React.FC = () => {
         </span>
         {mapData.scale && (
           <span className="status-scale">
-            {scaleLabel(mapData.scale)}
+            {scaleLabel(mapData.scale, resolveUnits(mapData, worldSetStore.activeWorldSet?.units))}
           </span>
         )}
         <span className="status-zoom">

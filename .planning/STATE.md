@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-05-28T13:14:06.657Z"
-last_activity: 2026-05-28
+milestone: v1.1
+milestone_name: Polish & Fixes
+status: planning
+stopped_at: Phase 8 context gathered
+last_updated: "2026-06-03T13:23:33.554Z"
+last_activity: 2026-05-30 — v1.1 roadmap created
 progress:
-  total_phases: 10
-  completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
-  percent: 10
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-06)
+See: .planning/PROJECT.md (updated 2026-05-30)
 
 **Core value:** A seamless, hierarchical map system where a GM can click from a world map down to a dungeon room and back, with every level of geography connected and browsable.
-**Current focus:** Phase 07 — context-menu
+**Current focus:** v1.1 — Polish & Fixes
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-28
+Phase: Phase 8 — Bug Fixes (not started)
+Plan: —
+Status: Roadmap created; ready to plan Phase 8
+Last activity: 2026-05-30 — v1.1 roadmap created
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -125,12 +125,11 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-- Known: `object-add` redo is silently broken (TODO in `mapStore.ts:349`) — does not block World Sets work
-- Known: `removeTileset()` mutates store state directly — does not block World Sets work
+None — all known blockers are the v1.1 requirements themselves.
 
 ### Quick Tasks Completed
 
@@ -142,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T13:11:00.135Z
-Stopped at: Completed 07-03-PLAN.md
-Resume file: None
+Last session: 2026-06-03T13:23:33.550Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-bug-fixes/08-CONTEXT.md

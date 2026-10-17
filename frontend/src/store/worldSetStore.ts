@@ -45,6 +45,8 @@ export interface WorldSetStore {
     mapName: string,
     changes: Partial<Pick<WorldSetNode, 'parentAnchor' | 'z' | 'zLabel'>>,
   ) => void;
+  /** Set the default unit system for maps in this world set that don't set their own. */
+  setUnits: (units: 'metric' | 'imperial') => void;
 
   // ---- Computed helpers ----
   childrenOf: (mapName: string) => WorldSetNode[];
@@ -148,7 +150,7 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
     const warnings: string[] = [];
 
     // Same-Z overlap: compare candidate footprint to existing siblings at same parent+z.
-    // The store has no access to per-map feetPerUnit / dimensions; it treats every
+    // The store has no access to per-map cell size / dimensions; it treats every
     // node as a 1x1 anchor footprint for the purposes of this warning. Higher-level
     // callers (management dialog in Phase 4) may supply richer data using
     // computeFootprint directly before calling addNode.
@@ -222,6 +224,12 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
     const newNodes = [...activeWorldSet.nodes];
     newNodes[idx] = patched;
     set({ activeWorldSet: { ...activeWorldSet, nodes: newNodes } });
+  },
+
+  setUnits: (units) => {
+    const { activeWorldSet } = get();
+    if (!activeWorldSet) return;
+    set({ activeWorldSet: { ...activeWorldSet, units } });
   },
 
   // ---- Computed helpers ----

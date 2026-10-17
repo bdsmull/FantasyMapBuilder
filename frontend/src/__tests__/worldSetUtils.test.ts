@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeFootprint, detectOverlaps, FootprintedNode } from '../utils/worldSetUtils';
+import { MAP_SCALES, scaleMetersPerUnit } from '../data/mapScales';
+import type { MapScale, UnitSystem } from '../data/mapScales';
 
 describe('computeFootprint', () => {
   it('odd x odd footprint is symmetric around anchor', () => {
@@ -127,5 +129,33 @@ describe('detectOverlaps', () => {
       { mapName: 'a', z: 0, footprint: { colMin: 0, colMax: 3, rowMin: 0, rowMax: 3 } },
     ];
     expect(detectOverlaps(nodes)).toEqual([]);
+  });
+});
+
+describe('computeFootprint precision across all scale presets', () => {
+  // Exact cell sizes as integers in 0.1 mm (1 m = 10000, 1 ft = 3048), so the
+  // expected ceil can be computed without floating point.
+  const exactSize = (s: MapScale, u: UnitSystem): bigint =>
+    u === 'metric' ? BigInt(s.metric.metersPerUnit) * 10000n : BigInt(s.imperial.feetPerUnit) * 3048n;
+
+  it('matches exact integer arithmetic for every child/parent pair, widths 1–500', () => {
+    const levels = MAP_SCALES.flatMap((s) => (['metric', 'imperial'] as const).map((u) => ({ s, u })));
+    const mismatches: string[] = [];
+    for (const c of levels) {
+      for (const p of levels) {
+        const cExact = exactSize(c.s, c.u);
+        const pExact = exactSize(p.s, p.u);
+        if (cExact >= pExact) continue;
+        const cSize = scaleMetersPerUnit(c.s, c.u);
+        const pSize = scaleMetersPerUnit(p.s, p.u);
+        for (let w = 1; w <= 500; w++) {
+          const expected = Number((BigInt(w) * cExact + pExact - 1n) / pExact);
+          const fp = computeFootprint(w, 1, cSize, pSize, { col: 0, row: 0 });
+          const cols = fp.colMax - fp.colMin + 1;
+          if (cols !== expected) mismatches.push(`${w}×${c.s.id}/${c.u} on ${p.s.id}/${p.u}: ${cols} ≠ ${expected}`);
+        }
+      }
+    }
+    expect(mismatches.slice(0, 5)).toEqual([]);
   });
 });

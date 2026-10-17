@@ -169,3 +169,28 @@ describe('redo', () => {
     expect(getStore().future).toHaveLength(0);
   });
 });
+
+describe('setMapScale', () => {
+  it('sets scale and unit override, dropping any custom metersPerUnit', () => {
+    getStore().loadMap({ ...makeMap(), metersPerUnit: 30, scale: 'old' }, 'test');
+    getStore().setMapScale('province', 'imperial');
+    const md = getStore().mapData!;
+    expect(md.scale).toBe('province');
+    expect(md.units).toBe('imperial');
+    expect(md.metersPerUnit).toBeUndefined();
+    expect(getStore().isDirty).toBe(true);
+  });
+
+  it('clears the unit override when units is undefined (inherit from world set)', () => {
+    getStore().loadMap({ ...makeMap(), scale: 'town', units: 'imperial' }, 'test');
+    getStore().setMapScale('city');
+    expect(getStore().mapData!.units).toBeUndefined();
+    expect('units' in getStore().mapData!).toBe(false);
+  });
+
+  it('ignores unknown scale ids', () => {
+    getStore().loadMap(makeMap(), 'test');
+    getStore().setMapScale('building');
+    expect(getStore().mapData!.scale).toBeUndefined();
+  });
+});

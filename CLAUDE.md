@@ -11,7 +11,7 @@ A web-based tile map editor for fantasy RPG worldbuilding, accessible from deskt
 
 - **Tech stack:** FastAPI + React/TypeScript — no new frameworks; extend existing patterns
 - **Data format:** Tiled TMJ JSON — world set files are a companion format (`.worldset.json`), maps stay clean
-- **Backward compatibility:** Existing maps without `feetPerUnit` must load and work; World Set overlay degrades gracefully (placeholder footprint + prompt)
+- **Backward compatibility:** Existing maps without a scale (`scale` / `metersPerUnit`) must load and work; World Set overlay degrades gracefully (placeholder footprint + prompt)
 - **No database:** File-based storage only; world sets live in `world_sets/` alongside `maps/`
 - **Local LAN only:** CORS open, no auth needed; not designed for internet exposure
 <!-- GSD:project-end -->

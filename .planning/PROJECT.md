@@ -41,7 +41,20 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 
 ### Active
 
-*(No active requirements — next milestone not yet defined. Use `/gsd:new-milestone` to start planning.)*
+**Bug fixes (v1.1):**
+- [ ] Map Properties scale picker filtered by map type (GitHub #1)
+- [ ] World Set warning icon clears after fixing map scale (GitHub #2)
+- [ ] Hex child footprint outline uses hex boundary geometry (GitHub #3)
+- [ ] View menu toggles for all 4 panels, persisted to localStorage (GitHub #4)
+
+**Backlog polish (v1.1):**
+- [ ] Hierarchy panel toggle icon mismatch fixed (▾/▶) (999.1)
+- [ ] WorldSetDialog nodes view has Close/Done button (999.2)
+- [ ] "World Sets" menu item placement corrected (999.3)
+
+**Tech debt (v1.1):**
+- [ ] `object-add` redo fixed (silently broken, TODO in mapStore.ts)
+- [ ] `removeTileset()` no longer mutates store state directly
 
 ### Out of Scope
 
@@ -83,6 +96,21 @@ A seamless, hierarchical map system where a GM can click from a world map down t
 | Maps without `feetPerUnit` show placeholder footprint | Degrade gracefully; prompt to fix rather than silently skip or hard-fail | ✓ Good — amber 1×1 placeholder with `?` label is clear and non-blocking |
 | Canvas context menu desktop-only (no iOS right-click) | `e.buttons === 2` on touch is non-standard; hierarchy panel context menu covers iPad use case | ✓ Acceptable — iPad users have an alternative path |
 
+## Current Milestone: v1.1 Polish & Fixes
+
+**Goal:** Close all known bugs, backlog items, and tech debt accumulated during v1.0, plus add View menu panel toggles.
+
+**Target features:**
+- Map Properties scale picker filtered by map type (#1)
+- World Set warning icon clears after fixing map scale (#2)
+- Hex child footprint outline uses hex boundary geometry (#3)
+- View menu toggles for all 4 panels (persist to localStorage) (#4)
+- Hierarchy panel toggle icon mismatch fixed (999.1)
+- WorldSetDialog nodes view Close/Done button (999.2)
+- "World Sets" menu item placement (999.3)
+- Fix object-add redo (tech debt)
+- Fix removeTileset() state mutation (tech debt)
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
@@ -101,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-30 — v1.0 World Sets shipped (7 phases, 20 plans, 152 frontend tests, 178 Python tests)*
+*Last updated: 2026-05-30 — v1.1 Polish & Fixes started*

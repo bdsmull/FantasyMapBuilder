@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/mapStore';
 import { listMaps, getMap, uploadMap, downloadMapUrl } from '../../api/client';
-import { MAP_SCALES, MAP_SCALE_BY_ID } from '../../data/mapScales';
+import { useWorldSetStore } from '../../store/worldSetStore';
+import {
+  MAP_SCALES, MAP_SCALE_BY_ID, scaleLabel, resolveUnits, defaultScaleForShape,
+} from '../../data/mapScales';
 import type { TmjMap } from '../../types/tmj';
 
 interface Props {
@@ -18,6 +21,7 @@ export const OpenMapDialog: React.FC<Props> = ({ onClose }) => {
   const [scalePrompt, setScalePrompt] = useState<{ data: TmjMap; name: string } | null>(null);
   const [chosenScale, setChosenScale] = useState('');
   const { loadMap, isDirty, mapName: currentName, saveMapToServer } = useMapStore();
+  const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
 
   const scaleIsValid = (data: TmjMap) =>
     !!data.scale && !!MAP_SCALE_BY_ID[data.scale];
@@ -32,9 +36,7 @@ export const OpenMapDialog: React.FC<Props> = ({ onClose }) => {
       finishLoad(data, name);
       return;
     }
-    const isHex = data.orientation === 'hexagonal';
-    const defaultScale = isHex ? 'town' : 'building';
-    setChosenScale(defaultScale);
+    setChosenScale(defaultScaleForShape(data.orientation === 'hexagonal' ? 'hex' : 'tile'));
     setScalePrompt({ data, name });
   };
 
@@ -159,11 +161,9 @@ export const OpenMapDialog: React.FC<Props> = ({ onClose }) => {
                 value={chosenScale}
                 onChange={(e) => setChosenScale(e.target.value)}
               >
-                {MAP_SCALES
-                  .filter((s) => s.defaultShape === (scalePrompt.data.orientation === 'hexagonal' ? 'hex' : 'tile'))
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>{s.label} ({s.unit})</option>
-                  ))}
+                {MAP_SCALES.map((s) => (
+                  <option key={s.id} value={s.id}>{scaleLabel(s.id, resolveUnits(scalePrompt.data, worldSetUnits))}</option>
+                ))}
               </select>
             </div>
             <div className="dialog-buttons">

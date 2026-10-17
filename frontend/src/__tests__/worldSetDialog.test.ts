@@ -87,35 +87,35 @@ describe('WorldSetDialog Plan 04-02 contracts', () => {
     }));
   });
 
-  it('DIALOG-05 write-back: saveMap is called with feetPerUnit BEFORE addNode when map lacks scale', async () => {
+  it('DIALOG-05 write-back: saveMap is called with metersPerUnit BEFORE addNode when map lacks scale', async () => {
     const { saveMap, getMap } = await import('../api/client');
     const mapWithoutScale: TmjMap = {
       width: 10, height: 10, tilewidth: 32, tileheight: 32,
       orientation: 'orthogonal', nextlayerid: 1, nextobjectid: 1,
       tilesets: [], layers: [],
-      // NOTE: no feetPerUnit, no scale
+      // NOTE: no metersPerUnit, no scale
     };
     vi.mocked(getMap).mockResolvedValue(mapWithoutScale);
     // Simulate the dialog write-back step:
-    const chosenFPU = 5; // 'building' scale
-    await saveMap('orphan', { ...mapWithoutScale, feetPerUnit: chosenFPU, scale: 'building' });
+    const chosenMPU = 5; // 'building' scale
+    await saveMap('orphan', { ...mapWithoutScale, metersPerUnit: chosenMPU, scale: 'building' });
     const result = useWorldSetStore.getState().addNode({
       mapName: 'orphan', parentMapName: null, parentAnchor: null, z: 0, zLabel: null,
     });
     expect(result.ok).toBe(true);
-    expect(saveMap).toHaveBeenCalledWith('orphan', expect.objectContaining({ feetPerUnit: 5, scale: 'building' }));
+    expect(saveMap).toHaveBeenCalledWith('orphan', expect.objectContaining({ metersPerUnit: 5, scale: 'building' }));
     const saveMapCall = vi.mocked(saveMap).mock.invocationCallOrder[0];
     // saveMap must be called before saveWorldSet (or before any later mutation that persists)
     expect(saveMapCall).toBeLessThan(Number.MAX_SAFE_INTEGER);
   });
 
-  it('DIALOG-05 no write-back: saveMap is NOT called when selected map already has feetPerUnit', async () => {
+  it('DIALOG-05 no write-back: saveMap is NOT called when selected map already has metersPerUnit', async () => {
     const { saveMap } = await import('../api/client');
     const scaledMap: TmjMap = {
       width: 5, height: 5, tilewidth: 32, tileheight: 32,
       orientation: 'orthogonal', nextlayerid: 1, nextobjectid: 1,
       tilesets: [], layers: [],
-      feetPerUnit: 10,
+      metersPerUnit: 10,
       scale: 'dungeon',
     };
     // Simulate the dialog flow when needsScale === false: skip saveMap, go straight to addNode.
@@ -125,7 +125,7 @@ describe('WorldSetDialog Plan 04-02 contracts', () => {
     expect(result.ok).toBe(true);
     expect(saveMap).not.toHaveBeenCalled();
     // Verify the scaledMap shape used for assertion is well-formed:
-    expect(scaledMap.feetPerUnit).toBe(10);
+    expect(scaledMap.metersPerUnit).toBe(10);
   });
 
   it('DIALOG-06: addNode hard-error path returns ok:false; dialog must NOT call saveWorldSet on hard error', async () => {
@@ -381,7 +381,7 @@ describe('NewMapDialog Phase 7 onCreated prop contract (Plan 07-01)', () => {
       orientation: 'orthogonal', nextlayerid: 1, nextobjectid: 1,
       tilesets: [], layers: [],
       scale: 'building',
-      feetPerUnit: 5,
+      metersPerUnit: 5,
     };
     // Simulate the onCreated path: apiSaveMap is called, then onCreated(name), then onClose()
     // loadMap is NOT called (this test verifies saveMap was called without a loadMap equivalent)
@@ -421,13 +421,13 @@ describe('NewMapDialog Phase 7 onCreated prop contract (Plan 07-01)', () => {
       tilesets: [], layers: [],
     };
     // Simulate needsScale=true path: saveMap called BEFORE addNode
-    await saveMap('no-scale-map', { ...mapWithoutScale, feetPerUnit: 5, scale: 'building' });
+    await saveMap('no-scale-map', { ...mapWithoutScale, metersPerUnit: 5, scale: 'building' });
     const result = useWorldSetStore.getState().addNode({
       mapName: 'no-scale-map', parentMapName: null, parentAnchor: null, z: 0, zLabel: null,
     });
     expect(saveMap).toHaveBeenCalledWith(
       'no-scale-map',
-      expect.objectContaining({ feetPerUnit: 5, scale: 'building' }),
+      expect.objectContaining({ metersPerUnit: 5, scale: 'building' }),
     );
     expect(result.ok).toBe(true);
   });

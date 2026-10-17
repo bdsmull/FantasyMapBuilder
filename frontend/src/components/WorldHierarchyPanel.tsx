@@ -170,6 +170,7 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
     mapDataCache,
     knownMapNames,
     allNodes: activeWorldSet?.nodes ?? [],
+    defaultUnits: activeWorldSet?.units,
   };
 
   const renderNode = (node: WorldSetNode, depth: number): React.ReactNode => {

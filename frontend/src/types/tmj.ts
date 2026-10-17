@@ -92,8 +92,16 @@ export interface TmjMap {
   hexsidelength?: number;
   /** Map scale preset ID (from MAP_SCALES in data/mapScales.ts). Optional — older maps omit it. */
   scale?: string;
-  /** Authoritative feet-per-tile/hex value. Optional for backward compat with older maps. */
-  feetPerUnit?: number;
+  /**
+   * Unit system override for this map. When absent, the map inherits the active
+   * world set's units (metric if none). Determines which preset size `scale` uses.
+   */
+  units?: 'metric' | 'imperial';
+  /**
+   * Custom cell size in meters, used only when `scale` is not a recognized
+   * preset. Preset maps derive their size from `scale` + units.
+   */
+  metersPerUnit?: number;
   nextlayerid: number;
   nextobjectid: number;
   tilesets: TmjTileset[];

@@ -5,21 +5,36 @@ export interface Footprint {
   rowMax: number;
 }
 
+/** Relative tolerance for treating a cell-count ratio as a whole number. */
+const _WHOLE_CELL_TOLERANCE = 1e-9;
+
+/**
+ * Math.ceil that ignores floating-point noise: a ratio within tolerance of a
+ * whole number (e.g. 31.000000000000004 from unit conversion) is that number.
+ */
+function _ceilCells(x: number): number {
+  const nearest = Math.round(x);
+  return Math.abs(x - nearest) <= _WHOLE_CELL_TOLERANCE * Math.max(1, Math.abs(x))
+    ? nearest
+    : Math.ceil(x);
+}
+
 /**
  * Compute the footprint of a child map on a parent map's grid.
  *
  * Uses floor-center anchoring: the child is centered on `anchor`,
  * with even-dimension asymmetry going bottom-right.
+ * Cell sizes may be in any unit as long as both use the same one (meters by convention).
  */
 export function computeFootprint(
   childWidth: number,
   childHeight: number,
-  childFPU: number,
-  parentFPU: number,
+  childUnitSize: number,
+  parentUnitSize: number,
   anchor: { col: number; row: number },
 ): Footprint {
-  const fpCols = Math.ceil((childWidth * childFPU) / parentFPU);
-  const fpRows = Math.ceil((childHeight * childFPU) / parentFPU);
+  const fpCols = _ceilCells((childWidth * childUnitSize) / parentUnitSize);
+  const fpRows = _ceilCells((childHeight * childUnitSize) / parentUnitSize);
 
   const colMin = anchor.col - Math.floor(fpCols / 2);
   const colMax = anchor.col + Math.floor((fpCols - 1) / 2);

@@ -11,6 +11,8 @@ export interface WorldSetNode {
 export interface WorldSet {
   name: string;
   version: string;    // "1.0"
+  /** Default unit system for contained maps that don't set their own. Absent = metric. */
+  units?: 'metric' | 'imperial';
   nodes: WorldSetNode[];
 }
 

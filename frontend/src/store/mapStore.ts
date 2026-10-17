@@ -71,7 +71,8 @@ export interface MapStore {
   setZoom: (zoom: number) => void;
   setPan: (pan: { x: number; y: number }) => void;
   setShowGrid: (show: boolean) => void;
-  setMapScale: (scaleId: string) => void;
+  /** Set the map's scale preset and unit override (undefined = inherit from the world set). */
+  setMapScale: (scaleId: string, units?: 'metric' | 'imperial') => void;
   setLayerVisible: (layerIndex: number, visible: boolean) => void;
 
   // ---- Tile editing ----
@@ -183,13 +184,15 @@ export const useMapStore = create<MapStore>((set, get) => ({
   setPan: (pan) => set({ pan }),
   setShowGrid: (show) => set({ showGrid: show }),
 
-  setMapScale: (scaleId) => {
+  setMapScale: (scaleId, units) => {
     const { mapData } = get();
     if (!mapData) return;
-    const preset = MAP_SCALE_BY_ID[scaleId];
-    if (!preset) return;
+    if (!MAP_SCALE_BY_ID[scaleId]) return;
+    // Preset maps derive their size from scale + units, so drop any custom metersPerUnit.
+    // units === undefined means "inherit from the world set".
+    const { metersPerUnit: _mpu, units: _units, ...rest } = mapData;
     set({
-      mapData: { ...mapData, scale: scaleId, feetPerUnit: preset.feetPerUnit },
+      mapData: { ...rest, scale: scaleId, ...(units ? { units } : {}) },
       isDirty: true,
     });
   },

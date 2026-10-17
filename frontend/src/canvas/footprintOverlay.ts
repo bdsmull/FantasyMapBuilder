@@ -171,7 +171,7 @@ function _truncateLabel(ctx: CanvasRenderingContext2D, label: string, maxWidth: 
  *
  * @param ctx             Canvas 2D rendering context
  * @param children        Direct child WorldSetNodes of the currently displayed map
- * @param parentMap       The currently displayed TmjMap (provides tilewidth, tileheight, feetPerUnit)
+ * @param parentMap       The currently displayed TmjMap (provides tilewidth, tileheight)
  * @param view            Current zoom/pan state
  * @param hoveredMapName  mapName of the child currently under the pointer, or null
  * @param footprintMap    Optional pre-computed footprints keyed by mapName. If not provided
@@ -209,7 +209,7 @@ export function renderFootprintOverlay(
     };
 
     // A footprint is a placeholder when no pre-computed data is available.
-    // If precomputed exists, the caller already resolved both FPUs successfully.
+    // If precomputed exists, the caller already resolved both cell sizes successfully.
     const isPlaceholder = !precomputed;
 
     const { x, y, w, h } = _computeScreenRect(fp, parentMap, view);

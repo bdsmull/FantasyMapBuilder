@@ -1,6 +1,7 @@
 import type { WorldSetNode } from '../types/worldSet';
 import type { TmjMap } from '../types/tmj';
-import { MAP_SCALE_BY_ID } from '../data/mapScales';
+import { resolveMetersPerUnit } from '../data/mapScales';
+import type { UnitSystem } from '../data/mapScales';
 import { computeFootprint, detectOverlaps } from './worldSetUtils';
 import type { FootprintedNode } from './worldSetUtils';
 
@@ -14,15 +15,11 @@ export interface WarningContext {
   knownMapNames: Set<string>;
   /** All nodes in the active world set — used for sibling overlap and parent lookup. */
   allNodes: WorldSetNode[];
+  /** The world set's default unit system, for maps that don't set their own. Absent = metric. */
+  defaultUnits?: UnitSystem;
 }
 
-/** Resolve feetPerUnit from a TmjMap, falling back to MAP_SCALE_BY_ID[scale]. */
-export function resolveFeetPerUnit(data: TmjMap | undefined): number | undefined {
-  if (!data) return undefined;
-  if (data.feetPerUnit != null) return data.feetPerUnit;
-  if (data.scale && MAP_SCALE_BY_ID[data.scale]) return MAP_SCALE_BY_ID[data.scale].feetPerUnit;
-  return undefined;
-}
+export { resolveMetersPerUnit };
 
 /**
  * Returns warning strings for a single node. Empty array = no badge.
@@ -42,17 +39,17 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
   if (!data) return warnings; // Not loaded yet — show no badge (Pitfall 2)
 
   // Missing scale
-  const childFPU = resolveFeetPerUnit(data);
-  if (childFPU == null) {
-    warnings.push('Missing scale: no feetPerUnit set on this map');
+  const childMPU = resolveMetersPerUnit(data, ctx.defaultUnits);
+  if (childMPU == null) {
+    warnings.push('Missing scale: no scale set on this map');
   }
 
   // Scale inversion + overlap require parent + scales
-  if (node.parentMapName && childFPU != null) {
+  if (node.parentMapName && childMPU != null) {
     const parentData = ctx.mapDataCache[node.parentMapName];
-    const parentFPU = resolveFeetPerUnit(parentData);
-    if (parentFPU != null) {
-      if (childFPU >= parentFPU) {
+    const parentMPU = resolveMetersPerUnit(parentData, ctx.defaultUnits);
+    if (parentMPU != null) {
+      if (childMPU >= parentMPU) {
         warnings.push('Scale inversion: this map is the same size or larger than its parent');
       }
 
@@ -61,7 +58,7 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
         const candidate: FootprintedNode = {
           mapName: node.mapName,
           z: node.z,
-          footprint: computeFootprint(data.width, data.height, childFPU, parentFPU, node.parentAnchor),
+          footprint: computeFootprint(data.width, data.height, childMPU, parentMPU, node.parentAnchor),
         };
         const siblingFootprints: FootprintedNode[] = [];
         for (const sib of ctx.allNodes) {
@@ -70,12 +67,12 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
           if (sib.z !== node.z) continue;
           if (!sib.parentAnchor) continue;
           const sibData = ctx.mapDataCache[sib.mapName];
-          const sibFPU = resolveFeetPerUnit(sibData);
-          if (!sibData || sibFPU == null) continue;
+          const sibMPU = resolveMetersPerUnit(sibData, ctx.defaultUnits);
+          if (!sibData || sibMPU == null) continue;
           siblingFootprints.push({
             mapName: sib.mapName,
             z: sib.z,
-            footprint: computeFootprint(sibData.width, sibData.height, sibFPU, parentFPU, sib.parentAnchor),
+            footprint: computeFootprint(sibData.width, sibData.height, sibMPU, parentMPU, sib.parentAnchor),
           });
         }
         const overlaps = detectOverlaps([candidate, ...siblingFootprints]);

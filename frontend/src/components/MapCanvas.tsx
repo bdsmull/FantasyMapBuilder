@@ -24,7 +24,7 @@ import type { Footprint } from '../utils/worldSetUtils';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { navigateToMap } from '../utils/navigation';
 import { getMap } from '../api/client';
-import { MAP_SCALE_BY_ID } from '../data/mapScales';
+import { resolveMetersPerUnit } from '../data/mapScales';
 import type { OpenWorldSetDialogArgs } from './WorldHierarchyPanel';
 
 const TOOLS: Record<string, Tool> = {
@@ -53,6 +53,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
 
   // World set store and current map name
   const worldSetStore = useWorldSetStore();
+  const defaultUnits = worldSetStore.activeWorldSet?.units;
   const mapName = store.mapName;
 
   // Overlay state
@@ -79,7 +80,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const ctxMenuRef = useRef<HTMLUListElement>(null);
 
   // Pre-computed footprint map: child mapName → tile-space Footprint on the parent grid.
-  // Rebuilt whenever the children list or parent feetPerUnit changes.
+  // Rebuilt whenever the children list or the parent's cell size changes.
   const [footprintMap, setFootprintMap] = useState<Map<string, Footprint>>(new Map());
   // Cache of fetched child TmjMap data so we don't re-fetch on every hover re-render.
   const childMapCacheRef = useRef<Map<string, import('../types/tmj').TmjMap>>(new Map());
@@ -124,11 +125,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   }, [store.mapData, store.zoom, store.pan, store.showGrid, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
-  // parent feetPerUnit changes. Results are cached so navigation doesn't re-fetch.
+  // parent's cell size changes. Results are cached so navigation doesn't re-fetch.
   useEffect(() => {
-    const md = store.mapData;
-    const parentFPU = md?.feetPerUnit ?? (md?.scale ? MAP_SCALE_BY_ID[md.scale]?.feetPerUnit : undefined);
-    if (!mapName || !parentFPU) {
+    const parentMPU = resolveMetersPerUnit(store.mapData ?? undefined, defaultUnits);
+    if (!mapName || !parentMPU) {
       setFootprintMap(new Map());
       return;
     }
@@ -147,10 +147,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       for (const child of children) {
         if (!child.parentAnchor) continue;
         const data = childMapCacheRef.current.get(child.mapName);
-        const childFPU = data?.feetPerUnit ?? (data?.scale ? MAP_SCALE_BY_ID[data.scale]?.feetPerUnit : undefined);
-        if (!data || !childFPU) continue;
+        const childMPU = resolveMetersPerUnit(data, defaultUnits);
+        if (!data || !childMPU) continue;
         fp.set(child.mapName, computeFootprint(
-          data.width, data.height, childFPU, parentFPU, child.parentAnchor,
+          data.width, data.height, childMPU, parentMPU, child.parentAnchor,
         ));
       }
       setFootprintMap(fp);
@@ -170,7 +170,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       .catch(() => { if (!cancelled) setFootprintMap(new Map()); });
 
     return () => { cancelled = true; };
-  }, [mapName, worldSetStore, store.mapData?.feetPerUnit, store.mapData?.scale]);
+  }, [mapName, worldSetStore, defaultUnits, store.mapData?.metersPerUnit, store.mapData?.scale, store.mapData?.units]);
 
   useEffect(() => {
     // Resize canvas to fill its container
@@ -474,7 +474,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const tooltipChild = tooltipMapName !== null
     ? tooltipChildren.find(c => c.mapName === tooltipMapName)
     : undefined;
-  const tooltipIsPlaceholder = tooltipChild ? !store.mapData?.feetPerUnit : false;
+  // Same rule as the overlay: no pre-computed footprint means a scale is missing.
+  const tooltipIsPlaceholder = tooltipChild ? !footprintMap.has(tooltipChild.mapName) : false;
 
   return (
     <>

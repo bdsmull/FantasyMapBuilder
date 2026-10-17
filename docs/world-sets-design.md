@@ -28,26 +28,39 @@ Captured from planning session 2026-03-31.
 
 ### Updated `MapScale` (`frontend/src/data/mapScales.ts`)
 
+> **Revised (v1.1 scale rework):** the original 8 imperial-only presets were replaced by
+> 11 levels, each with a metric and an imperial size. Any level may use squares or hexes;
+> `defaultShape` is only the suggestion for new maps.
+
 ```typescript
 export interface MapScale {
   id: string;
   label: string;
-  unit: string;
-  feetPerUnit: number;      // feet per tile/hex; drives footprint calc and scale ordering
-  defaultShape: 'tile' | 'hex';
+  metric: { metresPerUnit: number; unit: string };
+  imperial: { feetPerUnit: number; unit: string };
+  defaultShape: 'tile' | 'hex';   // suggestion only
 }
 ```
 
-| Scale ID | Label | Unit | feetPerUnit | defaultShape |
-|---|---|---|---|---|
-| `room` | Room Scale | 1' square | 1 | tile |
-| `building` | Building Scale | 5' square | 5 | tile |
-| `dungeon` | Dungeon Scale | 10' square | 10 | tile |
-| `town` | Town Scale | 30' hex | 30 | hex |
-| `local` | Local Scale | 1 mile hex | 5,280 | hex |
-| `kingdom` | Kingdom Scale | 5 mile hex | 26,400 | hex |
-| `region` | Region Scale | 50 mile hex | 264,000 | hex |
-| `world` | World Scale | 500 mile hex | 2,640,000 | hex |
+| Scale ID | Label | Metric | Imperial | Suggested shape | Typical use |
+|---|---|---|---|---|---|
+| `room` | Room Scale | 1 m | 2 ft | square | Detailed interiors, furniture, close tactical play |
+| `battle` | Battle Scale | 2 m | 5 ft | square | Standard combat grid, buildings, ship decks |
+| `dungeon` | Dungeon Scale | 5 m | 10 ft | square | Dungeon complexes, caves, castle floors |
+| `site` | Site Scale | 10 m | 30 ft | square | Castle grounds, villages, ruins, small compounds |
+| `town` | Town Scale | 50 m | 150 ft | hex | Walled towns, city districts |
+| `city` | City Scale | 250 m | ⅛ mi | hex | Whole cities with farmland and surroundings |
+| `local` | Local Scale | 1 km | 1 mi | hex | Day-travel area, a valley or forest |
+| `province` | Province Scale | 5 km | 6 mi | hex | A barony or county, several days' travel |
+| `kingdom` | Kingdom Scale | 25 km | 30 mi | hex | A nation and its borders |
+| `continent` | Continent Scale | 100 km | 100 mi | hex | Continents and seas |
+| `world` | World Scale | 500 km | 500 mi | hex | Whole world |
+
+**Units resolution.** A map's unit system is its own `units` field (`"metric"` / `"imperial"`)
+if set, otherwise the world set's `units`, otherwise metric. The cell size is then the preset's
+size in that system (`resolveMetersPerUnit()` in `mapScales.ts`, which normalizes to meters for
+the footprint math below). A map-level `metersPerUnit` (custom cell size) is only consulted when
+`scale` is not a recognized preset.
 
 ### World Set File Format
 
@@ -59,6 +72,7 @@ Flat node list with parent references (easier to query and update than a nested 
 {
   "name": "My World",
   "version": "1.0",
+  "units": "metric",
   "nodes": [
     {
       "mapName": "world-map",
@@ -138,11 +152,13 @@ Registered in `server/main.py` under `/api` prefix.
 Given a child map and its scale, and the parent's scale:
 
 ```
-childFeetWide = child.mapData.width  × childScale.feetPerUnit
-childFeetTall = child.mapData.height × childScale.feetPerUnit
+childMetersWide = child.mapData.width  × childMetersPerUnit
+childMetersTall = child.mapData.height × childMetersPerUnit
 
-fp_cols = ceil(childFeetWide / parentScale.feetPerUnit)
-fp_rows = ceil(childFeetTall / parentScale.feetPerUnit)
+// ceil tolerates floating-point noise: a ratio within 1e-9 (relative) of a
+// whole number counts as that number, so unit conversion can't add a cell.
+fp_cols = ceil(childMetersWide / parentMetersPerUnit)
+fp_rows = ceil(childMetersTall / parentMetersPerUnit)
 
 // Footprint centered on anchor; floor() for even dimensions (asymmetry goes bottom-right)
 col_min = anchor.col - floor(fp_cols / 2)
@@ -160,7 +176,7 @@ Hex parents use the same formula, treating hex grid coordinates as rectangular (
 | Condition | Severity | Message |
 |---|---|---|
 | `mapName` already in world set | Error (block) | "'X' is already in this world set. Duplicate the map file first if you want a separate location." |
-| `child.feetPerUnit >= parent.feetPerUnit` | Warning (allow) | "'X' (Y scale) is the same or larger scale than its parent 'Z' (W scale)." |
+| `childMetersPerUnit >= parentMetersPerUnit` | Warning (allow) | "'X' (Y scale) is the same or larger scale than its parent 'Z' (W scale)." |
 | Same Z, overlapping footprint, different mapNames | Warning (allow) | "'X' and 'Y' have overlapping footprints at level Z." |
 | Referenced `mapName` not found on server | Warning (allow) | "Map 'X' is referenced in this world set but does not exist on the server." |
 

@@ -8,7 +8,11 @@ import {
   listMaps,
   saveMap,
 } from '../../api/client';
-import { MAP_SCALE_BY_ID, MAP_SCALES, scaleLabel } from '../../data/mapScales';
+import {
+  MAP_SCALE_BY_ID, MAP_SCALES, DEFAULT_UNIT_SYSTEM,
+  scaleLabel, resolveUnits, resolveMetersPerUnit, defaultScaleForShape,
+} from '../../data/mapScales';
+import type { UnitSystem } from '../../data/mapScales';
 import { computeFootprint, detectOverlaps } from '../../utils/worldSetUtils';
 import type { FootprintedNode } from '../../utils/worldSetUtils';
 import type { WorldSet, WorldSetNode } from '../../types/worldSet';
@@ -66,7 +70,7 @@ export const WorldSetDialog: React.FC<Props> = ({
   const [anchorRow, setAnchorRow] = useState(initialAnchor?.row ?? 0);
   const [z, setZ] = useState(0);
   const [zLabel, setZLabel] = useState('');
-  const [chosenScale, setChosenScale] = useState('building');
+  const [chosenScale, setChosenScale] = useState(defaultScaleForShape('tile'));
   const [warnings, setWarnings] = useState<string[]>([]);
 
   const {
@@ -76,8 +80,10 @@ export const WorldSetDialog: React.FC<Props> = ({
     addNode,
     updateNode,
     removeNode,
+    setUnits,
     saveWorldSet,
   } = useWorldSetStore();
+  const worldSetUnits: UnitSystem = activeWorldSet?.units ?? DEFAULT_UNIT_SYSTEM;
 
   useEffect(() => {
     listWorldSets().then(setWorldSets).catch((e) => setError(String(e)));
@@ -149,7 +155,7 @@ export const WorldSetDialog: React.FC<Props> = ({
     setLoading(true);
     setError('');
     try {
-      const ws: WorldSet = { name, version: WORLD_SET_VERSION, nodes: [] };
+      const ws: WorldSet = { name, version: WORLD_SET_VERSION, units: DEFAULT_UNIT_SYSTEM, nodes: [] };
       await apiSaveWorldSet(name, ws);
       const updated = await listWorldSets();
       setWorldSets(updated);
@@ -193,11 +199,23 @@ export const WorldSetDialog: React.FC<Props> = ({
   const nodeScaleLabel = (mapName: string): string => {
     const data = mapDataCache[mapName];
     if (!data) return '(loading…)';
-    const fpu = data.feetPerUnit ?? (data.scale ? MAP_SCALE_BY_ID[data.scale]?.feetPerUnit : undefined);
-    if (!fpu) return 'no scale';
-    return scaleLabel(data.scale ?? '') !== (data.scale ?? '')
-      ? scaleLabel(data.scale ?? '')
-      : `${fpu} ft/unit`;
+    if (data.scale && MAP_SCALE_BY_ID[data.scale]) {
+      return scaleLabel(data.scale, resolveUnits(data, worldSetUnits));
+    }
+    return data.metersPerUnit ? `${data.metersPerUnit} m/unit` : 'no scale';
+  };
+
+  const handleUnitsChange = async (units: UnitSystem) => {
+    setLoading(true);
+    setError('');
+    try {
+      setUnits(units);
+      await saveWorldSet();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRemoveNode = async (mapName: string) => {
@@ -221,7 +239,7 @@ export const WorldSetDialog: React.FC<Props> = ({
     setAnchorRow(0);
     setZ(0);
     setZLabel('');
-    setChosenScale('building');
+    setChosenScale(defaultScaleForShape('tile'));
     setWarnings([]);
     setError('');
   };
@@ -236,8 +254,7 @@ export const WorldSetDialog: React.FC<Props> = ({
     try {
       const data = await getMap(mapName);
       setSelectedMapData(data);
-      const isHex = data.orientation === 'hexagonal';
-      setChosenScale(isHex ? 'town' : 'building');
+      setChosenScale(defaultScaleForShape(data.orientation === 'hexagonal' ? 'hex' : 'tile'));
     } catch (e) {
       setError(String(e));
       setSelectedMapData(null);
@@ -246,7 +263,7 @@ export const WorldSetDialog: React.FC<Props> = ({
 
   // Derived state — declared right above the return statement
   const needsScale =
-    !!selectedMapData && !selectedMapData.feetPerUnit && !selectedMapData.scale;
+    !!selectedMapData && resolveMetersPerUnit(selectedMapData, worldSetUnits) == null;
 
   const handleAddNode = async () => {
     if (!selectedMap || !selectedMapData) {
@@ -257,47 +274,46 @@ export const WorldSetDialog: React.FC<Props> = ({
     setError('');
     setWarnings([]);
     try {
-      // Step 1 — write feetPerUnit back to the map file BEFORE adding node (D-03 sequence).
+      // Step 1 — write the scale back to the map file BEFORE adding node (D-03 sequence).
+      // Units are left unset so the map inherits the world set's units.
       let finalMapData = selectedMapData;
       if (needsScale) {
-        const fpu = MAP_SCALE_BY_ID[chosenScale]?.feetPerUnit;
-        if (!fpu) {
+        if (!MAP_SCALE_BY_ID[chosenScale]) {
           setError(`Unknown scale id '${chosenScale}'`);
           return;
         }
-        finalMapData = { ...selectedMapData, feetPerUnit: fpu, scale: chosenScale };
+        const { metersPerUnit: _mpu, ...rest } = selectedMapData;
+        finalMapData = { ...rest, scale: chosenScale };
         await saveMap(selectedMap, finalMapData);
       }
 
       // Step 2 — client-side warnings (scale inversion + footprint overlap).
       const localWarnings: string[] = [];
-      const childFPU = finalMapData.feetPerUnit
-        ?? (finalMapData.scale ? MAP_SCALE_BY_ID[finalMapData.scale]?.feetPerUnit : undefined);
+      const childMPU = resolveMetersPerUnit(finalMapData, worldSetUnits);
 
-      if (parentMapName !== null && childFPU) {
+      if (parentMapName !== null && childMPU) {
         // Get parent's TmjMap from cache or fetch.
         let parentData = mapDataCache[parentMapName];
         if (!parentData) {
           parentData = await getMap(parentMapName);
           setMapDataCache((prev) => ({ ...prev, [parentMapName]: parentData }));
         }
-        const parentFPU = parentData.feetPerUnit
-          ?? (parentData.scale ? MAP_SCALE_BY_ID[parentData.scale]?.feetPerUnit : undefined);
+        const parentMPU = resolveMetersPerUnit(parentData, worldSetUnits);
 
-        if (parentFPU && childFPU >= parentFPU) {
+        if (parentMPU && childMPU >= parentMPU) {
           localWarnings.push(
             `Scale inversion: this map is the same size or larger than its parent.`,
           );
         }
 
         // Footprint overlap against existing siblings at same parent + same z.
-        if (parentFPU && activeWorldSet) {
+        if (parentMPU && activeWorldSet) {
           const candidate: FootprintedNode = {
             mapName: selectedMap,
             z,
             footprint: computeFootprint(
               finalMapData.width, finalMapData.height,
-              childFPU, parentFPU,
+              childMPU, parentMPU,
               { col: anchorCol, row: anchorRow },
             ),
           };
@@ -308,15 +324,14 @@ export const WorldSetDialog: React.FC<Props> = ({
           for (const sib of siblings) {
             const sibData = mapDataCache[sib.mapName];
             if (!sibData) continue;
-            const sibFPU = sibData.feetPerUnit
-              ?? (sibData.scale ? MAP_SCALE_BY_ID[sibData.scale]?.feetPerUnit : undefined);
-            if (!sibFPU) continue;
+            const sibMPU = resolveMetersPerUnit(sibData, worldSetUnits);
+            if (!sibMPU) continue;
             siblingFootprints.push({
               mapName: sib.mapName,
               z: sib.z,
               footprint: computeFootprint(
                 sibData.width, sibData.height,
-                sibFPU, parentFPU,
+                sibMPU, parentMPU,
                 sib.parentAnchor!,
               ),
             });
@@ -461,6 +476,18 @@ export const WorldSetDialog: React.FC<Props> = ({
         {view === 'nodes' && (
           <>
             <div className="dialog-title">World Set: {activeWorldSetName}</div>
+            <div className="dialog-row">
+              <label>Default units</label>
+              <select
+                value={worldSetUnits}
+                onChange={(e) => handleUnitsChange(e.target.value as UnitSystem)}
+                disabled={loading || !activeWorldSet}
+                title="Used by maps in this world set that don't set their own units"
+              >
+                <option value="metric">Metric (m / km)</option>
+                <option value="imperial">Imperial (ft / mi)</option>
+              </select>
+            </div>
             <div className="dialog-section-label">Maps in this world set</div>
             {!activeWorldSet || activeWorldSet.nodes.length === 0 ? (
               <p style={{ color: '#888', margin: '8px 0' }}>No maps added yet.</p>
@@ -539,15 +566,11 @@ export const WorldSetDialog: React.FC<Props> = ({
                   onChange={(e) => setChosenScale(e.target.value)}
                   disabled={loading}
                 >
-                  {MAP_SCALES
-                    .filter((s) =>
-                      !selectedMapData
-                        ? true
-                        : s.defaultShape === (selectedMapData.orientation === 'hexagonal' ? 'hex' : 'tile'),
-                    )
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>{s.label} ({s.unit})</option>
-                    ))}
+                  {MAP_SCALES.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {scaleLabel(s.id, resolveUnits(selectedMapData ?? undefined, worldSetUnits))}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}

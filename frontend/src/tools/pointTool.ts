@@ -7,6 +7,7 @@
 import type { Tool } from './baseTool';
 import { isObjectLayer } from '../types/tmj';
 import type { TmjObject } from '../types/tmj';
+import { cellCenter } from '../canvas/canvasUtils';
 
 /** Monotonically increasing ID counter for new objects. */
 let _nextId = 1000;
@@ -21,9 +22,8 @@ export const pointTool: Tool = {
     const layer = mapData.layers[activeLayerIndex];
     if (!layer || !isObjectLayer(layer)) return;
 
-    // Convert tile to pixel centre
-    const px = (col + 0.5) * mapData.tilewidth;
-    const py = (row + 0.5) * mapData.tileheight;
+    // Convert cell to pixel centre
+    const { x: px, y: py } = cellCenter(mapData, col, row);
 
     const obj: TmjObject = {
       id: _nextId++,
@@ -48,9 +48,8 @@ export const pointTool: Tool = {
     const layer = mapData.layers[activeLayerIndex];
     if (!layer || !isObjectLayer(layer)) return;
 
-    // Target pixel = centre of clicked tile
-    const px = (col + 0.5) * mapData.tilewidth;
-    const py = (row + 0.5) * mapData.tileheight;
+    // Target pixel = centre of clicked cell
+    const { x: px, y: py } = cellCenter(mapData, col, row);
     const threshold = Math.max(mapData.tilewidth, mapData.tileheight);
 
     // Find the nearest object within threshold distance

@@ -331,6 +331,19 @@ def test_hex_map_metadata_round_trip(tmp_path):
     assert loaded.orientation == HexOrientation.FLAT_TOP
 
 
+def test_hex_map_writes_tiled_consistent_tile_size(tmp_path):
+    """tilewidth/tileheight are the hex's bounding box, even-sized, so Tiled draws a regular hex."""
+    map_ = _simple_hex_map()  # flat-top, hex_size 40
+    out = tmp_path / "hex.tmj"
+    tmj_writer.write_hex_map(map_, out)
+
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["hexsidelength"] == 40
+    assert data["tilewidth"] == 80   # corner to corner = 2 * side
+    assert data["tileheight"] == 70  # flat to flat = sqrt(3) * 40 ≈ 69.3, rounded to even
+    assert data["hexsidelength"] < data["tilewidth"]
+
+
 def test_hex_tile_data_round_trips(tmp_path):
     """Hex tile GIDs survive a write-read cycle."""
     map_ = _simple_hex_map()

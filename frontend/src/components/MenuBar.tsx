@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useMapStore } from '../store/mapStore';
+import { hexLayout, hexMapPixelSize } from '../canvas/hexGeometry';
 
 interface MenuBarProps {
   onNew: () => void;
@@ -58,13 +59,17 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
     // Create an offscreen canvas and render the full map to it
     const canvas = document.createElement('canvas');
     if (!mapData) return;
-    canvas.width = mapData.width * mapData.tilewidth;
-    canvas.height = mapData.height * mapData.tileheight;
+    const isHex = mapData.orientation === 'hexagonal';
+    const size = isHex
+      ? hexMapPixelSize(hexLayout(mapData), mapData.width, mapData.height)
+      : { width: mapData.width * mapData.tilewidth, height: mapData.height * mapData.tileheight };
+    canvas.width = size.width;
+    canvas.height = size.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     // Render at zoom=1 from origin
-    import('../canvas/tileRenderer').then(({ renderTileMap }) => {
-      renderTileMap(ctx, mapData, {
+    Promise.all([import('../canvas/tileRenderer'), import('../canvas/hexRenderer')]).then(([{ renderTileMap }, { renderHexMap }]) => {
+      (isHex ? renderHexMap : renderTileMap)(ctx, mapData, {
         view: { zoom: 1, pan: { x: 0, y: 0 } },
         showGrid: false,
         onImageLoad: () => {

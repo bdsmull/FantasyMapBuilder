@@ -11,7 +11,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { renderTileMap } from '../canvas/tileRenderer';
-import { renderHexMap, pixelToHex, clearHexTileCache } from '../canvas/hexRenderer';
+import { renderHexMap, clearHexTileCache } from '../canvas/hexRenderer';
+import { hexLayout, pixelToHex } from '../canvas/hexGeometry';
 import { screenToTile } from '../canvas/canvasUtils';
 import type { Tool } from '../tools/baseTool';
 import { paintTool } from '../tools/paintTool';
@@ -245,12 +246,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const pt = getCanvasPoint(e);
 
     if (mapData.orientation === 'hexagonal') {
-      const hexSize = ((mapData.hexsidelength ?? 40) + mapData.tilewidth / 2) * zoom;
       return pixelToHex(
-        pt.x - pan.x,
-        pt.y - pan.y,
-        hexSize,
-        mapData.staggeraxis ?? 'x',
+        hexLayout(mapData),
+        (pt.x - pan.x) / zoom,
+        (pt.y - pan.y) / zoom,
         mapData.width,
         mapData.height,
       );

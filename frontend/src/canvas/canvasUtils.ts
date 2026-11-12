@@ -5,6 +5,7 @@
 import type { TmjMap, TmjTileset, TmjTileEntry } from '../types/tmj';
 import { tilesetForGid, localId, tileColor } from '../types/tmj';
 import { tilesetImageUrl } from '../api/client';
+import { hexLayout, hexCenter } from './hexGeometry';
 
 // ---------------------------------------------------------------------------
 // Coordinate helpers
@@ -13,6 +14,12 @@ import { tilesetImageUrl } from '../api/client';
 export interface ViewState {
   zoom: number;
   pan: { x: number; y: number };
+}
+
+/** Centre of cell (col, row) in map pixels (object coordinate space), for square or hex maps. */
+export function cellCenter(map: TmjMap, col: number, row: number): { x: number; y: number } {
+  if (map.orientation === 'hexagonal') return hexCenter(hexLayout(map), col, row);
+  return { x: (col + 0.5) * map.tilewidth, y: (row + 0.5) * map.tileheight };
 }
 
 /**

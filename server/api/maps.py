@@ -38,6 +38,49 @@ def _safe_path(name: str) -> Path:
     return _MAPS_DIR / f"{stem}.tmj"
 
 
+def format_tmj(data: dict) -> str:
+    """Serialize TMJ JSON the way Tiled does: indented, but with each tile
+    layer's ``data`` array written one map row per line.
+
+    Plain ``indent=2`` puts every tile ID on its own line, which makes map
+    files roughly three times larger and hard to read or diff.
+    """
+    rows_by_key: dict[str, tuple[list[int], int]] = {}
+
+    def _replace_data(layers: list) -> list:
+        result = []
+        for layer in layers:
+            if (
+                layer.get("type") == "tilelayer"
+                and isinstance(layer.get("data"), list)
+                and isinstance(layer.get("width"), int)
+                and layer["width"] > 0
+            ):
+                key = f"@@TILE_DATA_{len(rows_by_key)}@@"
+                rows_by_key[key] = (layer["data"], layer["width"])
+                layer = {**layer, "data": key}
+            elif layer.get("type") == "group" and isinstance(layer.get("layers"), list):
+                layer = {**layer, "layers": _replace_data(layer["layers"])}
+            result.append(layer)
+        return result
+
+    payload = data
+    if isinstance(data.get("layers"), list):
+        payload = {**data, "layers": _replace_data(data["layers"])}
+    text = json.dumps(payload, indent=2, ensure_ascii=False)
+
+    for key, (values, width) in rows_by_key.items():
+        token = f'"{key}"'
+        line_start = text.rfind("\n", 0, text.index(token)) + 1
+        indent = text[line_start:len(text) - len(text[line_start:].lstrip())]
+        rows = [
+            indent + "  " + ", ".join(str(v) for v in values[i:i + width])
+            for i in range(0, len(values), width)
+        ]
+        text = text.replace(token, "[\n" + ",\n".join(rows) + "\n" + indent + "]", 1)
+    return text
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -80,10 +123,7 @@ async def upload_map(file: UploadFile):
 async def save_map(name: str, request_body: dict):
     """Save (create or overwrite) a map from TMJ JSON body."""
     path = _safe_path(name)
-    path.write_text(
-        json.dumps(request_body, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    path.write_text(format_tmj(request_body), encoding="utf-8")
     return {"saved": path.stem}
 
 

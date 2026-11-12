@@ -6,6 +6,7 @@
 
 import type { TmjMap } from '../types/tmj';
 import type { WorldSet } from '../types/worldSet';
+import { mapFromFile, mapToFile } from './tmjFile';
 
 const BASE = '/api';
 
@@ -30,7 +31,7 @@ export async function listMaps(): Promise<string[]> {
 /** Load a map from the server by name. */
 export async function getMap(name: string): Promise<TmjMap> {
   const res = await fetch(`${BASE}/maps/${encodeURIComponent(name)}`);
-  return handleResponse<TmjMap>(res);
+  return mapFromFile(await handleResponse<TmjMap>(res));
 }
 
 /** Save (create or overwrite) a map on the server. */
@@ -38,7 +39,7 @@ export async function saveMap(name: string, data: TmjMap): Promise<void> {
   const res = await fetch(`${BASE}/maps/${encodeURIComponent(name)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(mapToFile(data)),
   });
   await handleResponse<unknown>(res);
 }

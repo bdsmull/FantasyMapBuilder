@@ -90,7 +90,12 @@ export interface TmjMap {
   staggeraxis?: 'x' | 'y';
   staggerindex?: string;
   hexsidelength?: number;
-  /** Map scale preset ID (from MAP_SCALES in data/mapScales.ts). Optional — older maps omit it. */
+  /** Tiled custom properties of the map (editor-managed ones are lifted into the fields below). */
+  properties?: TmjProperty[];
+  /**
+   * Map scale preset ID (from MAP_SCALES in data/mapScales.ts). Optional — older maps omit it.
+   * This and `units` / `metersPerUnit` are stored on disk as custom properties (see api/tmjFile.ts).
+   */
   scale?: string;
   /**
    * Unit system override for this map. When absent, the map inherits the active

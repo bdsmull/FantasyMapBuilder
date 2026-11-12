@@ -60,6 +60,30 @@ async def test_save_creates_file(client, sample_tmj, patch_maps_dir):
     assert (patch_maps_dir / "newfile.tmj").exists()
 
 
+async def test_save_writes_tile_data_one_row_per_line(client, sample_tmj, patch_maps_dir):
+    """Tile layer data is written like Tiled: one map row per line, not one ID per line."""
+    data = list(range(20))  # 5 wide x 4 high
+    tmj = {**sample_tmj, "layers": [{**sample_tmj["layers"][0], "data": data}]}
+    await client.post("/api/maps/rows", json=tmj)
+    text = (patch_maps_dir / "rows.tmj").read_text(encoding="utf-8")
+
+    assert json.loads(text) == tmj
+    assert '      "data": [\n        0, 1, 2, 3, 4,\n' in text
+    assert "\n        15, 16, 17, 18, 19\n      ]" in text
+    assert text.count("\n") < 40
+
+
+async def test_save_formats_tile_layers_inside_groups(client, sample_tmj, patch_maps_dir):
+    """Tile layers nested in group layers are formatted too, and the file still round-trips."""
+    group = {"type": "group", "name": "G", "layers": [sample_tmj["layers"][0]]}
+    tmj = {**sample_tmj, "layers": [group]}
+    await client.post("/api/maps/grouped", json=tmj)
+    text = (patch_maps_dir / "grouped.tmj").read_text(encoding="utf-8")
+
+    assert json.loads(text) == tmj
+    assert "0, 0, 0, 0, 0" in text
+
+
 async def test_save_overwrites(client, sample_tmj):
     """Second POST to the same name overwrites the first."""
     await client.post("/api/maps/over", json=sample_tmj)

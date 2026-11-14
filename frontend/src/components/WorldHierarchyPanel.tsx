@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { useMapStore } from '../store/mapStore';
-import { navigateToMap } from '../utils/navigation';
+import { navigateToMap, activateWorldSet } from '../utils/navigation';
 import {
   getWarnings,
   toggleCollapse,
@@ -33,7 +33,6 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
   const {
     activeWorldSetName,
     activeWorldSet,
-    setActiveWorldSet,
     removeNode,
     saveWorldSet,
     rootNodes,
@@ -56,7 +55,12 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
 
   // Load list of all known maps for missing-map detection (PANEL-03)
   useEffect(() => {
-    listMaps().then((names) => setKnownMapNames(new Set(names))).catch(() => setKnownMapNames(new Set()));
+    if (!activeWorldSetName) { setKnownMapNames(new Set()); return; }
+    listMaps(activeWorldSetName)
+      .then((names) => setKnownMapNames(new Set(names)))
+      .catch(() => setKnownMapNames(new Set()));
+    // Map data is keyed by map name, which is only unique within one world set
+    setMapDataCache({});
   }, [activeWorldSetName]);
 
   // Fetch TmjMap data for every node in active world set — drives validation badges (Pitfall 2)
@@ -71,7 +75,7 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
     if (namesToFetch.length === 0) return;
     Promise.all(
       namesToFetch.map((name) =>
-        getMap(name).then((data) => [name, data] as const).catch(() => [name, null] as const),
+        getMap(activeWorldSetName ?? '', name).then((data) => [name, data] as const).catch(() => [name, null] as const),
       ),
     ).then((results) => {
       setMapDataCache((prev) => {
@@ -225,7 +229,7 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
           <select
             className="hierarchy-switcher"
             value={activeWorldSetName}
-            onChange={(e) => setActiveWorldSet(e.target.value).catch(console.error)}
+            onChange={(e) => activateWorldSet(e.target.value).catch((err) => window.alert(err instanceof Error ? err.message : String(err)))}
           >
             {worldSetNames.map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -238,7 +242,7 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
           type="button"
           className="hierarchy-deactivate"
           title="Deactivate world set"
-          onClick={() => setActiveWorldSet(null).catch(console.error)}
+          onClick={() => activateWorldSet(null).catch(console.error)}
           aria-label="Deactivate world set"
         >
           ×

@@ -58,7 +58,7 @@ beforeEach(() => {
 describe('loadMap', () => {
   it('sets mapData and clears undo history', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     const s = getStore();
     expect(s.mapData).not.toBeNull();
     expect(s.mapName).toBe('test');
@@ -70,7 +70,7 @@ describe('loadMap', () => {
 describe('applyTile + commitPendingTiles', () => {
   it('changes the tile data', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 1, 0, 5);
     const layer = getStore().mapData!.layers[0] as { data: number[] };
     expect(layer.data[1]).toBe(5); // col=1, row=0 → index 1
@@ -78,14 +78,14 @@ describe('applyTile + commitPendingTiles', () => {
 
   it('marks map as dirty', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 3);
     expect(getStore().isDirty).toBe(true);
   });
 
   it('commit creates one undo step', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 1);
     store.applyTile(0, 1, 0, 2);
     store.commitPendingTiles();
@@ -95,7 +95,7 @@ describe('applyTile + commitPendingTiles', () => {
 
   it('commit clears pendingTiles', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 7);
     store.commitPendingTiles();
     expect(getStore().pendingTiles).toHaveLength(0);
@@ -105,7 +105,7 @@ describe('applyTile + commitPendingTiles', () => {
 describe('undo', () => {
   it('reverts a single tile change', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 9);
     store.commitPendingTiles();
     store.undo();
@@ -115,7 +115,7 @@ describe('undo', () => {
 
   it('reverts a batch stroke as one step', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 5);
     store.applyTile(0, 1, 0, 5);
     store.applyTile(0, 2, 0, 5);
@@ -130,7 +130,7 @@ describe('undo', () => {
 
   it('moves step to redo stack', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 3);
     store.commitPendingTiles();
     store.undo();
@@ -139,7 +139,7 @@ describe('undo', () => {
 
   it('does nothing on empty undo stack', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.undo(); // no-op
     expect(getStore().past).toHaveLength(0);
   });
@@ -148,7 +148,7 @@ describe('undo', () => {
 describe('redo', () => {
   it('re-applies a tile change after undo', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 7);
     store.commitPendingTiles();
     store.undo();
@@ -159,7 +159,7 @@ describe('redo', () => {
 
   it('clears redo stack when a new action is committed', () => {
     const store = getStore();
-    store.loadMap(makeMap(), 'test');
+    store.loadMap(makeMap(), 'test', 'ws');
     store.applyTile(0, 0, 0, 1);
     store.commitPendingTiles();
     store.undo();
@@ -172,7 +172,7 @@ describe('redo', () => {
 
 describe('setMapScale', () => {
   it('sets scale and unit override, dropping any custom metersPerUnit', () => {
-    getStore().loadMap({ ...makeMap(), metersPerUnit: 30, scale: 'old' }, 'test');
+    getStore().loadMap({ ...makeMap(), metersPerUnit: 30, scale: 'old' }, 'test', 'ws');
     getStore().setMapScale('province', 'imperial');
     const md = getStore().mapData!;
     expect(md.scale).toBe('province');
@@ -182,14 +182,14 @@ describe('setMapScale', () => {
   });
 
   it('clears the unit override when units is undefined (inherit from world set)', () => {
-    getStore().loadMap({ ...makeMap(), scale: 'town', units: 'imperial' }, 'test');
+    getStore().loadMap({ ...makeMap(), scale: 'town', units: 'imperial' }, 'test', 'ws');
     getStore().setMapScale('city');
     expect(getStore().mapData!.units).toBeUndefined();
     expect('units' in getStore().mapData!).toBe(false);
   });
 
   it('ignores unknown scale ids', () => {
-    getStore().loadMap(makeMap(), 'test');
+    getStore().loadMap(makeMap(), 'test', 'ws');
     getStore().setMapScale('building');
     expect(getStore().mapData!.scale).toBeUndefined();
   });

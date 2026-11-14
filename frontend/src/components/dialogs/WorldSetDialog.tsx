@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWorldSetStore } from '../../store/worldSetStore';
+import { useMapStore } from '../../store/mapStore';
+import { activateWorldSet } from '../../utils/navigation';
 import {
   listWorldSets,
   saveWorldSet as apiSaveWorldSet,
@@ -76,7 +78,6 @@ export const WorldSetDialog: React.FC<Props> = ({
   const {
     activeWorldSetName,
     activeWorldSet,
-    setActiveWorldSet,
     addNode,
     updateNode,
     removeNode,
@@ -97,7 +98,7 @@ export const WorldSetDialog: React.FC<Props> = ({
     if (namesToFetch.length === 0) return;
     Promise.all(
       namesToFetch.map((name) =>
-        getMap(name)
+        getMap(activeWorldSetName ?? '', name)
           .then((data) => [name, data] as const)
           .catch(() => [name, null] as const),
       ),
@@ -114,8 +115,9 @@ export const WorldSetDialog: React.FC<Props> = ({
 
   useEffect(() => {
     if (view !== 'configure') return;
-    if (allMaps.length > 0) return;
-    listMaps().then(setAllMaps).catch((e) => setError(String(e)));
+    if (allMaps.length > 0 || !activeWorldSetName) return;
+    // Every map in the world set's folder, placed or not
+    listMaps(activeWorldSetName).then(setAllMaps).catch((e) => setError(String(e)));
   }, [view]);
 
   // Edit-mode pre-population: when initialMapName is set on mount, fetch its
@@ -131,7 +133,7 @@ export const WorldSetDialog: React.FC<Props> = ({
     setZ(existing.z);
     setZLabel(existing.zLabel ?? '');
     // Fetch TmjMap for needsScale derivation and any future scale UI
-    getMap(initialMapName)
+    getMap(activeWorldSetName ?? '', initialMapName)
       .then((data) => setSelectedMapData(data))
       .catch((e) => setError(String(e)));
     // Intentionally only on initial mount per dialog instance — Pitfall 5 requires
@@ -141,7 +143,10 @@ export const WorldSetDialog: React.FC<Props> = ({
 
   const handleSelect = async (name: string) => {
     try {
-      await setActiveWorldSet(name);
+      await activateWorldSet(name);
+      // Cached map data and map lists belong to the previous world set
+      setMapDataCache({});
+      setAllMaps([]);
       setView('nodes');
     } catch (e) {
       setError(String(e));
@@ -159,7 +164,9 @@ export const WorldSetDialog: React.FC<Props> = ({
       await apiSaveWorldSet(name, ws);
       const updated = await listWorldSets();
       setWorldSets(updated);
-      await setActiveWorldSet(name);
+      await activateWorldSet(name);
+      setMapDataCache({});
+      setAllMaps([]);
       setNewName('');
       setView('nodes');
     } catch (e) {
@@ -175,15 +182,20 @@ export const WorldSetDialog: React.FC<Props> = ({
 
   const handleConfirmDelete = async () => {
     if (confirmDelete === null) return;
+    const { mapData, mapName, mapWorldSet, isDirty } = useMapStore.getState();
+    if (mapData && mapWorldSet === confirmDelete && isDirty) {
+      setError(`"${mapName}" in this world set has unsaved changes. Save or close it first.`);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       await deleteWorldSet(confirmDelete);
       const updated = await listWorldSets();
       setWorldSets(updated);
-      if (confirmDelete === activeWorldSetName) {
-        await setActiveWorldSet(null);
-      }
+      if (confirmDelete === activeWorldSetName) await activateWorldSet(null);
+      // Its maps are gone (moved to .trash), so a map open from it can't stay open
+      if (mapData && mapWorldSet === confirmDelete) useMapStore.getState().closeMap();
       setConfirmDelete(null);
     } catch (e) {
       setError(String(e));
@@ -252,7 +264,7 @@ export const WorldSetDialog: React.FC<Props> = ({
       return;
     }
     try {
-      const data = await getMap(mapName);
+      const data = await getMap(activeWorldSetName ?? '', mapName);
       setSelectedMapData(data);
       setChosenScale(defaultScaleForShape(data.orientation === 'hexagonal' ? 'hex' : 'tile'));
     } catch (e) {
@@ -284,7 +296,7 @@ export const WorldSetDialog: React.FC<Props> = ({
         }
         const { metersPerUnit: _mpu, ...rest } = selectedMapData;
         finalMapData = { ...rest, scale: chosenScale };
-        await saveMap(selectedMap, finalMapData);
+        await saveMap(activeWorldSetName ?? '', selectedMap, finalMapData);
       }
 
       // Step 2 — client-side warnings (scale inversion + footprint overlap).
@@ -295,7 +307,7 @@ export const WorldSetDialog: React.FC<Props> = ({
         // Get parent's TmjMap from cache or fetch.
         let parentData = mapDataCache[parentMapName];
         if (!parentData) {
-          parentData = await getMap(parentMapName);
+          parentData = await getMap(activeWorldSetName ?? '', parentMapName);
           setMapDataCache((prev) => ({ ...prev, [parentMapName]: parentData }));
         }
         const parentMPU = resolveMetersPerUnit(parentData, worldSetUnits);
@@ -458,7 +470,7 @@ export const WorldSetDialog: React.FC<Props> = ({
             </div>
             {confirmDelete && (
               <div className="dialog-warn">
-                <p>Delete '{confirmDelete}'? This cannot be undone.</p>
+                <p>Delete '{confirmDelete}' and all of its maps? The folder is moved to the data folder's .trash, where it can be recovered by hand.</p>
                 <div className="dialog-buttons">
                   <button onClick={handleCancelDelete}>Cancel</button>
                   <button className="btn-danger" onClick={handleConfirmDelete} disabled={loading}>

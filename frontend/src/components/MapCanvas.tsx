@@ -55,7 +55,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   // World set store and current map name
   const worldSetStore = useWorldSetStore();
   const defaultUnits = worldSetStore.activeWorldSet?.units;
-  const mapName = store.mapName;
+  const activeWorldSetName = worldSetStore.activeWorldSetName;
+  // Name used for hierarchy lookups: only when the open map belongs to the active world set
+  const mapName = store.mapWorldSet === activeWorldSetName ? store.mapName : '';
 
   // Overlay state
   const [hoveredFootprint, setHoveredFootprint] = useState<string | null>(null);
@@ -84,7 +86,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   // Rebuilt whenever the children list or the parent's cell size changes.
   const [footprintMap, setFootprintMap] = useState<Map<string, Footprint>>(new Map());
   // Cache of fetched child TmjMap data so we don't re-fetch on every hover re-render.
+  // Keyed by "<world set>/<map>": map names are only unique within a world set.
   const childMapCacheRef = useRef<Map<string, import('../types/tmj').TmjMap>>(new Map());
+  const cacheKey = (name: string) => `${activeWorldSetName}/${name}`;
 
   // --------------------------------------------------------------------------
   // Render
@@ -139,7 +143,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       return;
     }
 
-    const toFetch = children.filter((c) => !childMapCacheRef.current.has(c.mapName));
+    const toFetch = children.filter((c) => !childMapCacheRef.current.has(cacheKey(c.mapName)));
     let cancelled = false;
 
     const buildMap = () => {
@@ -147,7 +151,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       const fp = new Map<string, Footprint>();
       for (const child of children) {
         if (!child.parentAnchor) continue;
-        const data = childMapCacheRef.current.get(child.mapName);
+        const data = childMapCacheRef.current.get(cacheKey(child.mapName));
         const childMPU = resolveMetersPerUnit(data, defaultUnits);
         if (!data || !childMPU) continue;
         fp.set(child.mapName, computeFootprint(
@@ -162,10 +166,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       return;
     }
 
-    Promise.all(toFetch.map((c) => getMap(c.mapName).then((d) => [c.mapName, d] as const)))
+    Promise.all(toFetch.map((c) => getMap(activeWorldSetName ?? '', c.mapName).then((d) => [c.mapName, d] as const)))
       .then((entries) => {
         if (cancelled) return;
-        for (const [name, data] of entries) childMapCacheRef.current.set(name, data);
+        for (const [name, data] of entries) childMapCacheRef.current.set(cacheKey(name), data);
         buildMap();
       })
       .catch(() => { if (!cancelled) setFootprintMap(new Map()); });

@@ -19,24 +19,41 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Maps
+// Maps — every map lives in a world set's folder
 // ---------------------------------------------------------------------------
 
-/** List all saved map names (without .tmj extension). */
-export async function listMaps(): Promise<string[]> {
-  const res = await fetch(`${BASE}/maps`);
-  return handleResponse<string[]>(res);
+/** A map and the world set it belongs to. */
+export interface MapRef {
+  worldSet: string;
+  name: string;
 }
 
-/** Load a map from the server by name. */
-export async function getMap(name: string): Promise<TmjMap> {
-  const res = await fetch(`${BASE}/maps/${encodeURIComponent(name)}`);
-  return mapFromFile(await handleResponse<TmjMap>(res));
+function mapsUrl(worldSet: string): string {
+  return `${BASE}/world_sets/${encodeURIComponent(worldSet)}/maps`;
 }
 
-/** Save (create or overwrite) a map on the server. */
-export async function saveMap(name: string, data: TmjMap): Promise<void> {
-  const res = await fetch(`${BASE}/maps/${encodeURIComponent(name)}`, {
+function mapUrl(worldSet: string, name: string): string {
+  return `${mapsUrl(worldSet)}/${encodeURIComponent(name)}`;
+}
+
+/** List a world set's map names (placed and unplaced, without .tmj extension). */
+export async function listMaps(worldSet: string): Promise<string[]> {
+  return handleResponse<string[]>(await fetch(mapsUrl(worldSet)));
+}
+
+/** List every map in every world set, sorted by world set then name. */
+export async function listAllMaps(): Promise<MapRef[]> {
+  return handleResponse<MapRef[]>(await fetch(`${BASE}/maps`));
+}
+
+/** Load a map from a world set. */
+export async function getMap(worldSet: string, name: string): Promise<TmjMap> {
+  return mapFromFile(await handleResponse<TmjMap>(await fetch(mapUrl(worldSet, name))));
+}
+
+/** Save (create or overwrite) a map in a world set. */
+export async function saveMap(worldSet: string, name: string, data: TmjMap): Promise<void> {
+  const res = await fetch(mapUrl(worldSet, name), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(mapToFile(data)),
@@ -44,32 +61,26 @@ export async function saveMap(name: string, data: TmjMap): Promise<void> {
   await handleResponse<unknown>(res);
 }
 
-/** Delete a saved map from the server. */
-export async function deleteMap(name: string): Promise<void> {
-  const res = await fetch(`${BASE}/maps/${encodeURIComponent(name)}`, {
-    method: 'DELETE',
-  });
-  await handleResponse<unknown>(res);
+/** Delete a map from a world set. */
+export async function deleteMap(worldSet: string, name: string): Promise<void> {
+  await handleResponse<unknown>(await fetch(mapUrl(worldSet, name), { method: 'DELETE' }));
 }
 
 /**
- * Upload a .tmj file from the browser's file system to the server.
+ * Upload a .tmj file from the browser's file system into a world set.
  * Returns the map name that was stored.
  */
-export async function uploadMap(file: File): Promise<string> {
+export async function uploadMap(worldSet: string, file: File): Promise<string> {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${BASE}/maps/upload`, {
-    method: 'POST',
-    body: form,
-  });
+  const res = await fetch(`${mapsUrl(worldSet)}/upload`, { method: 'POST', body: form });
   const result = await handleResponse<{ uploaded: string }>(res);
   return result.uploaded;
 }
 
-/** Trigger download of a raw .tmj file from the server. */
-export function downloadMapUrl(name: string): string {
-  return `${BASE}/maps/${encodeURIComponent(name)}/download`;
+/** URL that downloads a map's raw .tmj file. */
+export function downloadMapUrl(worldSet: string, name: string): string {
+  return `${mapUrl(worldSet, name)}/download`;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +122,7 @@ export async function saveWorldSet(name: string, data: WorldSet): Promise<void> 
   await handleResponse<unknown>(res);
 }
 
-/** Delete a saved world set from the server. */
+/** Delete a world set: the server moves its folder, maps included, to <data>/.trash/. */
 export async function deleteWorldSet(name: string): Promise<void> {
   const res = await fetch(`${BASE}/world_sets/${encodeURIComponent(name)}`, {
     method: 'DELETE',
@@ -119,3 +130,9 @@ export async function deleteWorldSet(name: string): Promise<void> {
   await handleResponse<unknown>(res);
 }
 
+
+/** Location of the server's world set data folder, for display. */
+export async function getDataDir(): Promise<string> {
+  const result = await handleResponse<{ dataDir: string }>(await fetch(`${BASE}/data_dir`));
+  return result.dataDir;
+}

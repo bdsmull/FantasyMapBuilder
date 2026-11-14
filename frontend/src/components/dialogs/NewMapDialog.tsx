@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/mapStore';
 import type { TmjMap } from '../../types/tmj';
-import { saveMap as apiSaveMap } from '../../api/client';
+import { saveMap as apiSaveMap, listMaps, listWorldSets, getWorldSet } from '../../api/client';
 import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
 import { useWorldSetStore } from '../../store/worldSetStore';
 import { MAP_SCALES, MAP_SCALE_BY_ID, DEFAULT_UNIT_SYSTEM, defaultScaleForShape } from '../../data/mapScales';
@@ -11,7 +11,10 @@ import { regularHexTileSize } from '../../canvas/hexGeometry';
 
 interface Props {
   onClose: () => void;
-  /** When provided, called with the new map name instead of loadMap (Plan 7-01 chain context). */
+  /**
+   * When provided, called with the new map name instead of loadMap (Plan 7-01 chain context).
+   * The map is then always created in the active world set.
+   */
   onCreated?: (name: string) => void;
 }
 
@@ -21,7 +24,14 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
   const [typeChosen, setTypeChosen] = useState(false);
   const [scale, setScale] = useState(defaultScaleForShape('tile'));
   const [units, setUnits] = useState<UnitSystem | undefined>(undefined);
-  const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units) ?? DEFAULT_UNIT_SYSTEM;
+  const activeWorldSetName = useWorldSetStore((s) => s.activeWorldSetName);
+  const activeWorldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
+  const setActiveWorldSet = useWorldSetStore((s) => s.setActiveWorldSet);
+  // Every map lives in a world set; default to the active one.
+  const [worldSetNames, setWorldSetNames] = useState<string[]>([]);
+  const [targetWorldSet, setTargetWorldSet] = useState(activeWorldSetName ?? '');
+  const [targetUnits, setTargetUnits] = useState<UnitSystem | undefined>(activeWorldSetUnits);
+  const worldSetUnits = targetUnits ?? DEFAULT_UNIT_SYSTEM;
   const [name, setName] = useState('');
   const [width, setWidth] = useState(20);
   const [height, setHeight] = useState(15);
@@ -34,6 +44,22 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
   const [isCreating, setIsCreating] = useState(false);
 
   const { loadMap, isDirty, mapName: currentName, saveMapToServer } = useMapStore();
+
+  useEffect(() => {
+    listWorldSets()
+      .then((names) => {
+        setWorldSetNames(names);
+        setTargetWorldSet((current) => current || names[0] || '');
+      })
+      .catch((e) => setError(String(e)));
+  }, []);
+
+  // The "World set default" units option reflects the chosen target world set.
+  useEffect(() => {
+    if (!targetWorldSet) return;
+    if (targetWorldSet === activeWorldSetName) { setTargetUnits(activeWorldSetUnits); return; }
+    getWorldSet(targetWorldSet).then((ws) => setTargetUnits(ws.units)).catch(() => setTargetUnits(undefined));
+  }, [targetWorldSet, activeWorldSetName, activeWorldSetUnits]);
 
   const doCreate = async () => {
     setIsCreating(true);
@@ -86,12 +112,21 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
       ],
     };
 
+    const mapName = name.trim();
     try {
-      await apiSaveMap(name.trim(), mapData);
+      if ((await listMaps(targetWorldSet)).includes(mapName)) {
+        setError(`A map named "${mapName}" already exists in ${targetWorldSet}`);
+        setIsCreating(false);
+        return;
+      }
+      await apiSaveMap(targetWorldSet, mapName, mapData);
       if (onCreated) {
-        onCreated(name.trim()); // signal caller with new map name; skip loadMap in chain context
+        onCreated(mapName); // signal caller with new map name; skip loadMap in chain context
       } else {
-        loadMap(mapData, name.trim()); // standard standalone flow
+        // Standard standalone flow. The current map is being replaced (dirty guard
+        // already handled), so switching world set here doesn't need to close it.
+        if (targetWorldSet !== activeWorldSetName) await setActiveWorldSet(targetWorldSet);
+        loadMap(mapData, mapName, targetWorldSet);
       }
       onClose();
     } catch (e) {
@@ -102,6 +137,7 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
 
   const handleCreate = () => {
     if (!name.trim()) { setError('Map name is required'); return; }
+    if (!targetWorldSet) { setError('Create a world set first (Edit → World Sets…)'); return; }
     if (isDirty && currentName) { setDirtyWarn(true); return; }
     doCreate();
   };
@@ -121,6 +157,18 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
     <div className="dialog-backdrop" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
         <div className="dialog-title">New Map</div>
+
+        <div className="dialog-row">
+          <label>World set</label>
+          <select
+            value={targetWorldSet}
+            onChange={(e) => setTargetWorldSet(e.target.value)}
+            disabled={!!onCreated || worldSetNames.length === 0}
+          >
+            {worldSetNames.length === 0 && <option value="">No world sets yet</option>}
+            {worldSetNames.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
 
         <div className="dialog-row">
           <label>Units</label>

@@ -8,12 +8,17 @@
  * decision via the `saveFirst` option. If the current map is not dirty,
  * `saveFirst` is ignored and the utility jumps straight to load.
  *
- * Uses `useMapStore.getState()` (not a React hook) so it is safe to call
- * from non-React code. This also keeps `worldSetStore.ts` free of any
- * `mapStore` import — see phase 3 design decision D-01.
+ * Uses `useMapStore.getState()` / `useWorldSetStore.getState()` (not React
+ * hooks) so it is safe to call from non-React code. This also keeps the two
+ * stores free of imports of each other — see phase 3 design decision D-01.
+ *
+ * World set rule: the open map always belongs to the active world set.
+ * Hierarchy navigation stays inside the active world set; switching world
+ * sets goes through activateWorldSet(), which closes a map from another one.
  */
 
 import { useMapStore } from '../store/mapStore';
+import { useWorldSetStore } from '../store/worldSetStore';
 import { getMap as apiGetMap } from '../api/client';
 
 export interface NavigateOptions {
@@ -28,13 +33,13 @@ export interface NavigateOptions {
 }
 
 /**
- * Navigate to a different map. Handles the dirty-map guard by honoring
- * the caller's `saveFirst` decision, then fetches the new map and loads it
- * into `mapStore`.
+ * Navigate to a different map in the active world set. Handles the dirty-map
+ * guard by honoring the caller's `saveFirst` decision, then fetches the new
+ * map and loads it into `mapStore`.
  *
  * @throws if `saveFirst: true` and `mapStore.saveMapToServer()` rejects —
  *         in that case the new map is NOT loaded (save is a precondition).
- * @throws if the server `getMap(name)` fetch fails.
+ * @throws if no world set is active, or the server `getMap` fetch fails.
  */
 export async function navigateToMap(
   name: string,
@@ -53,9 +58,32 @@ export async function navigateToMap(
   // If isDirty is false, saveFirst is ignored.
   // If saveFirst is false (and isDirty is true), we discard by doing nothing here.
 
-  // Step 2: fetch the new map's TMJ payload
-  const data = await apiGetMap(name);
+  // Step 2: fetch the new map's TMJ payload from the active world set
+  const worldSet = useWorldSetStore.getState().activeWorldSetName;
+  if (!worldSet) throw new Error('No active world set');
+  const data = await apiGetMap(worldSet, name);
 
   // Step 3: load into the store
-  loadMap(data, name);
+  loadMap(data, name, worldSet);
+}
+
+/**
+ * Make `name` the active world set (or none, for null).
+ *
+ * Switching to another world set closes a clean map from a different one.
+ * Deactivating (null) leaves the open map alone. A map with unsaved changes
+ * blocks the switch instead of being discarded silently: the caller shows
+ * the error and the user saves or closes the map first.
+ *
+ * @throws if the open map belongs to another world set and has unsaved changes,
+ *         or if the world set can't be loaded (nothing changes in that case).
+ */
+export async function activateWorldSet(name: string | null): Promise<void> {
+  const { mapData, mapName, mapWorldSet, isDirty, closeMap } = useMapStore.getState();
+  const leavesOpenMap = mapData !== null && name !== null && mapWorldSet !== name;
+  if (leavesOpenMap && isDirty) {
+    throw new Error(`"${mapName}" has unsaved changes. Save or close it before switching world sets.`);
+  }
+  await useWorldSetStore.getState().setActiveWorldSet(name);
+  if (leavesOpenMap) closeMap();
 }

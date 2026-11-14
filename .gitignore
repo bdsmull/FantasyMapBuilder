@@ -50,6 +50,10 @@ desktop.ini
 # Generated placeholder assets (auto-created at runtime)
 map_editor/assets/placeholders/
 
+# World set data folder (default location; see server/data_dir.py) and its local override
+/world_sets/
+mapeditor.config.json
+
 # Saved map files (user data, not source)
 *.tmj
 *.tmx

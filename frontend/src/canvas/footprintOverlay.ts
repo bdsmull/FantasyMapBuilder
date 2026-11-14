@@ -16,8 +16,7 @@ import type { ViewState } from './canvasUtils';
 import { tileToScreen } from './canvasUtils';
 import { computeFootprint } from '../utils/worldSetUtils';
 import type { Footprint } from '../utils/worldSetUtils';
-import { hexCenter, hexOrientation } from './hexRenderer';
-import type { HexOrientation } from './hexRenderer';
+import { hexLayout, hexTopLeft } from './hexGeometry';
 
 // ---------------------------------------------------------------------------
 // Color constants (Phase 6 UI-SPEC values — do not change without updating UI-SPEC)
@@ -61,7 +60,7 @@ export interface RenderedFootprint {
 /**
  * Compute the screen-space rectangle for a tile-space footprint.
  * For rectangular tile maps, uses tileToScreen (already incorporates pan).
- * For hexagonal maps, uses hexCenter geometry to correctly position the
+ * For hexagonal maps, uses hexGeometry to correctly position the
  * bounding box over the actual hex cells — tileToScreen gives incorrect
  * positions for hex grids because hex cell spacing differs from tilewidth.
  *
@@ -84,9 +83,10 @@ function _computeScreenRect(
 /**
  * Compute the screen-space bounding rectangle for a hex footprint.
  *
- * Hex cells are not laid out on a rectangular grid — their centers follow
- * hexCenter() geometry. This function finds the extreme screen positions of
- * the 4 corner hexes and expands by one hex radius to get the bounding box.
+ * Hex cells are not laid out on a rectangular grid, so the box spans the
+ * bounding boxes of the footprint's 4 corner hexes. All four are needed
+ * because the stagger offset makes y vary by column (flat-top) or x by
+ * row (pointy-top).
  *
  * The result is in canvas-element coordinates (pan already incorporated).
  */
@@ -96,13 +96,7 @@ function _computeHexScreenRect(
   view: ViewState,
 ): { x: number; y: number; w: number; h: number } {
   const { zoom, pan } = view;
-  const hexSize = ((map.hexsidelength ?? 40) + map.tilewidth / 2) * zoom;
-  const orientation: HexOrientation = hexOrientation(map);
-  const sqrt3 = Math.sqrt(3);
-
-  // Compute screen-space centers of the 4 corner hexes of the footprint.
-  // All four corners are needed because stagger offset means y varies by column (flat)
-  // or x varies by row (pointy).
+  const layout = hexLayout(map);
   const corners: { col: number; row: number }[] = [
     { col: fp.colMin, row: fp.rowMin },
     { col: fp.colMax, row: fp.rowMin },
@@ -112,33 +106,20 @@ function _computeHexScreenRect(
 
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
-
   for (const { col, row } of corners) {
-    const c = hexCenter(col, row, hexSize, orientation);
-    if (c.x < minX) minX = c.x;
-    if (c.x > maxX) maxX = c.x;
-    if (c.y < minY) minY = c.y;
-    if (c.y > maxY) maxY = c.y;
+    const tl = hexTopLeft(layout, col, row);
+    minX = Math.min(minX, tl.x);
+    minY = Math.min(minY, tl.y);
+    maxX = Math.max(maxX, tl.x + layout.tileWidth);
+    maxY = Math.max(maxY, tl.y + layout.tileHeight);
   }
 
-  // Expand by one hex radius (different axis depends on orientation)
-  let xPad: number, yPad: number;
-  if (orientation === 'flat') {
-    // Flat-top: width of hex is 2*hexSize, height is sqrt(3)*hexSize
-    xPad = hexSize;
-    yPad = (sqrt3 * hexSize) / 2;
-  } else {
-    // Pointy-top: width is sqrt(3)*hexSize, height is 2*hexSize
-    xPad = (sqrt3 * hexSize) / 2;
-    yPad = hexSize;
-  }
-
-  const x = pan.x + minX - xPad;
-  const y = pan.y + minY - yPad;
-  const w = (maxX + xPad) - (minX - xPad);
-  const h = (maxY + yPad) - (minY - yPad);
-
-  return { x, y, w, h };
+  return {
+    x: pan.x + minX * zoom,
+    y: pan.y + minY * zoom,
+    w: (maxX - minX) * zoom,
+    h: (maxY - minY) * zoom,
+  };
 }
 
 /**

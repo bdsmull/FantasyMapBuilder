@@ -365,6 +365,20 @@ class HexMap:
         """
         return int(self.hex_size)
 
+    @property
+    def tiled_tile_size(self) -> tuple[int, int]:
+        """
+        Tiled's (tilewidth, tileheight): the hex's bounding box, rounded to even
+        integers because Tiled halves them with integer division.
+        @mirrors regularHexTileSize() in frontend/src/canvas/hexGeometry.ts
+        """
+        side = self.tiled_hex_side_length
+        along = 2 * side                                  # corner to corner
+        across = 2 * round(math.sqrt(3) * side / 2)       # flat to flat
+        if self.orientation == HexOrientation.FLAT_TOP:
+            return (along, across)
+        return (across, along)
+
     def __repr__(self) -> str:
         return (
             f"HexMap(name={self.name!r}, size={self.cols}x{self.rows}, "

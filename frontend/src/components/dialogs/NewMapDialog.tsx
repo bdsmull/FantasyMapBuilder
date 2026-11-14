@@ -7,6 +7,7 @@ import { useWorldSetStore } from '../../store/worldSetStore';
 import { MAP_SCALES, MAP_SCALE_BY_ID, DEFAULT_UNIT_SYSTEM, defaultScaleForShape } from '../../data/mapScales';
 import type { UnitSystem } from '../../data/mapScales';
 import { UnitsSelect } from './UnitsSelect';
+import { regularHexTileSize } from '../../canvas/hexGeometry';
 
 interface Props {
   onClose: () => void;
@@ -47,8 +48,8 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
       renderorder: 'right-down',
       width,
       height,
-      tilewidth: tileW,
-      tileheight: tileH,
+      // Hex maps: Tiled's tile size is the hex's bounding box, derived from the side length.
+      ...(isHex ? regularHexTileSize(hexSize, 'x') : { tilewidth: tileW, tileheight: tileH }),
       infinite: false,
       nextlayerid: 3,
       nextobjectid: 1,
@@ -171,7 +172,7 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
           </div>
         ) : (
           <div className="dialog-row">
-            <label>Hex Size</label>
+            <label>Hex Side</label>
             <input type="number" value={hexSize} min={10} max={200} onChange={(e) => setHexSize(Number(e.target.value))} />
           </div>
         )}

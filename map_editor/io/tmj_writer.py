@@ -64,7 +64,7 @@ def write_tile_map(tile_map: TileMap, path: Union[str, Path]) -> None:
 def write_hex_map(hex_map: HexMap, path: Union[str, Path]) -> None:
     """Serialize *hex_map* to a .tmj file at *path*."""
     path = Path(path)
-    hw, hh = hex_map.hex_pixel_size()
+    tile_w, tile_h = hex_map.tiled_tile_size
 
     layer_id = 1
     layers_data = []
@@ -80,8 +80,8 @@ def write_hex_map(hex_map: HexMap, path: Union[str, Path]) -> None:
         "renderorder": "right-down",
         "width": hex_map.cols,
         "height": hex_map.rows,
-        "tilewidth": int(hw),
-        "tileheight": int(hh),
+        "tilewidth": tile_w,
+        "tileheight": tile_h,
         "infinite": False,
         "staggeraxis": hex_map.tiled_stagger_axis,
         "staggerindex": hex_map.tiled_stagger_index,

@@ -5,9 +5,10 @@ import { scaleLabel, resolveUnits } from '../data/mapScales';
 import { navigateToMap } from '../utils/navigation';
 
 export const StatusBar: React.FC = () => {
-  const { mapData, mapName, isDirty, zoom } = useMapStore();
+  const { mapData, mapName, mapWorldSet, isDirty, zoom } = useMapStore();
   const worldSetStore = useWorldSetStore();
-  const parentNode = mapName ? worldSetStore.parentOf(mapName) : null;
+  const inActiveWorldSet = mapWorldSet === worldSetStore.activeWorldSetName;
+  const parentNode = mapName && inActiveWorldSet ? worldSetStore.parentOf(mapName) : null;
   const [dirtyGuardTarget, setDirtyGuardTarget] = useState<string | null>(null);
 
   const handleBreadcrumbClick = () => {

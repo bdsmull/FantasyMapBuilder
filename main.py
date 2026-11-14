@@ -4,6 +4,8 @@ Fantasy RPG Map Editor — web server entry point.
 Run with:
     python main.py                    # production (serves built React app)
     python main.py --dev              # development mode with auto-reload
+    python main.py --data-dir PATH    # store world sets in PATH (default: ./world_sets,
+                                      #   or "dataDir" in mapeditor.config.json)
 
 Access:
     Desktop browser: http://localhost:8000
@@ -15,6 +17,7 @@ Find your PC's LAN IP:
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -28,6 +31,9 @@ def main() -> None:
     import uvicorn
 
     dev_mode = "--dev" in sys.argv
+    if "--data-dir" in sys.argv:
+        # Passed via the environment so the reloader's worker process sees it too
+        os.environ["MAPEDITOR_DATA_DIR"] = sys.argv[sys.argv.index("--data-dir") + 1]
     uvicorn.run(
         "server.main:app",
         host="0.0.0.0",

@@ -1,41 +1,51 @@
 """
-Map file CRUD API.
+Map file CRUD API. Maps live in their world set's folder:
+<data folder>/<world set>/maps/<map>.tmj (see server/data_dir.py).
 
 Endpoints
 ---------
-GET    /api/maps                  List saved .tmj map names
-GET    /api/maps/{name}           Load a map (returns TMJ JSON)
-POST   /api/maps/{name}           Save a map (accepts TMJ JSON body)
-DELETE /api/maps/{name}           Delete a map file
-POST   /api/maps/upload           Upload a .tmj file (multipart)
-GET    /api/maps/{name}/download  Download raw .tmj file
+GET    /api/maps                                   List all maps: [{worldSet, name}]
+GET    /api/world_sets/{ws}/maps                   List a world set's map names
+GET    /api/world_sets/{ws}/maps/{name}            Load a map (returns TMJ JSON)
+POST   /api/world_sets/{ws}/maps/{name}            Save a map (accepts TMJ JSON body)
+DELETE /api/world_sets/{ws}/maps/{name}            Delete a map file
+POST   /api/world_sets/{ws}/maps/upload            Upload a .tmj file (multipart)
+GET    /api/world_sets/{ws}/maps/{name}/download   Download raw .tmj file
+
+The upload route must be registered before the {name} routes.
 """
 
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
-# Maps are stored in <project-root>/maps/
-_MAPS_DIR = Path(__file__).parent.parent.parent / "maps"
-_MAPS_DIR.mkdir(exist_ok=True)
-
-# Safe filename: alphanumerics, hyphens, underscores, dots (no path traversal)
-_SAFE_NAME_RE = re.compile(r"^[\w\-. ]+$")
+from server import data_dir as dd
 
 router = APIRouter(tags=["maps"])
 
 
-def _safe_path(name: str) -> Path:
-    """Resolve a map name to a .tmj path, raising 400 on unsafe names."""
-    stem = name.removesuffix(".tmj")
-    if not _SAFE_NAME_RE.match(stem):
-        raise HTTPException(status_code=400, detail="Invalid map name")
-    return _MAPS_DIR / f"{stem}.tmj"
+def _maps_dir(world_set: str) -> Path:
+    """maps/ folder of an existing world set (created if missing)."""
+    folder = dd.existing_world_set_dir(world_set) / "maps"
+    folder.mkdir(exist_ok=True)
+    return folder
+
+
+def _map_path(world_set: str, name: str) -> Path:
+    """Resolve a map name to its .tmj path, raising 400/404 as appropriate."""
+    stem = dd.check_name(name.removesuffix(".tmj"), "map")
+    return _maps_dir(world_set) / f"{stem}.tmj"
+
+
+def _existing_map_path(world_set: str, name: str) -> Path:
+    path = _map_path(world_set, name)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Map '{name}' not found in world set '{world_set}'")
+    return path
 
 
 def format_tmj(data: dict) -> str:
@@ -86,29 +96,27 @@ def format_tmj(data: dict) -> str:
 # ---------------------------------------------------------------------------
 
 @router.get("/maps")
-def list_maps() -> list[str]:
-    """Return sorted list of saved map names (without .tmj extension)."""
-    return sorted(p.stem for p in _MAPS_DIR.glob("*.tmj"))
+def list_all_maps() -> list[dict]:
+    """Every map in every world set, sorted by world set then name."""
+    return [
+        {"worldSet": ws, "name": p.stem}
+        for ws in dd.world_set_names()
+        for p in sorted((dd.data_dir() / ws / "maps").glob("*.tmj"))
+    ]
 
 
-@router.get("/maps/{name}")
-def get_map(name: str):
-    """Load a .tmj file and return its JSON content."""
-    path = _safe_path(name)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"Map '{name}' not found")
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    return JSONResponse(content=data)
+@router.get("/world_sets/{world_set}/maps")
+def list_maps(world_set: str) -> list[str]:
+    """Return sorted list of a world set's map names (without .tmj extension)."""
+    return sorted(p.stem for p in _maps_dir(world_set).glob("*.tmj"))
 
 
-@router.post("/maps/upload", status_code=201)
-async def upload_map(file: UploadFile):
+@router.post("/world_sets/{world_set}/maps/upload", status_code=201)
+async def upload_map(world_set: str, file: UploadFile):
     """Upload a .tmj file. The filename (without extension) becomes the map name."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
-    stem = Path(file.filename).stem
-    path = _safe_path(stem)
+    path = _map_path(world_set, Path(file.filename).stem)
     content = await file.read()
     # Validate it is valid JSON before saving
     try:
@@ -116,33 +124,36 @@ async def upload_map(file: UploadFile):
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=422, detail=f"Invalid JSON: {exc}") from exc
     path.write_bytes(content)
-    return {"uploaded": stem}
+    return {"uploaded": path.stem}
 
 
-@router.post("/maps/{name}", status_code=200)
-async def save_map(name: str, request_body: dict):
+@router.get("/world_sets/{world_set}/maps/{name}")
+def get_map(world_set: str, name: str):
+    """Load a .tmj file and return its JSON content."""
+    path = _existing_map_path(world_set, name)
+    return JSONResponse(content=json.loads(path.read_text(encoding="utf-8")))
+
+
+@router.post("/world_sets/{world_set}/maps/{name}", status_code=200)
+async def save_map(world_set: str, name: str, request_body: dict):
     """Save (create or overwrite) a map from TMJ JSON body."""
-    path = _safe_path(name)
+    path = _map_path(world_set, name)
     path.write_text(format_tmj(request_body), encoding="utf-8")
     return {"saved": path.stem}
 
 
-@router.delete("/maps/{name}", status_code=200)
-def delete_map(name: str):
+@router.delete("/world_sets/{world_set}/maps/{name}", status_code=200)
+def delete_map(world_set: str, name: str):
     """Delete a saved map file."""
-    path = _safe_path(name)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"Map '{name}' not found")
+    path = _existing_map_path(world_set, name)
     path.unlink()
     return {"deleted": path.stem}
 
 
-@router.get("/maps/{name}/download")
-def download_map(name: str):
+@router.get("/world_sets/{world_set}/maps/{name}/download")
+def download_map(world_set: str, name: str):
     """Return the raw .tmj file as a download."""
-    path = _safe_path(name)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"Map '{name}' not found")
+    path = _existing_map_path(world_set, name)
     return FileResponse(
         path=str(path),
         media_type="application/json",

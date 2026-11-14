@@ -1,7 +1,7 @@
 """
 Shared fixtures for API tests.
 Uses httpx.AsyncClient with the FastAPI app in test mode.
-Maps are stored in a temporary directory (not the real maps/ dir).
+The data folder is redirected to a temporary directory (not the real world_sets/).
 """
 import json
 import pytest
@@ -9,17 +9,30 @@ import pytest_asyncio
 from pathlib import Path
 from httpx import AsyncClient, ASGITransport
 
-# Patch the maps directory before importing the app
-import server.api.maps as maps_module
+import server.data_dir as data_dir_module
+
+#: World set that map tests save into (created by the patch_maps_dir fixture).
+TEST_WORLD_SET = "ws"
 
 
 @pytest.fixture(autouse=True)
-def patch_maps_dir(tmp_path: Path, monkeypatch):
-    """Redirect all map file I/O to a temp directory for test isolation."""
-    maps_dir = tmp_path / "maps"
-    maps_dir.mkdir()
-    monkeypatch.setattr(maps_module, "_MAPS_DIR", maps_dir)
-    return maps_dir
+def patch_data_dir(tmp_path: Path, monkeypatch):
+    """Redirect the world set data folder to a temp directory for test isolation."""
+    data = tmp_path / "data"
+    data.mkdir()
+    monkeypatch.setattr(data_dir_module, "DATA_DIR", data)
+    return data
+
+
+@pytest.fixture
+def patch_maps_dir(patch_data_dir: Path) -> Path:
+    """Create the TEST_WORLD_SET world set and return its maps/ folder."""
+    folder = patch_data_dir / TEST_WORLD_SET
+    (folder / "maps").mkdir(parents=True)
+    (folder / f"{TEST_WORLD_SET}.worldset.json").write_text(
+        json.dumps({"name": TEST_WORLD_SET, "version": "1.0", "nodes": []}), encoding="utf-8",
+    )
+    return folder / "maps"
 
 
 @pytest_asyncio.fixture
@@ -61,18 +74,6 @@ def sample_tmj() -> dict:
 # ---------------------------------------------------------------------------
 # World set fixtures
 # ---------------------------------------------------------------------------
-
-import server.api.world_sets as world_sets_module
-
-
-@pytest.fixture(autouse=True)
-def patch_world_sets_dir(tmp_path: Path, monkeypatch):
-    """Redirect all world set file I/O to a temp directory for test isolation."""
-    world_sets_dir = tmp_path / "world_sets"
-    world_sets_dir.mkdir()
-    monkeypatch.setattr(world_sets_module, "_WORLD_SETS_DIR", world_sets_dir)
-    return world_sets_dir
-
 
 @pytest.fixture
 def sample_world_set() -> dict:

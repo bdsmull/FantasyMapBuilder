@@ -43,6 +43,8 @@ export interface MapStore {
   // ---- Map data ----
   mapData: TmjMap | null;
   mapName: string;
+  /** World set the open map belongs to (its file lives in that world set's folder). */
+  mapWorldSet: string;
   isDirty: boolean;
 
   // ---- Editor state ----
@@ -60,7 +62,7 @@ export interface MapStore {
   pendingTiles: TileChange[];
 
   // ---- Map lifecycle actions ----
-  loadMap: (data: TmjMap, name: string) => void;
+  loadMap: (data: TmjMap, name: string, worldSet: string) => void;
   closeMap: () => void;
   saveMapToServer: () => Promise<void>;
 
@@ -129,6 +131,7 @@ function updateObjectLayer(
 export const useMapStore = create<MapStore>((set, get) => ({
   mapData: null,
   mapName: '',
+  mapWorldSet: '',
   isDirty: false,
   activeLayerIndex: 0,
   activeGid: 1,
@@ -142,10 +145,11 @@ export const useMapStore = create<MapStore>((set, get) => ({
 
   // ---- Map lifecycle ----
 
-  loadMap: (data, name) => {
+  loadMap: (data, name, worldSet) => {
     set({
       mapData: data,
       mapName: name,
+      mapWorldSet: worldSet,
       isDirty: false,
       activeLayerIndex: 0,
       activeGid: 1,
@@ -161,6 +165,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
     set({
       mapData: null,
       mapName: '',
+      mapWorldSet: '',
       isDirty: false,
       past: [],
       future: [],
@@ -169,9 +174,9 @@ export const useMapStore = create<MapStore>((set, get) => ({
   },
 
   saveMapToServer: async () => {
-    const { mapData, mapName } = get();
-    if (!mapData || !mapName) throw new Error('No map loaded');
-    await apiSaveMap(mapName, mapData);
+    const { mapData, mapName, mapWorldSet } = get();
+    if (!mapData || !mapName || !mapWorldSet) throw new Error('No map loaded');
+    await apiSaveMap(mapWorldSet, mapName, mapData);
     set({ isDirty: false });
   },
 

@@ -51,14 +51,40 @@ export async function getMap(worldSet: string, name: string): Promise<TmjMap> {
   return mapFromFile(await handleResponse<TmjMap>(await fetch(mapUrl(worldSet, name))));
 }
 
-/** Save (create or overwrite) a map in a world set. */
-export async function saveMap(worldSet: string, name: string, data: TmjMap): Promise<void> {
+/** Where the server stored one of a saved map's tilesets. */
+export interface TilesetRef {
+  firstgid: number;
+  source: string;
+  name: string;
+}
+
+/**
+ * Save (create or overwrite) a map in a world set. Its tilesets are written to
+ * the world set's shared tileset files; the result says where each one went.
+ */
+export async function saveMap(worldSet: string, name: string, data: TmjMap): Promise<TilesetRef[]> {
   const res = await fetch(mapUrl(worldSet, name), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(mapToFile(data)),
   });
-  await handleResponse<unknown>(res);
+  const result = await handleResponse<{ tilesets?: TilesetRef[] }>(res);
+  return result.tilesets ?? [];
+}
+
+/** Record where each tileset was stored (from saveMap), so later saves update the same files. */
+export function applyTilesetRefs(data: TmjMap, refs: TilesetRef[]): TmjMap {
+  if (refs.length === 0) return data;
+  const byGid = new Map(refs.map((r) => [r.firstgid, r]));
+  return {
+    ...data,
+    tilesets: data.tilesets.map((ts) => {
+      const ref = byGid.get(ts.firstgid);
+      return ref && (ref.source !== ts.source || ref.name !== ts.name)
+        ? { ...ts, source: ref.source, name: ref.name }
+        : ts;
+    }),
+  };
 }
 
 /** Delete a map from a world set. */
@@ -88,12 +114,23 @@ export function downloadMapUrl(worldSet: string, name: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Return the URL for serving a tileset image.
- * `imagePath` is the absolute server-side path stored in the TMJ file.
+ * Return the URL for loading a tileset image. Images stored with the world set
+ * already are API URLs; legacy maps hold an absolute filesystem path instead.
  */
 export function tilesetImageUrl(imagePath: string): string {
-  // Strip leading slashes/drive letters for the path segment
+  if (imagePath.startsWith(`${BASE}/`)) return imagePath;
   return `${BASE}/tilesets/${encodeURIComponent(imagePath)}`;
+}
+
+/** Upload a sprite-sheet image into a world set; returns the URL to use as the tileset image. */
+export async function uploadTilesetImage(worldSet: string, file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${BASE}/world_sets/${encodeURIComponent(worldSet)}/tilesets/images`, {
+    method: 'POST',
+    body: form,
+  });
+  return (await handleResponse<{ image: string }>(res)).image;
 }
 
 // ---------------------------------------------------------------------------

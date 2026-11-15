@@ -13,6 +13,10 @@ POST   /api/world_sets/{ws}/maps/upload            Upload a .tmj file (multipart
 GET    /api/world_sets/{ws}/maps/{name}/download   Download raw .tmj file
 
 The upload route must be registered before the {name} routes.
+
+Tilesets are shared per world set as Tiled external tileset files (see
+server/tileset_files.py): GET returns them inlined for the editor, POST writes
+them back to <ws>/tilesets/ and stores only references in the map file.
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
 from server import data_dir as dd
+from server.tileset_files import externalize_tilesets, inline_tilesets
 
 router = APIRouter(tags=["maps"])
 
@@ -129,17 +134,25 @@ async def upload_map(world_set: str, file: UploadFile):
 
 @router.get("/world_sets/{world_set}/maps/{name}")
 def get_map(world_set: str, name: str):
-    """Load a .tmj file and return its JSON content."""
+    """Load a .tmj file and return its JSON content, with external tilesets inlined."""
     path = _existing_map_path(world_set, name)
-    return JSONResponse(content=json.loads(path.read_text(encoding="utf-8")))
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return JSONResponse(content=inline_tilesets(data, path.parent.parent, path.parent.parent.name))
 
 
 @router.post("/world_sets/{world_set}/maps/{name}", status_code=200)
 async def save_map(world_set: str, name: str, request_body: dict):
-    """Save (create or overwrite) a map from TMJ JSON body."""
+    """Save (create or overwrite) a map from TMJ JSON body.
+
+    Tilesets are written to the world set's shared .tsj files; the response's
+    ``tilesets`` lists where each one went ({firstgid, source, name}) so the
+    editor can record it.
+    """
     path = _map_path(world_set, name)
-    path.write_text(format_tmj(request_body), encoding="utf-8")
-    return {"saved": path.stem}
+    world_set_dir = path.parent.parent
+    on_disk, refs = externalize_tilesets(request_body, world_set_dir, world_set_dir.name)
+    path.write_text(format_tmj(on_disk), encoding="utf-8")
+    return {"saved": path.stem, "tilesets": refs}
 
 
 @router.delete("/world_sets/{world_set}/maps/{name}", status_code=200)

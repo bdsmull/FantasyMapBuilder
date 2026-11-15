@@ -13,7 +13,7 @@
 import { create } from 'zustand';
 import type { TmjMap, TmjLayer, TmjTileLayer, TmjObjectLayer, TmjObject } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
-import { saveMap as apiSaveMap } from '../api/client';
+import { saveMap as apiSaveMap, applyTilesetRefs } from '../api/client';
 import { MAP_SCALE_BY_ID } from '../data/mapScales';
 
 // ---------------------------------------------------------------------------
@@ -176,8 +176,13 @@ export const useMapStore = create<MapStore>((set, get) => ({
   saveMapToServer: async () => {
     const { mapData, mapName, mapWorldSet } = get();
     if (!mapData || !mapName || !mapWorldSet) throw new Error('No map loaded');
-    await apiSaveMap(mapWorldSet, mapName, mapData);
-    set({ isDirty: false });
+    const refs = await apiSaveMap(mapWorldSet, mapName, mapData);
+    // Record where each tileset was stored. Edits made while saving are kept:
+    // only source/name of tilesets in the current map data are updated.
+    set((state) => ({
+      isDirty: false,
+      mapData: state.mapData ? applyTilesetRefs(state.mapData, refs) : state.mapData,
+    }));
   },
 
   // ---- Editor state ----

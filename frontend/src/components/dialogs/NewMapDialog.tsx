@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/mapStore';
 import type { TmjMap } from '../../types/tmj';
-import { saveMap as apiSaveMap, listMaps, listWorldSets, getWorldSet } from '../../api/client';
+import { saveMap as apiSaveMap, applyTilesetRefs, listMaps, listWorldSets, getWorldSet } from '../../api/client';
 import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
 import { useWorldSetStore } from '../../store/worldSetStore';
 import { MAP_SCALES, MAP_SCALE_BY_ID, DEFAULT_UNIT_SYSTEM, defaultScaleForShape } from '../../data/mapScales';
@@ -119,14 +119,14 @@ export const NewMapDialog: React.FC<Props> = ({ onClose, onCreated }) => {
         setIsCreating(false);
         return;
       }
-      await apiSaveMap(targetWorldSet, mapName, mapData);
+      const refs = await apiSaveMap(targetWorldSet, mapName, mapData);
       if (onCreated) {
         onCreated(mapName); // signal caller with new map name; skip loadMap in chain context
       } else {
         // Standard standalone flow. The current map is being replaced (dirty guard
         // already handled), so switching world set here doesn't need to close it.
         if (targetWorldSet !== activeWorldSetName) await setActiveWorldSet(targetWorldSet);
-        loadMap(mapData, mapName, targetWorldSet);
+        loadMap(applyTilesetRefs(mapData, refs), mapName, targetWorldSet);
       }
       onClose();
     } catch (e) {

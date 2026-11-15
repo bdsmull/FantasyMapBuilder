@@ -3,13 +3,14 @@ import { useMapStore } from '../../store/mapStore';
 import type { TmjTileset, TmjTileEntry } from '../../types/tmj';
 import { isTileLayer } from '../../types/tmj';
 import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
+import { uploadTilesetImage } from '../../api/client';
 
 interface Props {
   onClose: () => void;
 }
 
 export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
-  const { mapData, addTileset, removeTileset } = useMapStore();
+  const { mapData, mapWorldSet, addTileset, removeTileset } = useMapStore();
   const [error, setError] = useState('');
 
   if (!mapData) return null;
@@ -39,7 +40,16 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
     if (!tileW || !tileH) { setError('Invalid tile size'); return; }
 
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
+      // Store the sprite sheet with the world set so it survives a reload
+      let imageUrl: string;
+      try {
+        imageUrl = await uploadTilesetImage(mapWorldSet, file);
+      } catch (err) {
+        setError(`Upload failed: ${err}`);
+        return;
+      }
+
       const cols = Math.max(1, Math.floor(img.width / tileW));
       const rows = Math.max(1, Math.floor(img.height / tileH));
       const count = cols * rows;
@@ -62,8 +72,6 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
       const lastTs = mapData.tilesets[mapData.tilesets.length - 1];
       const firstgid = lastTs ? lastTs.firstgid + lastTs.tilecount : 1;
 
-      // The image path — use the file's name as a local reference
-      // (absolute server path not available for browser-uploaded files)
       const ts: TmjTileset = {
         firstgid,
         name: name.trim(),
@@ -71,7 +79,7 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
         tileheight: tileH,
         tilecount: count,
         columns: cols,
-        image: '',   // blank: no server-side path for uploaded images
+        image: imageUrl,
         imagewidth: img.width,
         imageheight: img.height,
         tiles,

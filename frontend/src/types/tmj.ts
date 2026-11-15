@@ -34,6 +34,12 @@ export interface TmjTileEntry {
 
 export interface TmjTileset {
   firstgid: number;
+  /**
+   * Path of the shared Tiled tileset file this came from (e.g. "../tilesets/Terrain.tsj").
+   * The server inlines the file's content on load and writes it back on save.
+   * Absent for a tileset not yet saved to the world set.
+   */
+  source?: string;
   name: string;
   tilewidth: number;
   tileheight: number;
@@ -41,10 +47,17 @@ export interface TmjTileset {
   columns: number;
   spacing?: number;
   margin?: number;
-  image?: string;       // absolute path to sprite sheet PNG
+  /**
+   * Sprite sheet: a URL served by the API (/api/world_sets/<ws>/tilesets/<file>),
+   * a legacy absolute filesystem path, or "" for a color-only tileset (tiles drawn
+   * from their color_r/g/b properties).
+   */
+  image?: string;
   imagewidth?: number;
   imageheight?: number;
   tiles: TmjTileEntry[];
+  /** Tileset-level Tiled custom properties. */
+  properties?: TmjProperty[];
 }
 
 export interface TmjTileLayer {

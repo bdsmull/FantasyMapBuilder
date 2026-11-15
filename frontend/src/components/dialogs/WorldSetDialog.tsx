@@ -9,6 +9,8 @@ import {
   getMap,
   listMaps,
   saveMap,
+  importMapset,
+  mapsetDownloadUrl,
 } from '../../api/client';
 import {
   MAP_SCALE_BY_ID, MAP_SCALES, DEFAULT_UNIT_SYSTEM,
@@ -56,6 +58,10 @@ export const WorldSetDialog: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // .mapset import waiting for a new name because its world set name is taken
+  const [importConflict, setImportConflict] = useState<{ file: File; message: string } | null>(null);
+  const [importName, setImportName] = useState('');
+  const [notice, setNotice] = useState('');
 
   // Cached TmjMap data for any map referenced by the active world set.
   // Keyed by mapName. Loaded lazily when entering nodes view.
@@ -206,6 +212,33 @@ export const WorldSetDialog: React.FC<Props> = ({
 
   const handleCancelDelete = () => {
     setConfirmDelete(null);
+  };
+
+  const runImport = async (file: File, name?: string) => {
+    setLoading(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await importMapset(file, name);
+      if (!result.ok) {
+        setImportConflict({ file, message: result.conflict });
+        setImportName(`${name || file.name.replace(/.mapset$/i, '')} copy`);
+        return;
+      }
+      setImportConflict(null);
+      setWorldSets(await listWorldSets());
+      setNotice(`Imported "${result.imported}" (${result.maps.length} map${result.maps.length === 1 ? '' : 's'}).`);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow picking the same file again
+    if (file) runImport(file);
   };
 
   const nodeScaleLabel = (mapName: string): string => {
@@ -441,6 +474,16 @@ export const WorldSetDialog: React.FC<Props> = ({
                     onClick={() => handleSelect(name)}
                   >
                     <span>{name}</span>
+                    <a
+                      href={mapsetDownloadUrl(name)}
+                      download={`${name}.mapset`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="download-link"
+                      title="Export as .mapset"
+                      style={{ marginLeft: 'auto', marginRight: 8 }}
+                    >
+                      Export
+                    </a>
                     <button
                       className="btn-danger"
                       onClick={(e) => { e.stopPropagation(); handleDeleteClick(name); }}
@@ -468,6 +511,42 @@ export const WorldSetDialog: React.FC<Props> = ({
                 {loading ? 'Creating…' : 'Create'}
               </button>
             </div>
+            <div className="dialog-row">
+              <label className="btn-secondary" style={{ cursor: loading ? 'default' : 'pointer' }}>
+                Import .mapset…
+                <input
+                  type="file"
+                  accept=".mapset,.zip"
+                  onChange={handleImportFile}
+                  disabled={loading}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+            {importConflict && (
+              <div className="dialog-warn">
+                <p>{importConflict.message}. Import it under another name:</p>
+                <div className="dialog-row">
+                  <input
+                    type="text"
+                    value={importName}
+                    onChange={(e) => setImportName(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="dialog-buttons">
+                  <button onClick={() => setImportConflict(null)} disabled={loading}>Cancel</button>
+                  <button
+                    className="btn-primary"
+                    onClick={() => runImport(importConflict.file, importName.trim())}
+                    disabled={!importName.trim() || loading}
+                  >
+                    {loading ? 'Importing…' : 'Import'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {notice && <div style={{ color: '#8c8', margin: '8px 0' }}>{notice}</div>}
             {confirmDelete && (
               <div className="dialog-warn">
                 <p>Delete '{confirmDelete}' and all of its maps? The folder is moved to the data folder's .trash, where it can be recovered by hand.</p>

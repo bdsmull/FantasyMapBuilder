@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from server.api import maps as maps_router
 from server.api import tilesets as tilesets_router
 from server.api import world_sets as world_sets_router
+from server.api import mapsets as mapsets_router
 
 app = FastAPI(
     title="Fantasy RPG Map Editor API",
@@ -39,6 +40,7 @@ app.add_middleware(
 app.include_router(maps_router.router, prefix="/api")
 app.include_router(tilesets_router.router, prefix="/api")
 app.include_router(world_sets_router.router, prefix="/api")
+app.include_router(mapsets_router.router, prefix="/api")
 
 # Serve the React build as a SPA at / (only when the build exists)
 _FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"

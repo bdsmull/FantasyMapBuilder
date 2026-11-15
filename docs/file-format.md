@@ -133,6 +133,23 @@ Notes for readers (e.g. a game-engine importer):
   uncompressed, so they can be read in place; everything else is deflated.
 - Hidden files (names starting with `.`) are never included.
 - Extracting the zip yields a normal world set folder that Tiled can open.
-- On import the Map Builder refuses a name that already exists (HTTP 409) and can
+- On import (World Sets → Import .mapset…) the Map Builder refuses a name that already exists (HTTP 409) and can
   import under a new name, which renames the folder, the `.worldset.json` file and
   its `name` field.
+
+### Importing a single map
+
+World Sets → *Import map…* copies one map, with the tilesets it uses, from another
+world set or from a `.mapset` into the active world set. The map arrives unplaced.
+For each tileset the target already has under the same name:
+
+| Situation | Result |
+|---|---|
+| Identical tiles and image | Shared with the target |
+| Different | You choose: **merge** (color-only tilesets with the same tile size), **keep both** (the imported one is stored as `<Name> (2)`), or **use this world set's** |
+
+Merging matches tiles by ID and never changes how existing maps look: where the same
+ID holds a different tile, the target's tile keeps the ID and the imported tile is
+added under a new one (the imported map's GIDs are renumbered, flip flags preserved).
+If the map inherited its units from its old world set and the new one's default
+differs, its units are pinned so it keeps its size.

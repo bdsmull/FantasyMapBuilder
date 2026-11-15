@@ -187,6 +187,34 @@ def _unique_stem(folder: Path, stem: str) -> str:
     return f"{stem} ({n})"
 
 
+def image_file(image: str, world_set: str, tilesets_dir: Path) -> Optional[Path]:
+    """Filesystem path behind an editor image reference (a URL for this world set
+    or an absolute path), or None for no image / a color-only tileset."""
+    prefix = _url_prefix(world_set)
+    if image.startswith(prefix):
+        path = tilesets_dir / unquote(image[len(prefix):])
+    elif image and Path(image).is_absolute():
+        path = Path(image)
+    else:
+        return None
+    return path if path.is_file() else None
+
+
+def tsj_image_file(tsj: dict, tilesets_dir: Path) -> Optional[Path]:
+    """The real sprite sheet of a stored tileset, or None if it is color-only (swatch)."""
+    if any(p.get("name") == SWATCH_PROPERTY and p.get("value") for p in tsj.get("properties", [])):
+        return None
+    path = tilesets_dir / str(tsj.get("image") or "")
+    return path if tsj.get("image") and path.is_file() else None
+
+
+def same_image(a: Optional[Path], b: Optional[Path]) -> bool:
+    """Both color-only, or both sprite sheets with identical bytes."""
+    if a is None or b is None:
+        return a is None and b is None
+    return a.read_bytes() == b.read_bytes()
+
+
 def _store_image(image: str, world_set: str, tilesets_dir: Path, stem: str) -> Optional[str]:
     """Return the file name (in tilesets/) for a tileset image, copying an
     outside image in. None means no usable image (draw a swatch instead)."""
@@ -196,8 +224,15 @@ def _store_image(image: str, world_set: str, tilesets_dir: Path, stem: str) -> O
         return name if (tilesets_dir / name).is_file() and "/" not in name and "\\" not in name else None
     source = Path(image)
     if source.is_absolute() and source.is_file() and source.suffix.lower() in IMAGE_SUFFIXES:
-        target = tilesets_dir / f"{stem}{source.suffix.lower()}"
-        shutil.copyfile(source, target)
+        suffix = source.suffix.lower()
+        target = tilesets_dir / f"{stem}{suffix}"
+        n = 2
+        # Never overwrite a different image that already has this name
+        while target.exists() and target.read_bytes() != source.read_bytes():
+            target = tilesets_dir / f"{stem} ({n}){suffix}"
+            n += 1
+        if not target.exists():
+            shutil.copyfile(source, target)
         return target.name
     return None
 
@@ -229,7 +264,12 @@ def externalize_tilesets(
             stem = safe_file_stem(str(content.get("name", "tileset")))
             existing = tilesets_dir / f"{stem}.tsj"
             if existing.is_file():
-                if not same_tileset(json.loads(existing.read_text(encoding="utf-8")), content):
+                stored = json.loads(existing.read_text(encoding="utf-8"))
+                identical = same_tileset(stored, content) and same_image(
+                    tsj_image_file(stored, tilesets_dir),
+                    image_file(str(content.get("image") or ""), world_set, tilesets_dir),
+                )
+                if not identical:
                     stem = _unique_stem(tilesets_dir, stem)
                     content["name"] = stem
             path = tilesets_dir / f"{stem}.tsj"

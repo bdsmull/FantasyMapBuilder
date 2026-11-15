@@ -128,22 +128,41 @@ def _member_paths(zf: zipfile.ZipFile, source_name: str) -> list[tuple[zipfile.Z
     return members
 
 
-@router.post("/mapsets", status_code=201)
-async def import_mapset(file: UploadFile, name: Optional[str] = Form(default=None)):
-    """Import a .mapset as a new world set, optionally under a different name."""
+def open_mapset(data: bytes) -> tuple[zipfile.ZipFile, str, list]:
+    """Validate .mapset bytes. Returns (zip, world set name in the package, members)."""
     try:
-        zf = zipfile.ZipFile(io.BytesIO(await file.read()))
+        zf = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile:
         raise _bad("not a zip file") from None
-    with zf:
+    try:
         manifest = _read_manifest(zf)
         source_name = dd.check_name(manifest["worldSet"], "world set")
-        target_name = dd.check_name((name or source_name).strip(), "world set")
         members = _member_paths(zf, source_name)
         worldset_file = PurePosixPath(f"{source_name}{dd.WORLD_SET_SUFFIX}")
         if worldset_file not in {p for _, p in members}:
             raise _bad(f"no {worldset_file}")
+    except Exception:
+        zf.close()
+        raise
+    return zf, source_name, members
 
+
+def extract_members(zf: zipfile.ZipFile, members: list, folder: Path) -> None:
+    """Write validated package members into ``folder`` (a world set folder)."""
+    for info, rel in members:
+        out = folder.joinpath(*rel.parts)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with zf.open(info) as src, open(out, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+    (folder / "maps").mkdir(exist_ok=True)
+
+
+@router.post("/mapsets", status_code=201)
+async def import_mapset(file: UploadFile, name: Optional[str] = Form(default=None)):
+    """Import a .mapset as a new world set, optionally under a different name."""
+    zf, source_name, members = open_mapset(await file.read())
+    with zf:
+        target_name = dd.check_name((name or source_name).strip(), "world set")
         target = dd.world_set_dir(target_name)
         if target.exists():
             raise HTTPException(status_code=409, detail=f"A world set named '{target_name}' already exists")
@@ -151,21 +170,16 @@ async def import_mapset(file: UploadFile, name: Optional[str] = Form(default=Non
         # Unpack into a temporary folder first so a failure leaves nothing behind.
         staging = Path(tempfile.mkdtemp(prefix=".import-", dir=dd.data_dir()))
         try:
-            for info, rel in members:
-                out = staging.joinpath(*rel.parts)
-                out.parent.mkdir(parents=True, exist_ok=True)
-                with zf.open(info) as src, open(out, "wb") as dst:
-                    shutil.copyfileobj(src, dst)
+            extract_members(zf, members, staging)
 
             # Rename the world set file (and its "name") to the target name
-            ws_path = staging / worldset_file.name
+            ws_path = staging / f"{source_name}{dd.WORLD_SET_SUFFIX}"
             data = json.loads(ws_path.read_text(encoding="utf-8"))
             data["name"] = target_name
             ws_path.unlink()
             (staging / f"{target_name}{dd.WORLD_SET_SUFFIX}").write_text(
                 json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8",
             )
-            (staging / "maps").mkdir(exist_ok=True)
             staging.rename(target)
         except Exception:
             shutil.rmtree(staging, ignore_errors=True)

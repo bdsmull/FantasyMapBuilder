@@ -87,3 +87,52 @@ Tiled JSON `data` array:
 | `ELLIPSE` | Object with `"ellipse": true` |
 | `POLYGON` | Object with a `"polygon"` vertex array |
 | `TILE` | Object with a `"gid"` field |
+
+## World set folders and `.mapset` packages
+
+Each world set is a self-contained folder in the server's data folder
+(default `world_sets/`; see `server/data_dir.py`):
+
+```
+<World set>/
+  <World set>.worldset.json   hierarchy of placed maps, default units
+  maps/*.tmj                  placed and unplaced maps
+  tilesets/*.tsj              shared Tiled external tilesets
+  tilesets/*.png              generated color swatches and uploaded sprite sheets
+  heights/*.tif               height patches (planned, #8)
+```
+
+Maps reference tilesets by relative path (`"source": "../tilesets/<Name>.tsj"`), so
+Tiled can open any map in the folder directly. A tileset whose image is a generated
+swatch carries the boolean custom property `mapeditor.swatch`; its real data is the
+`color_r` / `color_g` / `color_b` properties of each tile.
+
+A **`.mapset`** file is the same folder packaged as one plain zip, for moving a world
+set between computers or projects (World Sets → Export / Import .mapset…):
+
+```
+mapset.json                          manifest
+<World set>/<World set>.worldset.json
+<World set>/maps/…
+<World set>/tilesets/…
+```
+
+`mapset.json`:
+
+| Field | Meaning |
+|---|---|
+| `format` | Always `"mapset"` |
+| `formatVersion` | `1`. Readers should reject versions they don't know |
+| `worldSet` | World set name; every other entry lives under `<worldSet>/` |
+| `created` | UTC timestamp of the export (ISO 8601) |
+| `files` | Every packaged file, as zip entry paths |
+
+Notes for readers (e.g. a game-engine importer):
+
+- Images and height files (`.png`, `.jpg`, `.gif`, `.webp`, `.tif`) are stored
+  uncompressed, so they can be read in place; everything else is deflated.
+- Hidden files (names starting with `.`) are never included.
+- Extracting the zip yields a normal world set folder that Tiled can open.
+- On import the Map Builder refuses a name that already exists (HTTP 409) and can
+  import under a new name, which renames the folder, the `.worldset.json` file and
+  its `name` field.

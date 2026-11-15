@@ -173,3 +173,31 @@ export async function getDataDir(): Promise<string> {
   const result = await handleResponse<{ dataDir: string }>(await fetch(`${BASE}/data_dir`));
   return result.dataDir;
 }
+
+// ---------------------------------------------------------------------------
+// .mapset packages — a whole world set as one file
+// ---------------------------------------------------------------------------
+
+/** URL that downloads a world set as <name>.mapset. */
+export function mapsetDownloadUrl(worldSet: string): string {
+  return `${BASE}/mapsets/${encodeURIComponent(worldSet)}`;
+}
+
+export type ImportMapsetResult =
+  | { ok: true; imported: string; maps: string[] }
+  /** A world set with that name already exists; retry with another name. */
+  | { ok: false; conflict: string };
+
+/** Import a .mapset as a new world set, optionally under a different name. */
+export async function importMapset(file: File, name?: string): Promise<ImportMapsetResult> {
+  const form = new FormData();
+  form.append('file', file);
+  if (name) form.append('name', name);
+  const res = await fetch(`${BASE}/mapsets`, { method: 'POST', body: form });
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({ detail: 'A world set with that name already exists' }));
+    return { ok: false, conflict: String(body.detail) };
+  }
+  const result = await handleResponse<{ imported: string; maps: string[] }>(res);
+  return { ok: true, ...result };
+}

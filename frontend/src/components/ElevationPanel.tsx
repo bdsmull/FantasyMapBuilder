@@ -3,13 +3,14 @@ import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { resolveUnits } from '../data/mapScales';
 import { formatHeight, hasHeightsProperty, parseHeightToCm, patchRange } from '../utils/heightGrid';
+import { HeightBrushControls } from './HeightBrushControls';
 
 /**
  * Elevation section of the Layers panel: add or remove the map's elevation and
  * control how the overlay is shown. Heights are saved with the map (Ctrl+S).
  */
 export const ElevationPanel: React.FC = () => {
-  const { mapData, heights, elevationView, addElevation, removeElevation, setElevationView } = useMapStore();
+  const { mapData, heights, elevationView, addElevation, removeElevation, setElevationView, selectedTool } = useMapStore();
   const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
   const [adding, setAdding] = useState(false);
   const [startHeight, setStartHeight] = useState('0');
@@ -92,6 +93,7 @@ export const ElevationPanel: React.FC = () => {
           Hillshade
         </label>
       </div>
+      {selectedTool === 'height' && <HeightBrushControls units={units} />}
       <div style={{ padding: '2px 8px' }}>
         {!confirmRemove ? (
           <button className="btn-secondary" onClick={() => setConfirmRemove(true)} style={{ fontSize: 11 }}>

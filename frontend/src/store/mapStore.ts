@@ -14,8 +14,19 @@ import { create } from 'zustand';
 import type { TmjMap, TmjLayer, TmjTileLayer, TmjObjectLayer, TmjObject } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
 import { saveMap as apiSaveMap, applyTilesetRefs, putHeights, deleteHeights } from '../api/client';
-import type { HeightPatch } from '../utils/heightGrid';
-import { HEIGHTS_PROPERTY, createPatch, heightsPropertyValue } from '../utils/heightGrid';
+import type { HeightPatch, CellRect } from '../utils/heightGrid';
+import { HEIGHTS_PROPERTY, createPatch, heightsPropertyValue, unionRect } from '../utils/heightGrid';
+import type { HeightBrush } from '../utils/heightBrush';
+import { DEFAULT_HEIGHT_BRUSH, applyDab } from '../utils/heightBrush';
+
+/** One changed height sample, for undo/redo. */
+export interface HeightChange {
+  index: number;
+  oldCm: number;
+  newCm: number;
+  oldMask: number;
+  newMask: number;
+}
 
 /** How the elevation overlay is shown (editor preference, not saved with the map). */
 export interface ElevationView {
@@ -40,13 +51,14 @@ export interface TileChange {
 type UndoStep =
   | { type: 'tiles'; changes: TileChange[] }
   | { type: 'object-add'; layerIndex: number; objectId: number }
-  | { type: 'object-remove'; layerIndex: number; object: TmjObject };
+  | { type: 'object-remove'; layerIndex: number; object: TmjObject }
+  | { type: 'heights'; changes: HeightChange[] };
 
 // ---------------------------------------------------------------------------
 // Store interface
 // ---------------------------------------------------------------------------
 
-export type ToolName = 'paint' | 'erase' | 'fill' | 'point';
+export type ToolName = 'paint' | 'erase' | 'fill' | 'point' | 'height';
 
 export interface MapStore {
   // ---- Map data ----
@@ -76,6 +88,11 @@ export interface MapStore {
   /** Heights were added, changed or removed since the last save. */
   heightsDirty: boolean;
   elevationView: ElevationView;
+  heightBrush: HeightBrush;
+  /** Bumped whenever height samples change (painting edits the patch in place). */
+  heightsRev: number;
+  /** Original values of samples changed by the current stroke, by sample index. */
+  pendingHeights: Map<number, { cm: number; mask: number }>;
 
   // ---- Map lifecycle actions ----
   loadMap: (data: TmjMap, name: string, worldSet: string) => void;
@@ -90,6 +107,11 @@ export interface MapStore {
   /** Remove the map's elevation. Saved with the map. */
   removeElevation: () => void;
   setElevationView: (changes: Partial<ElevationView>) => void;
+  setHeightBrush: (changes: Partial<HeightBrush>) => void;
+  /** Apply one brush dab at a map-pixel position (part of the current stroke). */
+  applyHeightDab: (x: number, y: number) => void;
+  /** End the current stroke: one undo step, and a full overlay refresh. */
+  commitHeightStroke: () => void;
 
   // ---- Editor state actions ----
   setActiveLayer: (index: number) => void;
@@ -149,6 +171,29 @@ function updateObjectLayer(
   });
 }
 
+/** Height undo steps refer to sample indices of one patch: drop them when it's replaced. */
+function _withoutHeightSteps(state: { past: UndoStep[]; future: UndoStep[] }) {
+  return {
+    past: state.past.filter((s) => s.type !== 'heights'),
+    future: state.future.filter((s) => s.type !== 'heights'),
+    pendingHeights: new Map<number, { cm: number; mask: number }>(),
+  };
+}
+
+/** Write a height step's old or new values back into the patch (in place). */
+function _applyHeightChanges(patch: HeightPatch | null, changes: HeightChange[], which: 'old' | 'new'): void {
+  if (!patch) return;
+  let rect: CellRect | null = null;
+  for (const c of changes) {
+    patch.cm[c.index] = which === 'old' ? c.oldCm : c.newCm;
+    patch.mask[c.index] = which === 'old' ? c.oldMask : c.newMask;
+    const col = c.index % patch.cols, row = Math.floor(c.index / patch.cols);
+    rect = unionRect(rect, { c0: col, r0: row, c1: col, r1: row });
+  }
+  patch.dirtyRect = unionRect(patch.dirtyRect, rect);
+  patch.rangeCheck = true;
+}
+
 // ---------------------------------------------------------------------------
 // Store implementation
 // ---------------------------------------------------------------------------
@@ -170,6 +215,9 @@ export const useMapStore = create<MapStore>((set, get) => ({
   heights: null,
   heightsDirty: false,
   elevationView: { visible: true, opacity: 0.6, hillshade: true },
+  heightBrush: DEFAULT_HEIGHT_BRUSH,
+  heightsRev: 0,
+  pendingHeights: new Map(),
 
   // ---- Map lifecycle ----
 
@@ -188,6 +236,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
       pendingTiles: [],
       heights: null, // loaded separately (see useHeightsLoader)
       heightsDirty: false,
+      pendingHeights: new Map(),
     });
   },
 
@@ -225,22 +274,29 @@ export const useMapStore = create<MapStore>((set, get) => ({
 
   // ---- Elevation ----
 
-  setHeights: (patch) => set({ heights: patch, heightsDirty: false }),
+  setHeights: (patch) => set((state) => ({
+    heights: patch,
+    heightsDirty: false,
+    heightsRev: state.heightsRev + 1,
+    ..._withoutHeightSteps(state),
+  })),
 
   addElevation: (cm) => {
     const { mapData, mapName } = get();
     if (!mapData || !mapName) return;
     const others = (mapData.properties ?? []).filter((p) => p.name !== HEIGHTS_PROPERTY);
-    set({
+    set((state) => ({
       heights: createPatch(mapData, cm),
       heightsDirty: true,
       isDirty: true,
+      heightsRev: state.heightsRev + 1,
+      ..._withoutHeightSteps(state),
       mapData: {
         ...mapData,
         properties: [...others, { name: HEIGHTS_PROPERTY, type: 'file', value: heightsPropertyValue(mapName) }],
       },
-      elevationView: { ...get().elevationView, visible: true },
-    });
+      elevationView: { ...state.elevationView, visible: true },
+    }));
   },
 
   removeElevation: () => {
@@ -248,15 +304,48 @@ export const useMapStore = create<MapStore>((set, get) => ({
     if (!mapData) return;
     const others = (mapData.properties ?? []).filter((p) => p.name !== HEIGHTS_PROPERTY);
     const { properties: _props, ...rest } = mapData;
-    set({
+    set((state) => ({
       heights: null,
       heightsDirty: true,
       isDirty: true,
+      heightsRev: state.heightsRev + 1,
+      ..._withoutHeightSteps(state),
       mapData: others.length > 0 ? { ...rest, properties: others } : rest,
-    });
+    }));
   },
 
   setElevationView: (changes) => set((state) => ({ elevationView: { ...state.elevationView, ...changes } })),
+
+  setHeightBrush: (changes) => set((state) => ({ heightBrush: { ...state.heightBrush, ...changes } })),
+
+  applyHeightDab: (x, y) => {
+    const { mapData, heights, heightBrush, pendingHeights } = get();
+    if (!mapData || !heights) return;
+    const rect = applyDab(mapData, heights, x, y, heightBrush, (index) => {
+      if (!pendingHeights.has(index)) pendingHeights.set(index, { cm: heights.cm[index], mask: heights.mask[index] });
+    });
+    if (!rect) return;
+    heights.dirtyRect = unionRect(heights.dirtyRect, rect);
+    set((state) => ({ heightsRev: state.heightsRev + 1, heightsDirty: true, isDirty: true }));
+  },
+
+  commitHeightStroke: () => {
+    const { heights, pendingHeights, past } = get();
+    if (!heights || pendingHeights.size === 0) return;
+    const changes: HeightChange[] = [];
+    for (const [index, old] of pendingHeights) {
+      const newCm = heights.cm[index], newMask = heights.mask[index];
+      if (newCm !== old.cm || newMask !== old.mask) {
+        changes.push({ index, oldCm: old.cm, newCm, oldMask: old.mask, newMask });
+      }
+    }
+    heights.rangeCheck = true; // colors are scaled to the height range, which may have moved
+    set((state) => ({
+      pendingHeights: new Map(),
+      heightsRev: state.heightsRev + 1,
+      ...(changes.length > 0 ? { past: [...past, { type: 'heights' as const, changes }], future: [] } : {}),
+    }));
+  },
 
   // ---- Editor state ----
 
@@ -420,14 +509,17 @@ export const useMapStore = create<MapStore>((set, get) => ({
         ...objects,
         step.object,
       ]);
+    } else if (step.type === 'heights') {
+      _applyHeightChanges(get().heights, step.changes, 'old');
     }
 
-    set({
+    set((state) => ({
       mapData: { ...mapData, layers: newLayers },
       isDirty: true,
       past: newPast,
       future: [...future, step],
-    });
+      ...(step.type === 'heights' ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
+    }));
   },
 
   redo: () => {
@@ -450,14 +542,17 @@ export const useMapStore = create<MapStore>((set, get) => ({
       newLayers = updateObjectLayer(newLayers, step.layerIndex, (objects) =>
         objects.filter((o) => o.id !== step.object.id),
       );
+    } else if (step.type === 'heights') {
+      _applyHeightChanges(get().heights, step.changes, 'new');
     }
 
-    set({
+    set((state) => ({
       mapData: { ...mapData, layers: newLayers },
       isDirty: true,
       past: [...past, step],
       future: newFuture,
-    });
+      ...(step.type === 'heights' ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
+    }));
   },
 
   // ---- Tileset management ----

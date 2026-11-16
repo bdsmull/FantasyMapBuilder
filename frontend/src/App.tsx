@@ -83,6 +83,7 @@ export const App: React.FC = () => {
       if (e.key === '2') { setTool('erase'); return; }
       if (e.key === '3') { setTool('fill'); return; }
       if (e.key === '4') { setTool('point'); return; }
+      if (e.key === '5') { if (useMapStore.getState().heights) setTool('height'); return; }
       if (e.key === 'g' || e.key === 'G') { setShowGrid(!showGrid); return; }
       if (e.key === 'Escape') { setActiveDialog(null); return; }
     }

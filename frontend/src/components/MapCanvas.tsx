@@ -19,6 +19,7 @@ import { paintTool } from '../tools/paintTool';
 import { eraseTool } from '../tools/eraseTool';
 import { fillTool } from '../tools/fillTool';
 import { pointTool } from '../tools/pointTool';
+import { heightTool } from '../tools/heightTool';
 import { renderFootprintOverlay, footprintAtPoint, computeFootprint } from '../canvas/footprintOverlay';
 import type { RenderedFootprint } from '../canvas/footprintOverlay';
 import type { Footprint } from '../utils/worldSetUtils';
@@ -36,6 +37,7 @@ const TOOLS: Record<string, Tool> = {
   erase: eraseTool,
   fill: fillTool,
   point: pointTool,
+  height: heightTool,
 };
 
 const MIN_ZOOM = 0.1;
@@ -139,7 +141,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     } else {
       renderedFootprintsRef.current = [];
     }
-  }, [store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.elevationView, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.
@@ -254,6 +256,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   function getCanvasPoint(e: PointerEvent): { x: number; y: number } {
     const rect = canvasRef.current!.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  /** Pointer position in map pixels (object coordinate space). */
+  function pointerToMap(e: PointerEvent): { x: number; y: number } {
+    const pt = getCanvasPoint(e);
+    return { x: (pt.x - store.pan.x) / store.zoom, y: (pt.y - store.pan.y) / store.zoom };
   }
 
   function pointerToTile(e: PointerEvent): { col: number; row: number } | null {
@@ -388,13 +396,13 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
 
       // Gate failed — existing behavior
       const tool = TOOLS[store.selectedTool];
-      tool.onRightPress?.(tile.col, tile.row, store);
+      tool.onRightPress?.(tile.col, tile.row, store, pointerToMap(e.nativeEvent));
       return;
     }
 
     isDrawing.current = true;
     const tool = TOOLS[store.selectedTool];
-    tool.onPress(tile.col, tile.row, store);
+    tool.onPress(tile.col, tile.row, store, pointerToMap(e.nativeEvent));
   }, [store, touchedFootprint, hoveredFootprint]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -447,7 +455,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const tile = pointerToTile(e.nativeEvent);
     if (!tile) return;
     const tool = TOOLS[store.selectedTool];
-    tool.onDrag(tile.col, tile.row, store);
+    tool.onDrag(tile.col, tile.row, store, pointerToMap(e.nativeEvent));
   }, [store, hoveredFootprint, render]);
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {

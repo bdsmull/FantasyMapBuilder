@@ -12,6 +12,9 @@ import type { TmjMap } from '../types/tmj';
 import { hexLayout, hexCenter, pixelToHex } from '../canvas/hexGeometry';
 import type { UnitSystem } from '../data/mapScales';
 
+/** Inclusive range of sample columns/rows. */
+export interface CellRect { c0: number; r0: number; c1: number; r1: number }
+
 export interface HeightPatch {
   cols: number;
   rows: number;
@@ -19,6 +22,23 @@ export interface HeightPatch {
   cm: Int32Array;
   /** 1 where a value was set by hand (protected from regeneration). */
   mask: Uint8Array;
+  /**
+   * Painting edits the arrays in place for speed (a 500 x 500 patch is 250,000
+   * samples). These tell the overlay what to redraw: samples changed since it last
+   * drew (`dirtyRect`), or everything (`fullRefresh`). `rangeCheck` asks the overlay to
+   * rebuild only if the patch's min/max moved (colors are scaled to that range),
+   * e.g. at the end of a stroke or after undo.
+   */
+  dirtyRect?: CellRect | null;
+  fullRefresh?: boolean;
+  rangeCheck?: boolean;
+}
+
+/** Union of two cell rectangles (either may be absent). */
+export function unionRect(a: CellRect | null | undefined, b: CellRect | null | undefined): CellRect | null {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return { c0: Math.min(a.c0, b.c0), r0: Math.min(a.r0, b.r0), c1: Math.max(a.c1, b.c1), r1: Math.max(a.r1, b.r1) };
 }
 
 /** Tiled custom property (type "file") linking a map to its height patch. */

@@ -4,13 +4,20 @@
 
 import type { MapStore } from '../store/mapStore';
 
+/** Pointer position in map pixels (object coordinate space). */
+export interface MapPoint {
+  x: number;
+  y: number;
+}
+
 export interface Tool {
   readonly name: string;
   /** CSS cursor value for this tool. */
   readonly cursor: string;
-  onPress(col: number, row: number, store: MapStore): void;
-  onDrag(col: number, row: number, store: MapStore): void;
+  /** `pos` is the exact pointer position, for tools that work below cell precision. */
+  onPress(col: number, row: number, store: MapStore, pos?: MapPoint): void;
+  onDrag(col: number, row: number, store: MapStore, pos?: MapPoint): void;
   onRelease(store: MapStore): void;
   /** Called for right-click / two-finger tap (optional). */
-  onRightPress?(col: number, row: number, store: MapStore): void;
+  onRightPress?(col: number, row: number, store: MapStore, pos?: MapPoint): void;
 }

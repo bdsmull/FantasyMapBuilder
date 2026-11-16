@@ -13,6 +13,7 @@ const TOOLS: ToolButtonProps[] = [
   { name: 'erase', label: 'Erase', shortcut: '2' },
   { name: 'fill',  label: 'Fill',  shortcut: '3' },
   { name: 'point', label: 'Point', shortcut: '4' },
+  { name: 'height', label: 'Height', shortcut: '5' },
 ];
 
 interface ToolbarProps {
@@ -21,7 +22,7 @@ interface ToolbarProps {
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ onToggleLeftPanel, showPanelToggle }) => {
-  const { selectedTool, setTool, zoom, setZoom, setPan, showGrid, setShowGrid, mapData, undo, redo, past, future } = useMapStore();
+  const { selectedTool, setTool, zoom, setZoom, setPan, showGrid, setShowGrid, mapData, heights, undo, redo, past, future } = useMapStore();
 
   const zoomIn = () => setZoom(zoom * 1.2);
   const zoomOut = () => setZoom(zoom / 1.2);
@@ -51,8 +52,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToggleLeftPanel, showPanelTo
             key={t.name}
             className={`tool-btn${selectedTool === t.name ? ' active' : ''}`}
             onClick={() => setTool(t.name)}
-            title={`${t.label} (${t.shortcut})`}
-            disabled={!mapData}
+            title={t.name === 'height' && !heights ? 'Height (5): add elevation in the Layers panel first' : `${t.label} (${t.shortcut})`}
+            disabled={!mapData || (t.name === 'height' && !heights)}
           >
             {t.label}
           </button>

@@ -33,6 +33,11 @@ export interface HexRenderOptions {
   view: ViewState;
   showGrid: boolean;
   onImageLoad: () => void;
+  /**
+   * Drawn right after the last tile layer, before object layers (e.g. the elevation
+   * overlay). Called inside the pan transform; map pixels scale by zoom.
+   */
+  afterTileLayers?: (ctx: CanvasRenderingContext2D) => void;
 }
 
 /** Trace a hex outline at (x, y) (screen top-left) into the current path. */
@@ -59,7 +64,7 @@ function _traceHex(
  * After ctx.translate(pan.x, pan.y), the visible screen area in map pixels is
  * x ∈ [-pan.x, canvas.width - pan.x] / zoom (likewise for y).
  */
-function visibleHexRange(
+export function visibleHexRange(
   canvas: HTMLCanvasElement,
   pan: { x: number; y: number },
   zoom: number,
@@ -90,7 +95,7 @@ export function renderHexMap(
   map: TmjMap,
   options: HexRenderOptions,
 ): void {
-  const { view, showGrid, onImageLoad } = options;
+  const { view, showGrid, onImageLoad, afterTileLayers } = options;
   const { zoom, pan } = view;
   const layout = hexLayout(map);
 
@@ -102,16 +107,22 @@ export function renderHexMap(
   ctx.save();
   ctx.translate(pan.x, pan.y);
 
-  for (const layer of map.layers) {
-    if (!layer.visible) continue;
-    ctx.globalAlpha = layer.opacity;
+  // Overlay hook goes after the last tile layer (or first, if there are none)
+  const lastTileLayer = map.layers.reduce((last, l, i) => (isTileLayer(l) ? i : last), -1);
+  if (lastTileLayer < 0) afterTileLayers?.(ctx);
 
-    if (isTileLayer(layer)) {
-      drawHexTileLayer(ctx, map, layer, layout, zoom, onImageLoad, vis);
-    } else if (isObjectLayer(layer)) {
-      drawHexObjectLayer(ctx, layer, zoom);
+  map.layers.forEach((layer, index) => {
+    if (layer.visible) {
+      ctx.globalAlpha = layer.opacity;
+      if (isTileLayer(layer)) {
+        drawHexTileLayer(ctx, map, layer, layout, zoom, onImageLoad, vis);
+      } else if (isObjectLayer(layer)) {
+        drawHexObjectLayer(ctx, layer, zoom);
+      }
+      ctx.globalAlpha = 1;
     }
-  }
+    if (index === lastTileLayer) afterTileLayers?.(ctx);
+  });
 
   ctx.globalAlpha = 1;
 

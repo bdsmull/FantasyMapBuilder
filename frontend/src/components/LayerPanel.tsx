@@ -1,5 +1,6 @@
 import React from 'react';
 import { useMapStore } from '../store/mapStore';
+import { ElevationPanel } from './ElevationPanel';
 
 export const LayerPanel: React.FC = () => {
   const { mapData, activeLayerIndex, setActiveLayer, setLayerVisible } = useMapStore();
@@ -42,6 +43,7 @@ export const LayerPanel: React.FC = () => {
           );
         })}
       </ul>
+      <ElevationPanel />
     </div>
   );
 };

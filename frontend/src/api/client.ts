@@ -7,6 +7,7 @@
 import type { TmjMap } from '../types/tmj';
 import type { WorldSet } from '../types/worldSet';
 import { mapFromFile, mapToFile } from './tmjFile';
+import type { HeightPatch } from '../utils/heightGrid';
 
 const BASE = '/api';
 
@@ -269,4 +270,53 @@ export async function importMap(
     body: JSON.stringify({ source, map, newName, tilesetChoices }),
   });
   return handleResponse<{ imported: string }>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Elevation — binary: cols*rows little-endian int32 cm, then cols*rows mask bytes
+// ---------------------------------------------------------------------------
+
+function heightsUrl(worldSet: string, name: string): string {
+  return `${BASE}/world_sets/${encodeURIComponent(worldSet)}/heights/${encodeURIComponent(name)}`;
+}
+
+/** Load a map's height patch; null if the map has none. */
+export async function getHeights(worldSet: string, name: string): Promise<HeightPatch | null> {
+  const res = await fetch(heightsUrl(worldSet, name));
+  if (res.status === 404) return null;
+  if (!res.ok) await handleResponse<unknown>(res);
+  const cols = Number(res.headers.get('X-Height-Cols'));
+  const rows = Number(res.headers.get('X-Height-Rows'));
+  const buffer = await res.arrayBuffer();
+  const n = cols * rows;
+  if (!n || buffer.byteLength !== n * 5) throw new Error('Unexpected elevation data from the server');
+  const view = new DataView(buffer);
+  const cm = new Int32Array(n);
+  for (let i = 0; i < n; i++) cm[i] = view.getInt32(i * 4, true);
+  return { cols, rows, cm, mask: new Uint8Array(buffer.slice(n * 4)) };
+}
+
+/** Store a map's height patch. */
+export async function putHeights(worldSet: string, name: string, patch: HeightPatch): Promise<void> {
+  const n = patch.cols * patch.rows;
+  const buffer = new ArrayBuffer(n * 5);
+  const view = new DataView(buffer);
+  for (let i = 0; i < n; i++) view.setInt32(i * 4, patch.cm[i], true);
+  new Uint8Array(buffer, n * 4).set(patch.mask);
+  const res = await fetch(heightsUrl(worldSet, name), {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'X-Height-Cols': String(patch.cols),
+      'X-Height-Rows': String(patch.rows),
+    },
+    body: buffer,
+  });
+  await handleResponse<unknown>(res);
+}
+
+/** Remove a map's height patch (no error if it had none). */
+export async function deleteHeights(worldSet: string, name: string): Promise<void> {
+  const res = await fetch(heightsUrl(worldSet, name), { method: 'DELETE' });
+  if (res.status !== 404) await handleResponse<unknown>(res);
 }

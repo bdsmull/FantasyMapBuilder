@@ -3,9 +3,12 @@ import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { scaleLabel, resolveUnits } from '../data/mapScales';
 import { navigateToMap } from '../utils/navigation';
+import { useCursorStore } from '../store/cursorStore';
+import { heightAt, formatHeight } from '../utils/heightGrid';
 
 export const StatusBar: React.FC = () => {
-  const { mapData, mapName, mapWorldSet, isDirty, zoom } = useMapStore();
+  const { mapData, mapName, mapWorldSet, isDirty, zoom, heights } = useMapStore();
+  const cursor = useCursorStore((s) => s.mapPos);
   const worldSetStore = useWorldSetStore();
   const inActiveWorldSet = mapWorldSet === worldSetStore.activeWorldSetName;
   const parentNode = mapName && inActiveWorldSet ? worldSetStore.parentOf(mapName) : null;
@@ -49,6 +52,11 @@ export const StatusBar: React.FC = () => {
         {mapData.scale && (
           <span className="status-scale">
             {scaleLabel(mapData.scale, resolveUnits(mapData, worldSetStore.activeWorldSet?.units))}
+          </span>
+        )}
+        {heights && cursor && (
+          <span className="status-elevation" title="Elevation under the cursor">
+            {formatHeight(heightAt(mapData, heights, cursor.x, cursor.y), resolveUnits(mapData, worldSetStore.activeWorldSet?.units))}
           </span>
         )}
         <span className="status-zoom">

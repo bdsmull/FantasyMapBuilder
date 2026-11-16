@@ -5,9 +5,13 @@ import { scaleLabel, resolveUnits } from '../data/mapScales';
 import { navigateToMap } from '../utils/navigation';
 import { useCursorStore } from '../store/cursorStore';
 import { heightAt, formatHeight } from '../utils/heightGrid';
+import { surfaceAt } from '../utils/worldSurface';
+import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 
 export const StatusBar: React.FC = () => {
-  const { mapData, mapName, mapWorldSet, isDirty, zoom, heights } = useMapStore();
+  const { mapData, mapName, mapWorldSet, isDirty, zoom, heights, elevationView } = useMapStore();
+  const surface = useWorldSurfaceStore();
+  const children = elevationView.showChildren && surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children : [];
   const cursor = useCursorStore((s) => s.mapPos);
   const worldSetStore = useWorldSetStore();
   const inActiveWorldSet = mapWorldSet === worldSetStore.activeWorldSetName;
@@ -54,11 +58,22 @@ export const StatusBar: React.FC = () => {
             {scaleLabel(mapData.scale, resolveUnits(mapData, worldSetStore.activeWorldSet?.units))}
           </span>
         )}
-        {heights && cursor && (
-          <span className="status-elevation" title="Elevation under the cursor">
-            {formatHeight(heightAt(mapData, heights, cursor.x, cursor.y), resolveUnits(mapData, worldSetStore.activeWorldSet?.units))}
-          </span>
-        )}
+        {heights && cursor && (() => {
+          const units = resolveUnits(mapData, worldSetStore.activeWorldSet?.units);
+          const here = children.length > 0
+            ? surfaceAt(mapData, heights, children, cursor.x, cursor.y, mapName)
+            : { cm: heightAt(mapData, heights, cursor.x, cursor.y), source: mapName };
+          const fromChild = here.source !== mapName;
+          return (
+            <span
+              className="status-elevation"
+              title={fromChild ? `Elevation under the cursor, from child map '${here.source}'` : 'Elevation under the cursor'}
+            >
+              {formatHeight(here.cm, units)}
+              {fromChild && <span style={{ color: '#888' }}> · {here.source}</span>}
+            </span>
+          );
+        })()}
         <span className="status-zoom">
           {Math.round(zoom * 100)}%
         </span>

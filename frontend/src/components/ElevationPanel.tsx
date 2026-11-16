@@ -4,13 +4,16 @@ import { useWorldSetStore } from '../store/worldSetStore';
 import { resolveUnits } from '../data/mapScales';
 import { formatHeight, hasHeightsProperty, parseHeightToCm, patchRange } from '../utils/heightGrid';
 import { HeightBrushControls } from './HeightBrushControls';
+import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 
 /**
  * Elevation section of the Layers panel: add or remove the map's elevation and
  * control how the overlay is shown. Heights are saved with the map (Ctrl+S).
  */
 export const ElevationPanel: React.FC = () => {
-  const { mapData, heights, elevationView, addElevation, removeElevation, setElevationView, selectedTool } = useMapStore();
+  const { mapData, mapName, mapWorldSet, heights, elevationView, addElevation, removeElevation, setElevationView, selectedTool } = useMapStore();
+  const surface = useWorldSurfaceStore();
+  const childNames = surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children.map((c) => c.node.name) : [];
   const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
   const [adding, setAdding] = useState(false);
   const [startHeight, setStartHeight] = useState('0');
@@ -93,6 +96,18 @@ export const ElevationPanel: React.FC = () => {
           Hillshade
         </label>
       </div>
+      {childNames.length > 0 && (
+        <div style={{ padding: '2px 8px', fontSize: 12 }}>
+          <label title={`Inside their footprints, show the heights of: ${childNames.join(', ')}. This map's own heights are unchanged.`}>
+            <input
+              type="checkbox"
+              checked={elevationView.showChildren}
+              onChange={(e) => setElevationView({ showChildren: e.target.checked })}
+            />{' '}
+            Show child maps ({childNames.length})
+          </label>
+        </div>
+      )}
       {selectedTool === 'height' && <HeightBrushControls units={units} />}
       <div style={{ padding: '2px 8px' }}>
         {!confirmRemove ? (

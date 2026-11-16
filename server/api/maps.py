@@ -28,6 +28,7 @@ from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
 from server import data_dir as dd
+from server import heights as hs
 from server.tileset_files import externalize_tilesets, inline_tilesets
 
 router = APIRouter(tags=["maps"])
@@ -157,9 +158,10 @@ async def save_map(world_set: str, name: str, request_body: dict):
 
 @router.delete("/world_sets/{world_set}/maps/{name}", status_code=200)
 def delete_map(world_set: str, name: str):
-    """Delete a saved map file."""
+    """Delete a saved map file, and its elevation if it has one."""
     path = _existing_map_path(world_set, name)
     path.unlink()
+    hs.delete_heights(path.parent.parent, path.stem)
     return {"deleted": path.stem}
 
 

@@ -16,6 +16,11 @@ export interface RenderOptions {
   showGrid: boolean;
   /** Called when a sprite-sheet image finishes loading (to trigger a re-render). */
   onImageLoad: () => void;
+  /**
+   * Drawn right after the last tile layer, before object layers (e.g. the elevation
+   * overlay). Called inside the pan transform; map pixels scale by zoom.
+   */
+  afterTileLayers?: (ctx: CanvasRenderingContext2D) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -27,7 +32,7 @@ export function renderTileMap(
   map: TmjMap,
   options: RenderOptions,
 ): void {
-  const { view, showGrid, onImageLoad } = options;
+  const { view, showGrid, onImageLoad, afterTileLayers } = options;
   const { zoom, pan } = view;
 
   // Background
@@ -37,16 +42,22 @@ export function renderTileMap(
   ctx.save();
   ctx.translate(pan.x, pan.y);
 
-  for (const layer of map.layers) {
-    if (!layer.visible) continue;
-    ctx.globalAlpha = layer.opacity;
+  // Overlay hook goes after the last tile layer (or first, if there are none)
+  const lastTileLayer = map.layers.reduce((last, l, i) => (isTileLayer(l) ? i : last), -1);
+  if (lastTileLayer < 0) afterTileLayers?.(ctx);
 
-    if (isTileLayer(layer)) {
-      drawTileLayer(ctx, map, layer, zoom, onImageLoad);
-    } else if (isObjectLayer(layer)) {
-      drawObjectLayer(ctx, layer, map.tilewidth, zoom);
+  map.layers.forEach((layer, index) => {
+    if (layer.visible) {
+      ctx.globalAlpha = layer.opacity;
+      if (isTileLayer(layer)) {
+        drawTileLayer(ctx, map, layer, zoom, onImageLoad);
+      } else if (isObjectLayer(layer)) {
+        drawObjectLayer(ctx, layer, map.tilewidth, zoom);
+      }
+      ctx.globalAlpha = 1;
     }
-  }
+    if (index === lastTileLayer) afterTileLayers?.(ctx);
+  });
 
   ctx.globalAlpha = 1;
 

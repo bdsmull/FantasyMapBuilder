@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import { MapCanvas } from './components/MapCanvas';
 import { LayerPanel } from './components/LayerPanel';
+import { useHeightsLoader } from './components/useHeightsLoader';
 import { TilePalette } from './components/TilePalette';
 import { Toolbar } from './components/Toolbar';
 import { MenuBar } from './components/MenuBar';
@@ -28,6 +29,7 @@ export const App: React.FC = () => {
   const [worldSetDialogKey, setWorldSetDialogKey] = useState<number>(0);
   const pendingNewMapCreatedRef = useRef<((name: string) => void) | null>(null);
   const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
+  useHeightsLoader();
 
   const toggleLeftPanel = useCallback(() => {
     setLeftPanelOpen((prev) => !prev);

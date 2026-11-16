@@ -25,7 +25,10 @@ import type { Footprint } from '../utils/worldSetUtils';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { navigateToMap } from '../utils/navigation';
 import { getMap } from '../api/client';
-import { resolveMetersPerUnit } from '../data/mapScales';
+import { resolveMetersPerUnit, resolveUnits } from '../data/mapScales';
+import { renderElevationOverlay } from '../canvas/elevationOverlay';
+import { bandIntervalCm } from '../utils/heightGrid';
+import { useCursorStore } from '../store/cursorStore';
 import type { OpenWorldSetDialogArgs } from './WorldHierarchyPanel';
 
 const TOOLS: Record<string, Tool> = {
@@ -101,10 +104,19 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     if (!ctx || !store.mapData) return;
 
     const view = { zoom: store.zoom, pan: store.pan };
+    const map = store.mapData;
+    const { heights, elevationView } = store;
     const opts = {
       view,
       showGrid: store.showGrid,
       onImageLoad: () => { clearHexTileCache(); requestAnimationFrame(render); },
+      afterTileLayers: heights && elevationView.visible
+        ? (c: CanvasRenderingContext2D) => renderElevationOverlay(c, map, heights, view.zoom, view.pan, {
+          opacity: elevationView.opacity,
+          hillshade: elevationView.hillshade,
+          intervalCm: bandIntervalCm(map.scale, resolveUnits(map, defaultUnits)),
+        })
+        : undefined,
     };
 
     if (store.mapData.orientation === 'hexagonal') {
@@ -127,7 +139,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     } else {
       renderedFootprintsRef.current = [];
     }
-  }, [store.mapData, store.zoom, store.pan, store.showGrid, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.elevationView, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.
@@ -387,6 +399,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointers.current.set(e.pointerId, e.nativeEvent);
+    // Map-pixel position for status bar readouts (e.g. elevation under the cursor)
+    {
+      const pt = getCanvasPoint(e.nativeEvent);
+      useCursorStore.getState().setMapPos({ x: (pt.x - store.pan.x) / store.zoom, y: (pt.y - store.pan.y) / store.zoom });
+    }
 
     if (activePointers.current.size === 2 && lastPinchDistance.current !== null) {
       // Pinch-to-zoom
@@ -496,6 +513,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onPointerLeave={() => useCursorStore.getState().setMapPos(null)}
         onWheel={onWheel}
         onContextMenu={(e) => e.preventDefault()}
       />

@@ -25,6 +25,8 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
+from server.heights import HEIGHTS_PROPERTY, copy_heights
+from server.heights import property_value as heights_property_value
 from server.tileset_files import (
     SWATCH_PROPERTY, TILESETS_DIR, _comparable, _resolve_source,
     externalize_tilesets, image_url, same_image, same_tileset, safe_file_stem, tsj_image_file,
@@ -275,6 +277,13 @@ def import_map(
     if not any(p["name"] == "units" for p in props) and not result.get("units") \
             and (source_units or "metric") != (target_units or "metric"):
         result["properties"] = props + [{"name": "units", "type": "string", "value": source_units or "metric"}]
+
+    # Heights travel with the map, renamed to the imported map's name
+    if copy_heights(source_dir, map_name, target_dir, target_name):
+        props = [p for p in result.get("properties", []) if p["name"] != HEIGHTS_PROPERTY]
+        result["properties"] = props + [
+            {"name": HEIGHTS_PROPERTY, "type": "file", "value": heights_property_value(target_name)},
+        ]
 
     from server.api.maps import format_tmj  # local import: avoids an import cycle
     on_disk, refs = externalize_tilesets(result, target_dir, target_dir.name)

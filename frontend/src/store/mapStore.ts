@@ -13,7 +13,16 @@
 import { create } from 'zustand';
 import type { TmjMap, TmjLayer, TmjTileLayer, TmjObjectLayer, TmjObject } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
-import { saveMap as apiSaveMap, applyTilesetRefs } from '../api/client';
+import { saveMap as apiSaveMap, applyTilesetRefs, putHeights, deleteHeights } from '../api/client';
+import type { HeightPatch } from '../utils/heightGrid';
+import { HEIGHTS_PROPERTY, createPatch, heightsPropertyValue } from '../utils/heightGrid';
+
+/** How the elevation overlay is shown (editor preference, not saved with the map). */
+export interface ElevationView {
+  visible: boolean;
+  opacity: number;
+  hillshade: boolean;
+}
 import { MAP_SCALE_BY_ID } from '../data/mapScales';
 
 // ---------------------------------------------------------------------------
@@ -61,10 +70,26 @@ export interface MapStore {
   /** Tile changes accumulating during the current drag stroke. */
   pendingTiles: TileChange[];
 
+  // ---- Elevation ----
+  /** The open map's height patch, or null if it has no elevation (or it hasn't loaded yet). */
+  heights: HeightPatch | null;
+  /** Heights were added, changed or removed since the last save. */
+  heightsDirty: boolean;
+  elevationView: ElevationView;
+
   // ---- Map lifecycle actions ----
   loadMap: (data: TmjMap, name: string, worldSet: string) => void;
   closeMap: () => void;
   saveMapToServer: () => Promise<void>;
+
+  // ---- Elevation actions ----
+  /** Install a height patch loaded from the server (not a change). */
+  setHeights: (patch: HeightPatch | null) => void;
+  /** Give the map elevation, every sample at `cm`. Saved with the map. */
+  addElevation: (cm: number) => void;
+  /** Remove the map's elevation. Saved with the map. */
+  removeElevation: () => void;
+  setElevationView: (changes: Partial<ElevationView>) => void;
 
   // ---- Editor state actions ----
   setActiveLayer: (index: number) => void;
@@ -142,6 +167,9 @@ export const useMapStore = create<MapStore>((set, get) => ({
   past: [],
   future: [],
   pendingTiles: [],
+  heights: null,
+  heightsDirty: false,
+  elevationView: { visible: true, opacity: 0.6, hillshade: true },
 
   // ---- Map lifecycle ----
 
@@ -158,6 +186,8 @@ export const useMapStore = create<MapStore>((set, get) => ({
       past: [],
       future: [],
       pendingTiles: [],
+      heights: null, // loaded separately (see useHeightsLoader)
+      heightsDirty: false,
     });
   },
 
@@ -170,20 +200,63 @@ export const useMapStore = create<MapStore>((set, get) => ({
       past: [],
       future: [],
       pendingTiles: [],
+      heights: null,
+      heightsDirty: false,
     });
   },
 
   saveMapToServer: async () => {
-    const { mapData, mapName, mapWorldSet } = get();
+    const { mapData, mapName, mapWorldSet, heights, heightsDirty } = get();
     if (!mapData || !mapName || !mapWorldSet) throw new Error('No map loaded');
+    if (heightsDirty) {
+      // Heights first: the map's "heights" property must not point at a missing file
+      if (heights) await putHeights(mapWorldSet, mapName, heights);
+      else await deleteHeights(mapWorldSet, mapName);
+    }
     const refs = await apiSaveMap(mapWorldSet, mapName, mapData);
     // Record where each tileset was stored. Edits made while saving are kept:
     // only source/name of tilesets in the current map data are updated.
     set((state) => ({
       isDirty: false,
+      heightsDirty: state.heights === heights ? false : state.heightsDirty,
       mapData: state.mapData ? applyTilesetRefs(state.mapData, refs) : state.mapData,
     }));
   },
+
+  // ---- Elevation ----
+
+  setHeights: (patch) => set({ heights: patch, heightsDirty: false }),
+
+  addElevation: (cm) => {
+    const { mapData, mapName } = get();
+    if (!mapData || !mapName) return;
+    const others = (mapData.properties ?? []).filter((p) => p.name !== HEIGHTS_PROPERTY);
+    set({
+      heights: createPatch(mapData, cm),
+      heightsDirty: true,
+      isDirty: true,
+      mapData: {
+        ...mapData,
+        properties: [...others, { name: HEIGHTS_PROPERTY, type: 'file', value: heightsPropertyValue(mapName) }],
+      },
+      elevationView: { ...get().elevationView, visible: true },
+    });
+  },
+
+  removeElevation: () => {
+    const { mapData } = get();
+    if (!mapData) return;
+    const others = (mapData.properties ?? []).filter((p) => p.name !== HEIGHTS_PROPERTY);
+    const { properties: _props, ...rest } = mapData;
+    set({
+      heights: null,
+      heightsDirty: true,
+      isDirty: true,
+      mapData: others.length > 0 ? { ...rest, properties: others } : rest,
+    });
+  },
+
+  setElevationView: (changes) => set((state) => ({ elevationView: { ...state.elevationView, ...changes } })),
 
   // ---- Editor state ----
 

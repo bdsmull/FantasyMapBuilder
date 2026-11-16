@@ -5,7 +5,8 @@
 
 export interface TmjProperty {
   name: string;
-  type: 'int' | 'float' | 'bool' | 'string';
+  /** Tiled custom property types. */
+  type: 'int' | 'float' | 'bool' | 'string' | 'color' | 'file' | 'object' | 'class';
   value: number | boolean | string;
 }
 

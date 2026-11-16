@@ -163,6 +163,9 @@ body {
 .layer-item:hover { background: #2a2a2a; }
 .layer-item.active { background: #283a50; }
 .elevation-panel { border-top: 1px solid #333; padding: 6px 4px; }
+.layer-controls { border-top: 1px solid #333; padding: 6px 8px; }
+.layer-btn { padding: 2px 6px; font-size: 11px; }
+.layer-rename { flex: 1; min-width: 0; font-size: 12px; }
 .layer-icon { color: #888; font-size: 11px; }
 .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

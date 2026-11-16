@@ -52,7 +52,20 @@ type UndoStep =
   | { type: 'tiles'; changes: TileChange[] }
   | { type: 'object-add'; layerIndex: number; objectId: number }
   | { type: 'object-remove'; layerIndex: number; object: TmjObject }
-  | { type: 'heights'; changes: HeightChange[] };
+  | { type: 'heights'; changes: HeightChange[] }
+  /** Layer structure change (add, delete, rename, move): the layer list before and after. */
+  | { type: 'layers'; before: LayerSnapshot; after: LayerSnapshot };
+
+/**
+ * Layer list for undo. Layers are replaced (never mutated) on edit, so keeping the
+ * array is cheap. Undo is strictly last-in-first-out, so older steps that refer to
+ * layer indices see the layer order they were recorded with.
+ */
+export interface LayerSnapshot {
+  layers: TmjLayer[];
+  activeLayerIndex: number;
+  nextlayerid: number;
+}
 
 // ---------------------------------------------------------------------------
 // Store interface
@@ -123,6 +136,17 @@ export interface MapStore {
   /** Set the map's scale preset and unit override (undefined = inherit from the world set). */
   setMapScale: (scaleId: string, units?: 'metric' | 'imperial') => void;
   setLayerVisible: (layerIndex: number, visible: boolean) => void;
+  /** Layer opacity 0..1 (a display setting, like visibility: not an undo step). */
+  setLayerOpacity: (layerIndex: number, opacity: number) => void;
+
+  // ---- Layer structure (each is one undo step) ----
+  /** Add a tile or object layer just above the active layer, and make it active. */
+  addLayer: (kind: 'tile' | 'object') => void;
+  renameLayer: (layerIndex: number, name: string) => void;
+  /** Delete a layer (the last remaining layer can't be deleted). */
+  deleteLayer: (layerIndex: number) => void;
+  /** Move a layer up (+1, drawn later / on top) or down (-1). */
+  moveLayer: (layerIndex: number, direction: 1 | -1) => void;
 
   // ---- Tile editing ----
   /** Apply a single tile change during a drag stroke (no undo step yet). */
@@ -192,6 +216,37 @@ function _applyHeightChanges(patch: HeightPatch | null, changes: HeightChange[],
   }
   patch.dirtyRect = unionRect(patch.dirtyRect, rect);
   patch.rangeCheck = true;
+}
+
+/** "Tile Layer 2" etc.: the first free numbered name. */
+function _uniqueLayerName(layers: TmjLayer[], base: string): string {
+  const names = new Set(layers.map((l) => l.name));
+  for (let n = 1; ; n++) {
+    const name = `${base} ${n}`;
+    if (!names.has(name)) return name;
+  }
+}
+
+type StoreSet = (partial: Partial<MapStore> | ((state: MapStore) => Partial<MapStore>)) => void;
+
+/** Apply a layer structure change as one undo step. */
+function _commitLayers(set: StoreSet, get: () => MapStore, layers: TmjLayer[], active: number, nextlayerid: number): void {
+  const { mapData, activeLayerIndex, past } = get();
+  if (!mapData) return;
+  const before: LayerSnapshot = { layers: mapData.layers, activeLayerIndex, nextlayerid: mapData.nextlayerid };
+  const after: LayerSnapshot = { layers, activeLayerIndex: active, nextlayerid };
+  set({
+    mapData: { ...mapData, layers, nextlayerid },
+    activeLayerIndex: active,
+    isDirty: true,
+    past: [...past, { type: 'layers', before, after }],
+    future: [],
+  });
+}
+
+/** Fields besides the layer list that a layer undo/redo restores. */
+function _layerExtras(mapData: TmjMap, snap: LayerSnapshot): Partial<MapStore> {
+  return { activeLayerIndex: snap.activeLayerIndex, mapData: { ...mapData, layers: snap.layers, nextlayerid: snap.nextlayerid } };
 }
 
 // ---------------------------------------------------------------------------
@@ -378,6 +433,61 @@ export const useMapStore = create<MapStore>((set, get) => ({
     set({ mapData: { ...mapData, layers: newLayers }, isDirty: true });
   },
 
+  setLayerOpacity: (layerIndex, opacity) => {
+    const { mapData } = get();
+    if (!mapData || !mapData.layers[layerIndex]) return;
+    const value = Math.min(1, Math.max(0, opacity));
+    const newLayers = mapData.layers.map((l, i) => (i === layerIndex ? { ...l, opacity: value } : l));
+    set({ mapData: { ...mapData, layers: newLayers }, isDirty: true });
+  },
+
+  addLayer: (kind) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    const id = mapData.nextlayerid;
+    const name = _uniqueLayerName(mapData.layers, kind === 'tile' ? 'Tile Layer' : 'Object Layer');
+    const layer: TmjLayer = kind === 'tile'
+      ? {
+        type: 'tilelayer', id, name, width: mapData.width, height: mapData.height,
+        visible: true, opacity: 1, offsetx: 0, offsety: 0,
+        data: new Array(mapData.width * mapData.height).fill(0),
+      }
+      : {
+        type: 'objectgroup', id, name, visible: true, opacity: 1, offsetx: 0, offsety: 0,
+        color: '#a0a0a0', draworder: 'topdown', objects: [],
+      };
+    const at = mapData.layers.length === 0 ? 0 : Math.min(activeLayerIndex + 1, mapData.layers.length);
+    const layers = [...mapData.layers.slice(0, at), layer, ...mapData.layers.slice(at)];
+    _commitLayers(set, get, layers, at, id + 1);
+  },
+
+  renameLayer: (layerIndex, name) => {
+    const { mapData, activeLayerIndex } = get();
+    const trimmed = name.trim();
+    if (!mapData || !mapData.layers[layerIndex] || !trimmed || mapData.layers[layerIndex].name === trimmed) return;
+    const layers = mapData.layers.map((l, i) => (i === layerIndex ? { ...l, name: trimmed } : l));
+    _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  deleteLayer: (layerIndex) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData || !mapData.layers[layerIndex] || mapData.layers.length <= 1) return;
+    const layers = mapData.layers.filter((_, i) => i !== layerIndex);
+    const active = activeLayerIndex > layerIndex ? activeLayerIndex - 1 : Math.min(activeLayerIndex, layers.length - 1);
+    _commitLayers(set, get, layers, active, mapData.nextlayerid);
+  },
+
+  moveLayer: (layerIndex, direction) => {
+    const { mapData, activeLayerIndex } = get();
+    const target = layerIndex + direction;
+    if (!mapData || !mapData.layers[layerIndex] || target < 0 || target >= mapData.layers.length) return;
+    const layers = [...mapData.layers];
+    [layers[layerIndex], layers[target]] = [layers[target], layers[layerIndex]];
+    // The active layer follows its layer
+    const active = activeLayerIndex === layerIndex ? target : activeLayerIndex === target ? layerIndex : activeLayerIndex;
+    _commitLayers(set, get, layers, active, mapData.nextlayerid);
+  },
+
   // ---- Tile editing ----
 
   applyTile: (layerIndex, col, row, newGid) => {
@@ -511,6 +621,8 @@ export const useMapStore = create<MapStore>((set, get) => ({
       ]);
     } else if (step.type === 'heights') {
       _applyHeightChanges(get().heights, step.changes, 'old');
+    } else if (step.type === 'layers') {
+      newLayers = step.before.layers;
     }
 
     set((state) => ({
@@ -519,6 +631,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
       past: newPast,
       future: [...future, step],
       ...(step.type === 'heights' ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
+      ...(step.type === 'layers' ? _layerExtras(mapData, step.before) : {}),
     }));
   },
 
@@ -544,6 +657,8 @@ export const useMapStore = create<MapStore>((set, get) => ({
       );
     } else if (step.type === 'heights') {
       _applyHeightChanges(get().heights, step.changes, 'new');
+    } else if (step.type === 'layers') {
+      newLayers = step.after.layers;
     }
 
     set((state) => ({
@@ -552,6 +667,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
       past: [...past, step],
       future: newFuture,
       ...(step.type === 'heights' ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
+      ...(step.type === 'layers' ? _layerExtras(mapData, step.after) : {}),
     }));
   },
 

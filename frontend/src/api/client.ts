@@ -201,3 +201,72 @@ export async function importMapset(file: File, name?: string): Promise<ImportMap
   const result = await handleResponse<{ imported: string; maps: string[] }>(res);
   return { ok: true, ...result };
 }
+
+// ---------------------------------------------------------------------------
+// Importing a single map (with its tilesets) into a world set
+// ---------------------------------------------------------------------------
+
+/** Where to import from: another world set, or a .mapset staged by inspectMapset(). */
+export type ImportSource = { worldSet: string } | { staging: string };
+
+export interface TilesetImportPlan {
+  name: string;
+  /** new: will be added; identical: target already has it; conflict: same name, different tiles */
+  status: 'new' | 'identical' | 'conflict';
+  /** Conflicts only: merging is possible (both color-only, same tile size). */
+  canMerge?: boolean;
+  summary?: {
+    targetTiles: number;
+    importedTiles: number;
+    sameTiles: number;
+    differingTiles: { id: number; target: string; imported: string }[];
+    onlyImported: number[];
+  };
+}
+
+export interface MapImportPlan {
+  map: string;
+  mapExists: boolean;
+  tilesets: TilesetImportPlan[];
+  /** Units the map will be pinned to so it keeps its size, if the world sets' defaults differ. */
+  unitsPinned: 'metric' | 'imperial' | null;
+}
+
+export type TilesetChoice = 'merge' | 'keep_both' | 'use_target';
+
+/** Unpack a .mapset on the server so single maps can be imported from it (valid for an hour). */
+export async function inspectMapset(file: File): Promise<{ staging: string; worldSet: string; maps: string[] }> {
+  const form = new FormData();
+  form.append('file', file);
+  return handleResponse(await fetch(`${BASE}/mapsets/inspect`, { method: 'POST', body: form }));
+}
+
+function importUrl(target: string): string {
+  return `${BASE}/world_sets/${encodeURIComponent(target)}/import_map`;
+}
+
+/** What importing `map` from `source` into world set `target` would involve. */
+export async function planMapImport(target: string, source: ImportSource, map: string): Promise<MapImportPlan> {
+  const res = await fetch(`${importUrl(target)}/plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source, map }),
+  });
+  return handleResponse<MapImportPlan>(res);
+}
+
+/** Import a map (unplaced) into world set `target`, resolving tileset conflicts as chosen. */
+export async function importMap(
+  target: string,
+  source: ImportSource,
+  map: string,
+  newName: string,
+  tilesetChoices: Record<string, TilesetChoice>,
+): Promise<{ imported: string }> {
+  const res = await fetch(importUrl(target), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source, map, newName, tilesetChoices }),
+  });
+  return handleResponse<{ imported: string }>(res);
+}

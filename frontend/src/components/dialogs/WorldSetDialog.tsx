@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useWorldSetStore } from '../../store/worldSetStore';
 import { useMapStore } from '../../store/mapStore';
 import { activateWorldSet } from '../../utils/navigation';
+import { ImportMapDialog } from './ImportMapDialog';
 import {
   listWorldSets,
   saveWorldSet as apiSaveWorldSet,
@@ -62,6 +63,7 @@ export const WorldSetDialog: React.FC<Props> = ({
   const [importConflict, setImportConflict] = useState<{ file: File; message: string } | null>(null);
   const [importName, setImportName] = useState('');
   const [notice, setNotice] = useState('');
+  const [showImportMap, setShowImportMap] = useState(false);
 
   // Cached TmjMap data for any map referenced by the active world set.
   // Keyed by mapName. Loaded lazily when entering nodes view.
@@ -603,20 +605,35 @@ export const WorldSetDialog: React.FC<Props> = ({
                 ))}
               </ul>
             )}
+            {notice && <div style={{ color: '#8c8', margin: '8px 0' }}>{notice}</div>}
             {error && <div className="dialog-error">{error}</div>}
             <div className="dialog-buttons">
-              <button className="btn-secondary" onClick={() => { setError(''); setView('list'); }}>Back</button>
+              <button className="btn-secondary" onClick={() => { setError(''); setNotice(''); setView('list'); }}>Back</button>
+              <button className="btn-secondary" onClick={() => { setNotice(''); setShowImportMap(true); }} disabled={!activeWorldSetName}>
+                Import map…
+              </button>
               <button
                 className="btn-primary"
                 onClick={() => {
                   // Reset configure-view state on entry (per RESEARCH.md Pitfall 6)
                   resetConfigureForm();
+                  setNotice('');
                   setView('configure');
                 }}
               >
                 Add map node
               </button>
             </div>
+            {showImportMap && activeWorldSetName && (
+              <ImportMapDialog
+                target={activeWorldSetName}
+                onClose={() => setShowImportMap(false)}
+                onImported={(name) => {
+                  setAllMaps([]); // the configure view's map list must include the new map
+                  setNotice(`Imported "${name}". It's unplaced: use "Add map node" to place it.`);
+                }}
+              />
+            )}
           </>
         )}
         {view === 'configure' && (

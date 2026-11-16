@@ -30,6 +30,8 @@ import { resolveMetersPerUnit, resolveUnits } from '../data/mapScales';
 import { renderElevationOverlay } from '../canvas/elevationOverlay';
 import { bandIntervalCm } from '../utils/heightGrid';
 import { useCursorStore } from '../store/cursorStore';
+import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
+import { displayPatch } from '../utils/worldSurface';
 import type { OpenWorldSetDialogArgs } from './WorldHierarchyPanel';
 
 const TOOLS: Record<string, Tool> = {
@@ -63,6 +65,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const activeWorldSetName = worldSetStore.activeWorldSetName;
   // Name used for hierarchy lookups: only when the open map belongs to the active world set
   const mapName = store.mapWorldSet === activeWorldSetName ? store.mapName : '';
+  // Child maps' heights shown on this one (only when they belong to this map)
+  const surface = useWorldSurfaceStore();
+  const surfaceOverrides = surface.key === surfaceKey(store.mapWorldSet, store.mapName) ? surface.overrides : null;
 
   // Overlay state
   const [hoveredFootprint, setHoveredFootprint] = useState<string | null>(null);
@@ -108,12 +113,13 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const view = { zoom: store.zoom, pan: store.pan };
     const map = store.mapData;
     const { heights, elevationView } = store;
+    const shown = heights && elevationView.showChildren ? displayPatch(heights, surfaceOverrides) : heights;
     const opts = {
       view,
       showGrid: store.showGrid,
       onImageLoad: () => { clearHexTileCache(); requestAnimationFrame(render); },
-      afterTileLayers: heights && elevationView.visible
-        ? (c: CanvasRenderingContext2D) => renderElevationOverlay(c, map, heights, view.zoom, view.pan, {
+      afterTileLayers: shown && elevationView.visible
+        ? (c: CanvasRenderingContext2D) => renderElevationOverlay(c, map, shown, view.zoom, view.pan, {
           opacity: elevationView.opacity,
           hillshade: elevationView.hillshade,
           intervalCm: bandIntervalCm(map.scale, resolveUnits(map, defaultUnits)),
@@ -141,7 +147,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     } else {
       renderedFootprintsRef.current = [];
     }
-  }, [store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

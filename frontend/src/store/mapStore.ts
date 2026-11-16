@@ -33,6 +33,8 @@ export interface ElevationView {
   visible: boolean;
   opacity: number;
   hillshade: boolean;
+  /** Show child maps' heights inside their footprints (the assembled surface). */
+  showChildren: boolean;
 }
 import { MAP_SCALE_BY_ID } from '../data/mapScales';
 
@@ -269,7 +271,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
   pendingTiles: [],
   heights: null,
   heightsDirty: false,
-  elevationView: { visible: true, opacity: 0.6, hillshade: true },
+  elevationView: { visible: true, opacity: 0.6, hillshade: true, showChildren: true },
   heightBrush: DEFAULT_HEIGHT_BRUSH,
   heightsRev: 0,
   pendingHeights: new Map(),

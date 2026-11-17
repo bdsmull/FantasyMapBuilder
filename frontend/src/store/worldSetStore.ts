@@ -47,6 +47,8 @@ export interface WorldSetStore {
   ) => void;
   /** Set the default unit system for maps in this world set that don't set their own. */
   setUnits: (units: 'metric' | 'imperial') => void;
+  /** Set the world set's height generation seed and feature size. */
+  setGeneration: (generation: { seed: number; featureSizeM: number; roughness?: number }) => void;
 
   // ---- Computed helpers ----
   childrenOf: (mapName: string) => WorldSetNode[];
@@ -224,6 +226,12 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
     const newNodes = [...activeWorldSet.nodes];
     newNodes[idx] = patched;
     set({ activeWorldSet: { ...activeWorldSet, nodes: newNodes } });
+  },
+
+  setGeneration: (generation) => {
+    const { activeWorldSet } = get();
+    if (!activeWorldSet) return;
+    set({ activeWorldSet: { ...activeWorldSet, generation } });
   },
 
   setUnits: (units) => {

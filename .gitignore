@@ -57,10 +57,10 @@ mapeditor.config.json
 # Saved map files (user data, not source)
 *.tmj
 *.tmx
-*.json
 
-# GSD planning docs (override *.json above)
-!.planning/**/*.json
+# Personal Claude Code settings (launch configs, local permissions)
+.claude/launch.json
+.claude/settings.local.json
 
 # Exported images
 *.png

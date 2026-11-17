@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { resolveUnits } from '../data/mapScales';
-import { formatHeight, hasHeightsProperty, parseHeightToCm, patchRange } from '../utils/heightGrid';
+import { createPatch, formatHeight, hasHeightsProperty, parseHeightToCm, patchRange } from '../utils/heightGrid';
 import { HeightBrushControls } from './HeightBrushControls';
 import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { useEdgeFits } from './useEdgeFits';
 import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
+import { hasTerrainHeights, heightsFromTerrain } from '../utils/terrainHeights';
 
 /**
  * Elevation section of the Layers panel: add or remove the map's elevation and
@@ -23,11 +24,39 @@ export const ElevationPanel: React.FC = () => {
   const [tilt, setTilt] = useState(false);
   const { self: parentFit } = useEdgeFits();
   const replaceHeights = useMapStore((s) => s.replaceHeights);
+  const [terrainNote, setTerrainNote] = useState('');
+  const [addNote, setAddNote] = useState('');
+  useEffect(() => { setTerrainNote(''); setAddNote(''); }, [mapName, heights]);
 
   if (!mapData) return null;
   const units = resolveUnits(mapData, worldSetUnits);
   const unitLabel = units === 'imperial' ? 'ft' : 'm';
   const startCm = parseHeightToCm(startHeight, units);
+  const terrainReady = hasTerrainHeights(mapData);
+  const setUpHint = 'Set them under Edit → Manage Tilesets → Heights… ("Suggest values" fills in common types).';
+  /** Why heights from terrain set nothing. */
+  const terrainProblem = () => (terrainReady
+    ? `None of the terrain painted on this map has a base height. ${setUpHint}`
+    : `This map's terrain types have no base heights yet. ${setUpHint}`);
+
+  /** Set heights from the painted terrain (one undo step); returns how many samples it set. */
+  const fromTerrain = (): number => {
+    const { mapData: map, heights: patch } = useMapStore.getState();
+    if (!map || !patch) return 0;
+    const result = heightsFromTerrain(map, patch);
+    if (result.changed > 0) replaceHeights(result.cm);
+    return result.changed;
+  };
+
+  /** Add elevation starting from the terrain; explains instead when there's nothing to start from. */
+  const addFromTerrain = () => {
+    if (startCm === null) return;
+    const result = heightsFromTerrain(mapData, createPatch(mapData, startCm));
+    if (result.changed === 0) { setAddNote(terrainProblem()); return; }
+    addElevation(startCm);
+    replaceHeights(result.cm);
+    setAdding(false);
+  };
 
   if (!heights) {
     if (hasHeightsProperty(mapData)) {
@@ -53,7 +82,16 @@ export const ElevationPanel: React.FC = () => {
             <button className="btn-primary" disabled={startCm === null} onClick={() => { addElevation(startCm ?? 0); setAdding(false); }}>
               Add
             </button>{' '}
-            <button onClick={() => setAdding(false)}>Cancel</button>
+            <button
+              className="btn-secondary"
+              disabled={startCm === null}
+              title="Start from the painted terrain types' base heights; places without one get the starting height"
+              onClick={addFromTerrain}
+            >
+              Add from terrain
+            </button>{' '}
+            <button onClick={() => { setAdding(false); setAddNote(''); }}>Cancel</button>
+            {addNote && <div style={{ color: '#fbbf24', fontSize: 12, marginTop: 4 }}>{addNote}</div>}
           </div>
         )}
       </div>
@@ -145,6 +183,23 @@ export const ElevationPanel: React.FC = () => {
           </div>
         );
       })()}
+      <div style={{ padding: '2px 8px', fontSize: 12 }}>
+        <button
+          className="btn-secondary"
+          style={{ fontSize: 11 }}
+          title="Set heights from the painted terrain types' base heights, smoothed between types. Hand-set heights are kept. Undoable."
+          onClick={() => {
+            const n = fromTerrain();
+            const allHandSet = terrainReady && heightsFromTerrain(mapData, { ...heights, mask: new Uint8Array(heights.mask.length) }).changed > 0;
+            setTerrainNote(n > 0 ? `Set ${n.toLocaleString('en-US')} heights from terrain.`
+              : allHandSet ? 'All the terrain with base heights is under hand-set heights (Release unprotects them).'
+              : terrainProblem());
+          }}
+        >
+          Heights from terrain
+        </button>
+        {terrainNote && <div style={{ color: '#888', marginTop: 4 }}>{terrainNote}</div>}
+      </div>
       {selectedTool === 'height' && <HeightBrushControls units={units} />}
       <div style={{ padding: '2px 8px' }}>
         {!confirmRemove ? (

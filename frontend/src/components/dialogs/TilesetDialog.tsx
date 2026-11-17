@@ -4,6 +4,9 @@ import type { TmjTileset, TmjTileEntry } from '../../types/tmj';
 import { isTileLayer } from '../../types/tmj';
 import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
 import { uploadTilesetImage } from '../../api/client';
+import { useWorldSetStore } from '../../store/worldSetStore';
+import { resolveUnits } from '../../data/mapScales';
+import { TerrainHeightsEditor } from './TerrainHeightsEditor';
 
 interface Props {
   onClose: () => void;
@@ -12,6 +15,8 @@ interface Props {
 export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
   const { mapData, mapWorldSet, addTileset, removeTileset } = useMapStore();
   const [error, setError] = useState('');
+  const [editingHeights, setEditingHeights] = useState<number | null>(null);
+  const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
 
   if (!mapData) return null;
 
@@ -130,7 +135,14 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
                   <td>{ts.name}</td>
                   <td>{ts.tilewidth}×{ts.tileheight}</td>
                   <td>{ts.tilecount}</td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button
+                      className="btn-secondary"
+                      title="Base height and relief for each terrain type"
+                      onClick={() => setEditingHeights(editingHeights === ts.firstgid ? null : ts.firstgid)}
+                    >
+                      Heights…
+                    </button>{' '}
                     <button
                       className="btn-danger"
                       onClick={() => handleRemove(ts.firstgid)}
@@ -143,6 +155,18 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
             </tbody>
           </table>
         )}
+
+        {(() => {
+          const ts = mapData.tilesets.find((t) => t.firstgid === editingHeights);
+          return ts ? (
+            <TerrainHeightsEditor
+              key={ts.firstgid}
+              tileset={ts}
+              units={resolveUnits(mapData, worldSetUnits)}
+              onDone={() => setEditingHeights(null)}
+            />
+          ) : null;
+        })()}
 
         <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn-secondary" onClick={handleLoadBuiltin}>

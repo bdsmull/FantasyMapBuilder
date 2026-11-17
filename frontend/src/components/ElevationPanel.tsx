@@ -5,6 +5,8 @@ import { resolveUnits } from '../data/mapScales';
 import { formatHeight, hasHeightsProperty, parseHeightToCm, patchRange } from '../utils/heightGrid';
 import { HeightBrushControls } from './HeightBrushControls';
 import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
+import { useEdgeFits } from './useEdgeFits';
+import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
 
 /**
  * Elevation section of the Layers panel: add or remove the map's elevation and
@@ -18,6 +20,9 @@ export const ElevationPanel: React.FC = () => {
   const [adding, setAdding] = useState(false);
   const [startHeight, setStartHeight] = useState('0');
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [tilt, setTilt] = useState(false);
+  const { self: parentFit } = useEdgeFits();
+  const replaceHeights = useMapStore((s) => s.replaceHeights);
 
   if (!mapData) return null;
   const units = resolveUnits(mapData, worldSetUnits);
@@ -108,6 +113,38 @@ export const ElevationPanel: React.FC = () => {
           </label>
         </div>
       )}
+      {parentFit && (() => {
+        const shift = rebaseShiftRange(mapData, heights, parentFit.fit, tilt);
+        const fmt = (cm: number) => formatHeight(Math.round(Math.abs(cm)), units);
+        const preview = Math.round(shift.min) === Math.round(shift.max)
+          ? `${shift.min >= 0 ? 'Raises' : 'Lowers'} the map by ${fmt(shift.min)}`
+          : `Moves it by ${shift.min < 0 ? '−' : '+'}${fmt(shift.min)} to ${shift.max < 0 ? '−' : '+'}${fmt(shift.max)} across the map`;
+        const nothingToDo = Math.round(shift.min) === 0 && Math.round(shift.max) === 0;
+        const note = !nothingToDo ? preview + '.'
+          : !parentFit.mismatch ? 'Already fits.'
+          : tilt ? "Shifting and tilting can't improve this: the parent's ground isn't even under this map."
+          : "Shifting can't improve this; try Tilt to match.";
+        return (
+          <div className="elevation-fit" style={{ padding: '4px 8px', fontSize: 12, borderTop: '1px solid #333' }}>
+            <div style={{ color: parentFit.mismatch ? '#fbbf24' : '#aaa', marginBottom: 4 }} title="Compares this map's edge band with the parent's own heights under it">
+              {parentFit.mismatch ? '⚠ ' : ''}Fit to parent: {parentFit.summary}
+            </div>
+            <label title="Also tilt the map to follow the slope of the parent around it" style={{ marginRight: 8 }}>
+              <input type="checkbox" checked={tilt} onChange={(e) => setTilt(e.target.checked)} /> Tilt to match
+            </label>
+            <button
+              className="btn-secondary"
+              style={{ fontSize: 11 }}
+              disabled={nothingToDo}
+              title={`${preview}. Changes this map's heights (undoable); hand-set marks are kept.`}
+              onClick={() => replaceHeights(rebasedHeights(mapData, heights, parentFit.fit, tilt))}
+            >
+              Re-base
+            </button>
+            <div style={{ color: '#888', marginTop: 2 }}>{note}</div>
+          </div>
+        );
+      })()}
       {selectedTool === 'height' && <HeightBrushControls units={units} />}
       <div style={{ padding: '2px 8px' }}>
         {!confirmRemove ? (

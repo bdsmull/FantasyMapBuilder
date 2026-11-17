@@ -219,7 +219,7 @@ export interface SurfaceOverrides {
 const _MAX_SUBSAMPLES = 8;
 
 /** Cell-space position of height sample (col, row): cell corners on square maps, centres on hex. */
-function _sampleCell(map: TmjMap, col: number, row: number): { u: number; v: number } {
+export function sampleCell(map: TmjMap, col: number, row: number): { u: number; v: number } {
   if (map.orientation !== 'hexagonal') return { u: col, v: row };
   const c = hexCenter(hexLayout(map), col, row);
   return pixelToCell(map, c.x, c.y);
@@ -239,7 +239,7 @@ export function computeOverrides(map: TmjMap, cols: number, rows: number, childr
     const r0 = Math.max(0, Math.floor(place.top - 1.5)), r1 = Math.min(rows - 1, Math.ceil(place.top + place.height + 0.5));
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
-        const s = _sampleCell(map, col, row);
+        const s = sampleCell(map, col, row);
         if (s.u + 0.5 <= place.left || s.u - 0.5 >= place.left + place.width
           || s.v + 0.5 <= place.top || s.v - 0.5 >= place.top + place.height) continue;
         let sumW = 0, sumC = 0;

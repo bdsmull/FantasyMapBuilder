@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useMapStore } from '../store/mapStore';
+import { useViewStore } from '../store/viewStore';
 import { hexLayout, hexMapPixelSize } from '../canvas/hexGeometry';
 
 interface MenuBarProps {
@@ -28,6 +29,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const { showPalette, setShowPalette } = useViewStore();
   const toggle = (name: MenuName) => setOpenMenu((prev) => (prev === name ? null : name));
   const close = () => setOpenMenu(null);
 
@@ -162,6 +164,9 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
             <li className="menu-sep" />
             <li onClick={() => { close(); setShowGrid(!showGrid); }} className={!hasMap ? 'disabled' : ''}>
               {showGrid ? '✓ ' : '  '}Show Grid <kbd>G</kbd>
+            </li>
+            <li onClick={() => { close(); setShowPalette(!showPalette); }}>
+              {showPalette ? '✓ ' : '  '}Tile Palette <kbd>P</kbd>
             </li>
           </ul>
         )}

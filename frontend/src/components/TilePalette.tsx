@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useMapStore } from '../store/mapStore';
+import { useViewStore } from '../store/viewStore';
 import { tilesetImageUrl } from '../api/client';
 
 export const TilePalette: React.FC = () => {
@@ -121,7 +122,17 @@ export const TilePalette: React.FC = () => {
   return (
     <>
       <div className="tile-palette">
-        <div className="panel-header">Tile Palette</div>
+        <div className="panel-header" style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ flex: 1 }}>Tile Palette</span>
+          <button
+            className="inspector-close"
+            title="Hide the tile palette (P; View → Tile Palette shows it again)"
+            aria-label="Hide tile palette"
+            onClick={() => useViewStore.getState().setShowPalette(false)}
+          >
+            ×
+          </button>
+        </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           <canvas
             ref={canvasRef}

@@ -9,6 +9,7 @@ interface ToolButtonProps {
 }
 
 const TOOLS: ToolButtonProps[] = [
+  { name: 'inspect', label: 'Inspect', shortcut: 'I' },
   { name: 'paint', label: 'Paint', shortcut: '1' },
   { name: 'erase', label: 'Erase', shortcut: '2' },
   { name: 'fill',  label: 'Fill',  shortcut: '3' },

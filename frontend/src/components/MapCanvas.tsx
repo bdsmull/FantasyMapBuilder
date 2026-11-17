@@ -20,6 +20,11 @@ import { eraseTool } from '../tools/eraseTool';
 import { fillTool } from '../tools/fillTool';
 import { pointTool } from '../tools/pointTool';
 import { heightTool } from '../tools/heightTool';
+import { inspectTool } from '../tools/inspectTool';
+import { useViewStore } from '../store/viewStore';
+import { InspectorCard } from './InspectorCard';
+import { cellAt } from '../utils/inspect';
+import { hexTopLeft, hexPolygon } from '../canvas/hexGeometry';
 import { renderFootprintOverlay, footprintAtPoint, computeFootprint } from '../canvas/footprintOverlay';
 import type { RenderedFootprint } from '../canvas/footprintOverlay';
 import type { Footprint } from '../utils/worldSetUtils';
@@ -35,6 +40,7 @@ import { displayPatch } from '../utils/worldSurface';
 import type { OpenWorldSetDialogArgs } from './WorldHierarchyPanel';
 
 const TOOLS: Record<string, Tool> = {
+  inspect: inspectTool,
   paint: paintTool,
   erase: eraseTool,
   fill: fillTool,
@@ -68,6 +74,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   // Child maps' heights shown on this one (only when they belong to this map)
   const surface = useWorldSurfaceStore();
   const surfaceOverrides = surface.key === surfaceKey(store.mapWorldSet, store.mapName) ? surface.overrides : null;
+  const inspected = useViewStore((s) => s.inspected);
+  const inspecting = store.selectedTool === 'inspect';
+  // The inspector belongs to the Inspect tool and the open map
+  useEffect(() => { useViewStore.getState().setInspected(null); }, [store.mapName, store.mapWorldSet, inspecting]);
 
   // Overlay state
   const [hoveredFootprint, setHoveredFootprint] = useState<string | null>(null);
@@ -147,7 +157,31 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     } else {
       renderedFootprintsRef.current = [];
     }
-  }, [store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+
+    // Outline the inspected cell
+    const cell = inspected && cellAt(map, inspected.x, inspected.y);
+    if (cell) {
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      ctx.beginPath();
+      if (map.orientation === 'hexagonal') {
+        const layout = hexLayout(map);
+        const tl = hexTopLeft(layout, cell.col, cell.row);
+        hexPolygon(layout).forEach((p, i) => {
+          const x = (tl.x + p.x) * view.zoom, y = (tl.y + p.y) * view.zoom;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+      } else {
+        ctx.rect(cell.col * map.tilewidth * view.zoom, cell.row * map.tileheight * view.zoom,
+          map.tilewidth * view.zoom, map.tileheight * view.zoom);
+      }
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffd400';
+      ctx.stroke();
+      ctx.restore();
+    }
+  }, [inspected, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.
@@ -309,7 +343,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       isDrawing.current = false;
       lastPinchDistance.current = pinchDistance();
       const tool = TOOLS[store.selectedTool];
-      tool.onRelease(store);
+      if (tool.onCancel) tool.onCancel(store); else tool.onRelease(store);
       return;
     }
 
@@ -323,8 +357,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const tile = pointerToTile(e.nativeEvent);
     if (!tile) return;
 
-    // Footprint interception — runs before tool dispatch
-    if (store.mapData && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
+    // Footprint interception — runs before tool dispatch. The Inspect tool inspects
+    // footprints instead (its card has an Open button for each child map).
+    if (store.mapData && store.selectedTool !== 'inspect' && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
       const canvasPt = getCanvasPoint(e.nativeEvent);
       const hits = footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);
 
@@ -571,6 +606,16 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
             </li>
           ))}
         </ul>
+      )}
+
+      {inspecting && (
+        <InspectorCard
+          footprints={footprintMap}
+          onOpenMap={(name) => {
+            if (store.isDirty) setDirtyGuardTarget(name);
+            else navigateToMap(name, { saveFirst: false }).catch(console.error);
+          }}
+        />
       )}
 
       {/* Dirty-map guard modal */}

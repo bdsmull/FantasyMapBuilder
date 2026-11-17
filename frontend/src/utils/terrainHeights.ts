@@ -118,54 +118,75 @@ export function sampleNeighbours(map: TmjMap, cols: number, rows: number): (i: n
 const _SMOOTH_PASSES = 2;
 
 /**
+ * A value per height sample taken from the terrain around it: the hex's own type on
+ * hex maps, the average of the (up to 4) cells meeting at a corner on square maps.
+ * `pick` chooses the value (e.g. base or relief); `has` is 0 where no terrain sets one.
+ */
+export function terrainSamples(
+  map: TmjMap, cols: number, rows: number, pick: (t: TerrainHeight) => number,
+): { values: Float64Array; has: Uint8Array } {
+  const cells = cellTerrain(map);
+  const values = new Float64Array(cols * rows);
+  const has = new Uint8Array(cols * rows);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      let sum = 0, n = 0;
+      if (map.orientation === 'hexagonal') {
+        const t = cells[row * map.width + col];
+        if (t) { sum = pick(t); n = 1; }
+      } else {
+        for (const [dc, dr] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+          const c = col + dc, r = row + dr;
+          if (c < 0 || r < 0 || c >= map.width || r >= map.height) continue;
+          const t = cells[r * map.width + c];
+          if (t) { sum += pick(t); n++; }
+        }
+      }
+      if (n === 0) continue;
+      const i = row * cols + col;
+      values[i] = sum / n;
+      has[i] = 1;
+    }
+  }
+  return { values, has };
+}
+
+/** Smooth `values` in place where `free` is set: each pass blends a sample halfway to its neighbours' average. */
+export function smoothSamples(
+  map: TmjMap, cols: number, rows: number, values: Float64Array | Int32Array, free: Uint8Array, passes = _SMOOTH_PASSES,
+): void {
+  const neighbours = sampleNeighbours(map, cols, rows);
+  for (let pass = 0; pass < passes; pass++) {
+    const prev = values.slice();
+    for (let i = 0; i < values.length; i++) {
+      if (!free[i]) continue;
+      const ns = neighbours(i);
+      if (ns.length === 0) continue;
+      let sum = 0;
+      for (const j of ns) sum += prev[j];
+      const v = 0.5 * prev[i] + 0.5 * (sum / ns.length);
+      values[i] = values instanceof Int32Array ? Math.round(v) : v;
+    }
+  }
+}
+
+/**
  * New heights for the patch from the map's terrain. Returns the heights and how many
  * samples were set from terrain (0 = the map has no terrain settings under any free sample).
  */
 export function heightsFromTerrain(map: TmjMap, patch: HeightPatch): { cm: Int32Array; changed: number } {
   const { cols, rows } = patch;
-  const cells = cellTerrain(map);
+  const { values, has } = terrainSamples(map, cols, rows, (t) => t.baseCm);
   const out = patch.cm.slice();
   const free = new Uint8Array(cols * rows); // set from terrain, and free to smooth
-
   let changed = 0;
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const i = row * cols + col;
-      if (patch.mask[i]) continue;
-      let sum = 0, n = 0;
-      if (map.orientation === 'hexagonal') {
-        const t = cells[row * map.width + col];
-        if (t) { sum = t.baseCm; n = 1; }
-      } else {
-        // A corner takes the average of the (up to 4) cells that meet there
-        for (const [dc, dr] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
-          const c = col + dc, r = row + dr;
-          if (c < 0 || r < 0 || c >= map.width || r >= map.height) continue;
-          const t = cells[r * map.width + c];
-          if (t) { sum += t.baseCm; n++; }
-        }
-      }
-      if (n === 0) continue;
-      out[i] = Math.round(sum / n);
-      free[i] = 1;
-      changed++;
-    }
+  for (let i = 0; i < out.length; i++) {
+    if (patch.mask[i] || !has[i]) continue;
+    out[i] = Math.round(values[i]);
+    free[i] = 1;
+    changed++;
   }
-
-  if (changed > 0) {
-    const neighbours = sampleNeighbours(map, cols, rows);
-    for (let pass = 0; pass < _SMOOTH_PASSES; pass++) {
-      const prev = out.slice();
-      for (let i = 0; i < out.length; i++) {
-        if (!free[i]) continue;
-        const ns = neighbours(i);
-        if (ns.length === 0) continue;
-        let s = 0;
-        for (const j of ns) s += prev[j];
-        out[i] = Math.round(0.5 * prev[i] + 0.5 * (s / ns.length));
-      }
-    }
-  }
+  if (changed > 0) smoothSamples(map, cols, rows, out, free);
   return { cm: out, changed };
 }
 

@@ -13,6 +13,11 @@ export interface WorldSet {
   version: string;    // "1.0"
   /** Default unit system for contained maps that don't set their own. Absent = metric. */
   units?: 'metric' | 'imperial';
+  /**
+   * Height generation (#8 phase 3b): one noise field for the whole world set, so maps
+   * generated separately match where they overlap. Absent until something is generated.
+   */
+  generation?: { seed: number; featureSizeM: number; roughness?: number };
   nodes: WorldSetNode[];
 }
 

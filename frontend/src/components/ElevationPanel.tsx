@@ -4,6 +4,7 @@ import { useWorldSetStore } from '../store/worldSetStore';
 import { resolveUnits } from '../data/mapScales';
 import { createPatch, formatHeight, hasHeightsProperty, parseHeightToCm, patchRange } from '../utils/heightGrid';
 import { HeightBrushControls } from './HeightBrushControls';
+import { GenerateControls } from './GenerateControls';
 import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { useEdgeFits } from './useEdgeFits';
 import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
@@ -26,6 +27,7 @@ export const ElevationPanel: React.FC = () => {
   const replaceHeights = useMapStore((s) => s.replaceHeights);
   const [terrainNote, setTerrainNote] = useState('');
   const [addNote, setAddNote] = useState('');
+  const [generating, setGenerating] = useState(false);
   useEffect(() => { setTerrainNote(''); setAddNote(''); }, [mapName, heights]);
 
   if (!mapData) return null;
@@ -197,9 +199,18 @@ export const ElevationPanel: React.FC = () => {
           }}
         >
           Heights from terrain
+        </button>{' '}
+        <button
+          className={`btn-secondary${generating ? ' active' : ''}`}
+          style={{ fontSize: 11 }}
+          title="Add natural-looking detail on top of the current heights"
+          onClick={() => setGenerating(!generating)}
+        >
+          Generate…
         </button>
         {terrainNote && <div style={{ color: '#888', marginTop: 4 }}>{terrainNote}</div>}
       </div>
+      {generating && <GenerateControls units={units} onClose={() => setGenerating(false)} />}
       {selectedTool === 'height' && <HeightBrushControls units={units} />}
       <div style={{ padding: '2px 8px' }}>
         {!confirmRemove ? (

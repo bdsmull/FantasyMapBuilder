@@ -2,21 +2,36 @@
  * HeightTool — paints the map's elevation with the brush set in the Layers panel
  * (raise, lower, set, smooth, release). A press-drag-release is one stroke and one
  * undo step. Right-click picks the height under the pointer as the "set" target.
+ *
+ * In Spot mode it places spot heights instead: a click on an existing spot selects
+ * it for editing, a click elsewhere adds one at the target height (and selects it).
  */
 
 import type { Tool, MapPoint } from './baseTool';
 import { cellDistance } from '../utils/heightBrush';
 import { heightAt } from '../utils/heightGrid';
+import { readSpots, spotNear, DEFAULT_REACH_CELLS } from '../utils/spotHeights';
+import { useViewStore } from '../store/viewStore';
 
 /** Last position a dab was applied in the current stroke. */
 let _lastDab: MapPoint | null = null;
+
+/** Screen pixels around a spot marker that count as clicking it. */
+export const SPOT_PICK_RADIUS_PX = 10;
 
 export const heightTool: Tool = {
   name: 'height',
   cursor: 'crosshair',
 
   onPress(_col, _row, store, pos) {
-    if (!pos || !store.heights) return;
+    if (!pos || !store.heights || !store.mapData) return;
+    if (store.heightBrush.mode === 'spot') {
+      const hit = spotNear(readSpots(store.mapData), pos.x, pos.y, SPOT_PICK_RADIUS_PX / store.zoom);
+      const id = hit ? hit.id
+        : store.addSpotHeight(pos.x, pos.y, store.heightBrush.targetCm, store.heightBrush.spotReachCells ?? DEFAULT_REACH_CELLS);
+      useViewStore.getState().setSelectedSpotId(id);
+      return;
+    }
     _lastDab = pos;
     store.applyHeightDab(pos.x, pos.y);
   },
@@ -32,12 +47,15 @@ export const heightTool: Tool = {
   },
 
   onRelease(store) {
+    if (!_lastDab) return;
     _lastDab = null;
     store.commitHeightStroke();
   },
 
   onRightPress(_col, _row, store, pos) {
     if (!pos || !store.mapData || !store.heights) return;
-    store.setHeightBrush({ mode: 'set', targetCm: Math.round(heightAt(store.mapData, store.heights, pos.x, pos.y)) });
+    const targetCm = Math.round(heightAt(store.mapData, store.heights, pos.x, pos.y));
+    // Spot mode keeps placing spots; painting modes switch to Set with the picked height
+    store.setHeightBrush(store.heightBrush.mode === 'spot' ? { targetCm } : { mode: 'set', targetCm });
   },
 };

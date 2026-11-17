@@ -18,6 +18,7 @@ import type { HeightPatch, CellRect } from '../utils/heightGrid';
 import { HEIGHTS_PROPERTY, createPatch, heightsPropertyValue, unionRect } from '../utils/heightGrid';
 import type { HeightBrush } from '../utils/heightBrush';
 import { DEFAULT_HEIGHT_BRUSH, applyDab } from '../utils/heightBrush';
+import { SPOT_LAYER, SPOT_TYPE, isSpot, spotProperties } from '../utils/spotHeights';
 
 /** One changed height sample, for undo/redo. */
 export interface HeightChange {
@@ -133,6 +134,12 @@ export interface MapStore {
   commitHeightStroke: () => void;
   /** Replace every height sample (re-base) as one undo step; hand-set marks are kept. */
   replaceHeights: (cm: Int32Array) => void;
+
+  // ---- Spot heights (each change is one undo step) ----
+  /** Add a spot height at map pixel (x, y) to the "Spot heights" layer (created if needed); returns its object ID. */
+  addSpotHeight: (x: number, y: number, cm: number, reachCells: number) => number | null;
+  updateSpotHeight: (id: number, changes: { name?: string; cm?: number; reachCells?: number }) => void;
+  deleteSpotHeight: (id: number) => void;
 
   // ---- Editor state actions ----
   setActiveLayer: (index: number) => void;
@@ -438,6 +445,72 @@ export const useMapStore = create<MapStore>((set, get) => ({
       past: [...past, { type: 'heights' as const, changes: [], whole: { before, after } }],
       future: [],
     }));
+  },
+
+  addSpotHeight: (x, y, cm, reachCells) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return null;
+    const id = mapData.nextobjectid;
+    const spot: TmjObject = {
+      id, name: '', type: SPOT_TYPE, x, y, width: 0, height: 0, visible: true, point: true,
+      properties: spotProperties([], cm, reachCells),
+    };
+    let index = mapData.layers.findIndex((l) => isObjectLayer(l) && l.name === SPOT_LAYER);
+    let layers = mapData.layers;
+    let nextlayerid = mapData.nextlayerid;
+    if (index < 0) {
+      // On top, so spots are drawn over everything
+      layers = [...layers, {
+        type: 'objectgroup', id: nextlayerid, name: SPOT_LAYER, visible: true, opacity: 1, offsetx: 0, offsety: 0,
+        color: '#ffd400', draworder: 'topdown', objects: [],
+      }];
+      index = layers.length - 1;
+      nextlayerid += 1;
+    }
+    layers = updateObjectLayer(layers, index, (objects) => [...objects, spot]);
+    _commitLayers(set, get, layers, activeLayerIndex, nextlayerid);
+    set((state) => ({ mapData: state.mapData && { ...state.mapData, nextobjectid: id + 1 } }));
+    return id;
+  },
+
+  updateSpotHeight: (id, changes) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isSpot(o))) return layer;
+      found = true;
+      return {
+        ...layer,
+        objects: layer.objects.map((o) => {
+          if (o.id !== id) return o;
+          const height = o.properties?.find((p) => p.name === 'height')?.value;
+          const reach = o.properties?.find((p) => p.name === 'reach')?.value;
+          return {
+            ...o,
+            name: changes.name ?? o.name,
+            properties: spotProperties(
+              o.properties,
+              changes.cm ?? Math.round(Number(height) * 100),
+              changes.reachCells ?? Number(reach ?? 10),
+            ),
+          };
+        }),
+      };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  deleteSpotHeight: (id) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isSpot(o))) return layer;
+      found = true;
+      return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
   },
 
   // ---- Editor state ----

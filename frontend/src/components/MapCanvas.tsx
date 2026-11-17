@@ -24,6 +24,8 @@ import { inspectTool } from '../tools/inspectTool';
 import { useViewStore } from '../store/viewStore';
 import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
+import { readSpots } from '../utils/spotHeights';
+import { formatHeight } from '../utils/heightGrid';
 import { hexTopLeft, hexPolygon } from '../canvas/hexGeometry';
 import { renderFootprintOverlay, footprintAtPoint, computeFootprint } from '../canvas/footprintOverlay';
 import type { RenderedFootprint } from '../canvas/footprintOverlay';
@@ -75,6 +77,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const surface = useWorldSurfaceStore();
   const surfaceOverrides = surface.key === surfaceKey(store.mapWorldSet, store.mapName) ? surface.overrides : null;
   const inspected = useViewStore((s) => s.inspected);
+  const selectedSpotId = useViewStore((s) => s.selectedSpotId);
+  // A spot selection belongs to the open map
+  useEffect(() => { useViewStore.getState().setSelectedSpotId(null); }, [store.mapName, store.mapWorldSet]);
   const inspecting = store.selectedTool === 'inspect';
   // The inspector belongs to the Inspect tool and the open map
   useEffect(() => { useViewStore.getState().setInspected(null); }, [store.mapName, store.mapWorldSet, inspecting]);
@@ -158,6 +163,34 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       renderedFootprintsRef.current = [];
     }
 
+    // Spot heights: a triangle and the height, on top of everything
+    const spotLayers = new Set(map.layers.map((l, i) => (l.visible ? i : -1)));
+    const spots = readSpots(map).filter((s) => spotLayers.has(s.layerIndex));
+    if (spots.length) {
+      const units = resolveUnits(map, defaultUnits);
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.textBaseline = 'middle';
+      for (const s of spots) {
+        const x = s.x * view.zoom, y = s.y * view.zoom;
+        const sel = s.id === selectedSpotId;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 6); ctx.lineTo(x + 5, y + 4); ctx.lineTo(x - 5, y + 4); ctx.closePath();
+        ctx.fillStyle = sel ? '#ffd400' : '#fff';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5;
+        ctx.fill(); ctx.stroke();
+        const label = `${s.name ? s.name + ' ' : ''}${formatHeight(s.cm, units)}`;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeText(label, x + 8, y);
+        ctx.fillStyle = sel ? '#ffd400' : '#fff';
+        ctx.fillText(label, x + 8, y);
+      }
+      ctx.restore();
+    }
+
     // Outline the inspected cell
     const cell = inspected && cellAt(map, inspected.x, inspected.y);
     if (cell) {
@@ -181,7 +214,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [inspected, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [inspected, selectedSpotId, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

@@ -12,7 +12,8 @@ import type { HeightPatch, CellRect } from './heightGrid';
 import { hexNeighbours } from './heightGrid';
 import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 
-export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release';
+/** 'spot' places and selects spot heights instead of painting (see utils/spotHeights.ts). */
+export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot';
 
 export interface HeightBrush {
   mode: HeightBrushMode;
@@ -20,8 +21,10 @@ export interface HeightBrush {
   radius: number;
   /** Raise/lower amount per dab at the brush centre, in cm. */
   strengthCm: number;
-  /** Height that "set" flattens to, in cm. */
+  /** Height that "set" flattens to, and new spot heights get, in cm. */
   targetCm: number;
+  /** Reach of new spot heights, in cells (default DEFAULT_REACH_CELLS). */
+  spotReachCells?: number;
 }
 
 export const DEFAULT_HEIGHT_BRUSH: HeightBrush = { mode: 'raise', radius: 2, strengthCm: 100, targetCm: 0 };
@@ -109,6 +112,7 @@ export function applyDab(
   brush: HeightBrush,
   beforeChange: (index: number) => void,
 ): CellRect | null {
+  if (brush.mode === 'spot') return null; // spot mode doesn't paint
   const radius = Math.max(0.5, brush.radius);
   const samples = samplesInBrush(map, patch, x, y, radius);
   const snapshot = brush.mode === 'smooth' ? patch.cm.slice() : patch.cm;

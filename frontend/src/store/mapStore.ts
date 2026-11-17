@@ -77,7 +77,7 @@ export interface LayerSnapshot {
 // Store interface
 // ---------------------------------------------------------------------------
 
-export type ToolName = 'paint' | 'erase' | 'fill' | 'point' | 'height';
+export type ToolName = 'inspect' | 'paint' | 'erase' | 'fill' | 'point' | 'height';
 
 export interface MapStore {
   // ---- Map data ----

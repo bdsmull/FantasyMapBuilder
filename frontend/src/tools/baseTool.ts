@@ -18,6 +18,8 @@ export interface Tool {
   onPress(col: number, row: number, store: MapStore, pos?: MapPoint): void;
   onDrag(col: number, row: number, store: MapStore, pos?: MapPoint): void;
   onRelease(store: MapStore): void;
+  /** The gesture was abandoned (e.g. a second finger started a pinch). Defaults to onRelease. */
+  onCancel?(store: MapStore): void;
   /** Called for right-click / two-finger tap (optional). */
   onRightPress?(col: number, row: number, store: MapStore, pos?: MapPoint): void;
 }

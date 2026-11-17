@@ -17,6 +17,7 @@ import { WorldHierarchyPanel } from './components/WorldHierarchyPanel';
 import type { OpenWorldSetDialogArgs } from './components/WorldHierarchyPanel';
 import { useMapStore } from './store/mapStore';
 import { useWorldSetStore } from './store/worldSetStore';
+import { useViewStore } from './store/viewStore';
 
 type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | 'mapProperties' | null;
 
@@ -31,6 +32,7 @@ export const App: React.FC = () => {
   const pendingNewMapCreatedRef = useRef<((name: string) => void) | null>(null);
   const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
   useHeightsLoader();
+  const { showPalette, setShowPalette } = useViewStore();
   useWorldSurface();
 
   const toggleLeftPanel = useCallback(() => {
@@ -81,15 +83,17 @@ export const App: React.FC = () => {
     }
 
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key === 'i' || e.key === 'I') { setTool('inspect'); return; }
+      if (e.key === 'p' || e.key === 'P') { setShowPalette(!useViewStore.getState().showPalette); return; }
       if (e.key === '1') { setTool('paint'); return; }
       if (e.key === '2') { setTool('erase'); return; }
       if (e.key === '3') { setTool('fill'); return; }
       if (e.key === '4') { setTool('point'); return; }
       if (e.key === '5') { if (useMapStore.getState().heights) setTool('height'); return; }
       if (e.key === 'g' || e.key === 'G') { setShowGrid(!showGrid); return; }
-      if (e.key === 'Escape') { setActiveDialog(null); return; }
+      if (e.key === 'Escape') { setActiveDialog(null); useViewStore.getState().setInspected(null); return; }
     }
-  }, [undo, redo, setTool, setShowGrid, showGrid, saveMapToServer]);
+  }, [undo, redo, setTool, setShowGrid, showGrid, saveMapToServer, setShowPalette]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -121,7 +125,7 @@ export const App: React.FC = () => {
         onMapProperties={() => setActiveDialog('mapProperties')}
       />
       <Toolbar onToggleLeftPanel={toggleLeftPanel} showPanelToggle={true} />
-      <div className="editor-body">
+      <div className={`editor-body${showPalette ? '' : ' editor-body--no-palette'}`}>
         {leftPanelOpen && (
           <div className="left-panel-backdrop" onClick={() => setLeftPanelOpen(false)} />
         )}
@@ -153,9 +157,11 @@ export const App: React.FC = () => {
             </div>
           )}
         </main>
-        <aside className="right-panel">
-          <TilePalette />
-        </aside>
+        {showPalette && (
+          <aside className="right-panel">
+            <TilePalette />
+          </aside>
+        )}
       </div>
       <StatusBar />
 

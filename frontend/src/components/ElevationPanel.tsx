@@ -9,6 +9,7 @@ import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { useEdgeFits } from './useEdgeFits';
 import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
 import { hasTerrainHeights, heightsFromTerrain } from '../utils/terrainHeights';
+import { readSpots, fitToSpots } from '../utils/spotHeights';
 
 /**
  * Elevation section of the Layers panel: add or remove the map's elevation and
@@ -207,7 +208,34 @@ export const ElevationPanel: React.FC = () => {
           onClick={() => setGenerating(!generating)}
         >
           Generate…
-        </button>
+        </button>{' '}
+        {(() => {
+          const spots = readSpots(mapData);
+          return (
+            <button
+              className="btn-secondary"
+              style={{ fontSize: 11 }}
+              disabled={spots.length === 0}
+              title={spots.length
+                ? 'Bend the surface so it passes through every spot height, keeping its shape. Hand-set heights are kept. Undoable.'
+                : 'No spot heights yet: add them with the Height tool in Spot mode'}
+              onClick={() => {
+                const { mapData: map, heights: patch } = useMapStore.getState();
+                if (!map || !patch) return;
+                const result = fitToSpots(map, patch, spots);
+                if (result.changed > 0) replaceHeights(result.cm);
+                const miss = result.maxMissCm >= 50
+                  ? ` Largest remaining difference ${formatHeight(result.maxMissCm, units)} (hand-set heights hold the surface there).`
+                  : '';
+                setTerrainNote(result.changed > 0
+                  ? `Fitted to ${spots.length} spot height${spots.length === 1 ? '' : 's'}.${miss}`
+                  : `The surface already passes through the spot heights.${miss}`);
+              }}
+            >
+              Fit to spot heights ({spots.length})
+            </button>
+          );
+        })()}
         {terrainNote && <div style={{ color: '#888', marginTop: 4 }}>{terrainNote}</div>}
       </div>
       {generating && <GenerateControls units={units} onClose={() => setGenerating(false)} />}

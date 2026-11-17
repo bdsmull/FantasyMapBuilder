@@ -23,6 +23,9 @@ export interface ViewStore {
   /** Map-pixel point shown in the inspector, or null when it's closed. */
   inspected: MapPoint | null;
   setInspected: (pos: MapPoint | null) => void;
+  /** Object ID of the spot height being edited in the Height tool's Spot mode. */
+  selectedSpotId: number | null;
+  setSelectedSpotId: (id: number | null) => void;
 }
 
 export const useViewStore = create<ViewStore>((set) => ({
@@ -33,4 +36,6 @@ export const useViewStore = create<ViewStore>((set) => ({
   },
   inspected: null,
   setInspected: (pos) => set({ inspected: pos }),
+  selectedSpotId: null,
+  setSelectedSpotId: (id) => set({ selectedSpotId: id }),
 }));

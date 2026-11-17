@@ -54,7 +54,11 @@ type UndoStep =
   | { type: 'tiles'; changes: TileChange[] }
   | { type: 'object-add'; layerIndex: number; objectId: number }
   | { type: 'object-remove'; layerIndex: number; object: TmjObject }
-  | { type: 'heights'; changes: HeightChange[] }
+  /**
+   * Height edit: per-sample changes, or (re-base) every sample's height before and
+   * after in `whole`, which is far smaller than one change record per sample.
+   */
+  | { type: 'heights'; changes: HeightChange[]; whole?: { before: Int32Array; after: Int32Array } }
   /** Layer structure change (add, delete, rename, move): the layer list before and after. */
   | { type: 'layers'; before: LayerSnapshot; after: LayerSnapshot };
 
@@ -127,6 +131,8 @@ export interface MapStore {
   applyHeightDab: (x: number, y: number) => void;
   /** End the current stroke: one undo step, and a full overlay refresh. */
   commitHeightStroke: () => void;
+  /** Replace every height sample (re-base) as one undo step; hand-set marks are kept. */
+  replaceHeights: (cm: Int32Array) => void;
 
   // ---- Editor state actions ----
   setActiveLayer: (index: number) => void;
@@ -207,8 +213,16 @@ function _withoutHeightSteps(state: { past: UndoStep[]; future: UndoStep[] }) {
 }
 
 /** Write a height step's old or new values back into the patch (in place). */
-function _applyHeightChanges(patch: HeightPatch | null, changes: HeightChange[], which: 'old' | 'new'): void {
+function _applyHeightChanges(
+  patch: HeightPatch | null, changes: HeightChange[], which: 'old' | 'new',
+  whole?: { before: Int32Array; after: Int32Array },
+): void {
   if (!patch) return;
+  if (whole) {
+    patch.cm.set(which === 'old' ? whole.before : whole.after);
+    patch.fullRefresh = true;
+    return;
+  }
   let rect: CellRect | null = null;
   for (const c of changes) {
     patch.cm[c.index] = which === 'old' ? c.oldCm : c.newCm;
@@ -401,6 +415,23 @@ export const useMapStore = create<MapStore>((set, get) => ({
       pendingHeights: new Map(),
       heightsRev: state.heightsRev + 1,
       ...(changes.length > 0 ? { past: [...past, { type: 'heights' as const, changes }], future: [] } : {}),
+    }));
+  },
+
+  replaceHeights: (cm) => {
+    const { heights, past } = get();
+    if (!heights || cm.length !== heights.cm.length) return;
+    const before = heights.cm.slice();
+    const after = cm.slice();
+    heights.cm.set(after);
+    heights.fullRefresh = true;
+    set((state) => ({
+      heightsDirty: true,
+      isDirty: true,
+      heightsRev: state.heightsRev + 1,
+      pendingHeights: new Map(),
+      past: [...past, { type: 'heights' as const, changes: [], whole: { before, after } }],
+      future: [],
     }));
   },
 
@@ -622,7 +653,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
         step.object,
       ]);
     } else if (step.type === 'heights') {
-      _applyHeightChanges(get().heights, step.changes, 'old');
+      _applyHeightChanges(get().heights, step.changes, 'old', step.whole);
     } else if (step.type === 'layers') {
       newLayers = step.before.layers;
     }
@@ -658,7 +689,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
         objects.filter((o) => o.id !== step.object.id),
       );
     } else if (step.type === 'heights') {
-      _applyHeightChanges(get().heights, step.changes, 'new');
+      _applyHeightChanges(get().heights, step.changes, 'new', step.whole);
     } else if (step.type === 'layers') {
       newLayers = step.after.layers;
     }

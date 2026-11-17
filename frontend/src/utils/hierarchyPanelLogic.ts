@@ -17,6 +17,8 @@ export interface WarningContext {
   allNodes: WorldSetNode[];
   /** The world set's default unit system, for maps that don't set their own. Absent = metric. */
   defaultUnits?: UnitSystem;
+  /** Elevation mismatch summaries for the maps whose fit is known, by mapName. */
+  elevationMismatch?: Record<string, string>;
 }
 
 export { resolveMetersPerUnit };
@@ -37,6 +39,9 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
 
   const data = ctx.mapDataCache[node.mapName];
   if (!data) return warnings; // Not loaded yet — show no badge (Pitfall 2)
+
+  const mismatch = ctx.elevationMismatch?.[node.mapName];
+  if (mismatch) warnings.push(`Elevation mismatch: ${mismatch}`);
 
   // Missing scale
   const childMPU = resolveMetersPerUnit(data, ctx.defaultUnits);

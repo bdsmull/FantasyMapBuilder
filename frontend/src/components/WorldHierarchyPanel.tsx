@@ -11,6 +11,7 @@ import type { CollapseState } from '../utils/hierarchyPanelLogic';
 import { listWorldSets, listMaps, getMap } from '../api/client';
 import type { WorldSetNode } from '../types/worldSet';
 import type { TmjMap } from '../types/tmj';
+import { useEdgeFits } from './useEdgeFits';
 
 export interface OpenWorldSetDialogArgs {
   initialView?: 'list' | 'nodes' | 'configure';
@@ -167,10 +168,19 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
 
   const handleDirtyGuardCancel = () => setDirtyGuard(null);
 
+  // Elevation fit of the open map and its children (the only ones whose heights are loaded)
+  const fits = useEdgeFits();
+  const elevationMismatch: Record<string, string> = {};
+  if (fits.self?.mismatch && currentMapName) elevationMismatch[currentMapName] = fits.self.summary;
+  for (const [name, report] of Object.entries(fits.children)) {
+    if (report.mismatch) elevationMismatch[name] = report.summary;
+  }
+
   // PANEL-05: not mounted when no active world set
   if (activeWorldSetName === null) return null;
 
   const ctx = {
+    elevationMismatch,
     mapDataCache,
     knownMapNames,
     allNodes: activeWorldSet?.nodes ?? [],

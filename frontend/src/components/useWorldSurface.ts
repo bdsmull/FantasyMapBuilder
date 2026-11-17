@@ -3,10 +3,10 @@ import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { getMap, getHeights } from '../api/client';
-import { resolveMetersPerUnit } from '../data/mapScales';
-import { hasHeightsProperty, sampleGrid } from '../utils/heightGrid';
+import { resolveMetersPerUnit, resolveUnits } from '../data/mapScales';
+import { hasHeightsProperty, sampleGrid, bandIntervalCm } from '../utils/heightGrid';
 import type { WorldSetNode } from '../types/worldSet';
-import { placedChildren, computeOverrides } from '../utils/worldSurface';
+import { placedChildren, computeOverrides, placeChild } from '../utils/worldSurface';
 import type { SurfaceSource } from '../utils/worldSurface';
 
 /**
@@ -61,6 +61,7 @@ export function useWorldSurface(): void {
   const activeWorldSetName = useWorldSetStore((s) => s.activeWorldSetName);
   const activeWorldSet = useWorldSetStore((s) => s.activeWorldSet);
   const setSurface = useWorldSurfaceStore((s) => s.setSurface);
+  const setParent = useWorldSurfaceStore((s) => s.setParent);
 
   const inActive = !!mapName && mapWorldSet === activeWorldSetName;
   const defaultUnits = activeWorldSet?.units;
@@ -88,6 +89,34 @@ export function useWorldSurface(): void {
         setSurface(key, children, children.length > 0 ? computeOverrides(map, cols, rows, children) : null);
       })
       .catch((e) => console.error('Loading child elevation failed:', e));
+    return () => { cancelled = true; };
+  }, [inActive, mapName, mapWorldSet, geometry, activeWorldSet, defaultUnits]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The parent's own heights, to check how this map's edges fit it
+  useEffect(() => {
+    const key = surfaceKey(mapWorldSet, mapName);
+    const map = useMapStore.getState().mapData;
+    const node = activeWorldSet?.nodes.find((n) => n.mapName === mapName);
+    if (!inActive || !map || !mpu || !mapWorldSet || !node?.parentMapName || !node.parentAnchor || node.z !== 0) {
+      setParent(key, null);
+      return;
+    }
+    const { parentMapName, parentAnchor } = node;
+    let cancelled = false;
+    (async () => {
+      const parentMap = await getMap(mapWorldSet, parentMapName);
+      const parentMPU = resolveMetersPerUnit(parentMap, defaultUnits);
+      const patch = parentMPU && hasHeightsProperty(parentMap) ? await getHeights(mapWorldSet, parentMapName) : null;
+      if (cancelled) return;
+      if (!patch || !parentMPU) { setParent(key, null); return; }
+      setParent(key, {
+        name: parentMapName,
+        map: parentMap,
+        patch,
+        place: placeChild(map.width, map.height, mpu, parentMPU, parentAnchor),
+        intervalCm: bandIntervalCm(parentMap.scale, resolveUnits(parentMap, defaultUnits)),
+      });
+    })().catch((e) => { if (!cancelled) { console.error('Loading parent elevation failed:', e); setParent(key, null); } });
     return () => { cancelled = true; };
   }, [inActive, mapName, mapWorldSet, geometry, activeWorldSet, defaultUnits]); // eslint-disable-line react-hooks/exhaustive-deps
 }

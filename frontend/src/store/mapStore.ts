@@ -11,7 +11,7 @@
  */
 
 import { create } from 'zustand';
-import type { TmjMap, TmjLayer, TmjTileLayer, TmjObjectLayer, TmjObject } from '../types/tmj';
+import type { TmjMap, TmjLayer, TmjTileLayer, TmjObjectLayer, TmjObject, TmjProperty } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
 import { saveMap as apiSaveMap, applyTilesetRefs, putHeights, deleteHeights } from '../api/client';
 import type { HeightPatch, CellRect } from '../utils/heightGrid';
@@ -175,6 +175,11 @@ export interface MapStore {
   // ---- Tileset management ----
   addTileset: (tileset: TmjMap['tilesets'][0]) => void;
   removeTileset: (firstgid: number) => void;
+  /**
+   * Replace tiles' custom properties (by local tile ID) in one tileset. Tilesets are
+   * shared by the world set: the change is written to the .tsj when the map is saved.
+   */
+  setTileProperties: (firstgid: number, changes: Record<number, TmjProperty[]>) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -713,6 +718,16 @@ export const useMapStore = create<MapStore>((set, get) => ({
       mapData: { ...mapData, tilesets: [...mapData.tilesets, tileset] },
       isDirty: true,
     });
+  },
+
+  setTileProperties: (firstgid, changes) => {
+    const { mapData } = get();
+    if (!mapData) return;
+    const tilesets = mapData.tilesets.map((ts) => (ts.firstgid !== firstgid ? ts : {
+      ...ts,
+      tiles: ts.tiles.map((t) => (changes[t.id] ? { ...t, properties: changes[t.id] } : t)),
+    }));
+    set({ mapData: { ...mapData, tilesets }, isDirty: true });
   },
 
   removeTileset: (firstgid) => {

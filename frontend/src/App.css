@@ -306,7 +306,8 @@ button { cursor: pointer; }
   display: inline-block;
   cursor: pointer;
 }
-.btn-secondary:hover { background: #3a3a3a; }
+.btn-secondary:hover:not(:disabled) { background: #3a3a3a; }
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-danger {
   background: #7a2a2a;

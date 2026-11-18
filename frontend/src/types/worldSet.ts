@@ -1,3 +1,5 @@
+import type { LineClass } from '../data/lineClasses';
+
 /** A single map's placement within a world set. */
 export interface WorldSetNode {
   mapName: string;
@@ -18,6 +20,8 @@ export interface WorldSet {
    * generated separately match where they overlap. Absent until something is generated.
    */
   generation?: { seed: number; featureSizeM: number; roughness?: number };
+  /** Road and river classes for this world set's maps (#6). Absent = the built-in set. */
+  lineClasses?: LineClass[];
   nodes: WorldSetNode[];
 }
 

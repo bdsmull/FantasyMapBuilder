@@ -6,6 +6,8 @@
  * the same thing in both).
  */
 
+import { drawLine } from './lineRenderer';
+import type { LineStyleFn } from './lineRenderer';
 import type { TmjMap, TmjTileLayer, TmjObjectLayer } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
 import type { ViewState } from './canvasUtils';
@@ -38,6 +40,8 @@ export interface HexRenderOptions {
    * overlay). Called inside the pan transform; map pixels scale by zoom.
    */
   afterTileLayers?: (ctx: CanvasRenderingContext2D) => void;
+  /** How to draw line objects (roads, rivers); without it they are skipped. */
+  lineStyle?: LineStyleFn;
 }
 
 /** Trace a hex outline at (x, y) (screen top-left) into the current path. */
@@ -95,7 +99,7 @@ export function renderHexMap(
   map: TmjMap,
   options: HexRenderOptions,
 ): void {
-  const { view, showGrid, onImageLoad, afterTileLayers } = options;
+  const { view, showGrid, onImageLoad, afterTileLayers, lineStyle } = options;
   const { zoom, pan } = view;
   const layout = hexLayout(map);
 
@@ -117,7 +121,7 @@ export function renderHexMap(
       if (isTileLayer(layer)) {
         drawHexTileLayer(ctx, map, layer, layout, zoom, onImageLoad, vis);
       } else if (isObjectLayer(layer)) {
-        drawHexObjectLayer(ctx, layer, zoom);
+        drawHexObjectLayer(ctx, layer, zoom, lineStyle);
       }
       ctx.globalAlpha = 1;
     }
@@ -222,9 +226,15 @@ function drawHexObjectLayer(
   ctx: CanvasRenderingContext2D,
   layer: TmjObjectLayer,
   zoom: number,
+  lineStyle?: LineStyleFn,
 ): void {
   for (const obj of layer.objects) {
     if (!obj.visible) continue;
+    if (obj.polyline) {
+      const style = lineStyle?.(obj);
+      if (style) drawLine(ctx, obj, zoom, style.cls, style.pixelsPerMeter);
+      continue;
+    }
     if (obj.point || (obj.width === 0 && obj.height === 0)) {
       const color = objectColor(obj.type);
       const r = 6 * zoom;

@@ -143,6 +143,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
               Manage Tilesets…
             </li>
             <li onClick={() => { close(); onWorldSets(); }}>World Sets…</li>
+            <li onClick={() => { close(); useViewStore.getState().setLineClassesOpen(true); }}>Road &amp; River Classes…</li>
           </ul>
         )}
       </div>

@@ -6,6 +6,7 @@ import type { TmjMap, TmjObject, TmjProperty, TmjTileEntry } from '../types/tmj'
 import { isTileLayer, isObjectLayer } from '../types/tmj';
 import { hexLayout, pixelToHex, hexMapPixelSize } from '../canvas/hexGeometry';
 import { tileTerrainHeight } from './terrainHeights';
+import { nearestOnLine } from './lines';
 import type { TerrainHeight } from './terrainHeights';
 
 const _GID_MASK = 0x0fffffff;
@@ -27,7 +28,7 @@ export interface InspectedObject {
   id: number;
   name: string;
   type: string;
-  kind: 'point' | 'rectangle' | 'ellipse' | 'polygon' | 'tile';
+  kind: 'point' | 'rectangle' | 'ellipse' | 'polygon' | 'line' | 'tile';
   properties: TmjProperty[];
 }
 
@@ -71,6 +72,7 @@ function _tileInfo(map: TmjMap, gid: number): { entry?: TmjTileEntry; tileset: s
 
 function _kind(o: TmjObject): InspectedObject['kind'] {
   if (o.gid) return 'tile';
+  if (o.polyline) return 'line';
   if (o.point || (o.width === 0 && o.height === 0 && !o.polygon)) return 'point';
   if (o.ellipse) return 'ellipse';
   if (o.polygon && o.polygon.length > 0) return 'polygon';
@@ -99,6 +101,8 @@ function _hits(o: TmjObject, x: number, y: number, pickRadius: number): boolean 
     }
     case 'polygon':
       return _inPolygon(x - o.x, y - o.y, o.polygon!);
+    case 'line':
+      return nearestOnLine(o.polyline!.map((p) => ({ x: o.x + p.x, y: o.y + p.y })), x, y).d <= pickRadius;
     case 'tile': // Tiled anchors tile objects at their bottom-left
       return x >= o.x && x <= o.x + o.width && y >= o.y - o.height && y <= o.y;
     default:

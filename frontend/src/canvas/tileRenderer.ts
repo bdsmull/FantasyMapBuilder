@@ -3,6 +3,8 @@
  * Mirrors the functionality of map_editor/rendering/tile_renderer.py.
  */
 
+import { drawLine } from './lineRenderer';
+import type { LineStyleFn } from './lineRenderer';
 import type { TmjMap, TmjTileLayer, TmjObjectLayer } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
 import type { ViewState } from './canvasUtils';
@@ -21,6 +23,8 @@ export interface RenderOptions {
    * overlay). Called inside the pan transform; map pixels scale by zoom.
    */
   afterTileLayers?: (ctx: CanvasRenderingContext2D) => void;
+  /** How to draw line objects (roads, rivers); without it they are skipped. */
+  lineStyle?: LineStyleFn;
 }
 
 // ---------------------------------------------------------------------------
@@ -32,7 +36,7 @@ export function renderTileMap(
   map: TmjMap,
   options: RenderOptions,
 ): void {
-  const { view, showGrid, onImageLoad, afterTileLayers } = options;
+  const { view, showGrid, onImageLoad, afterTileLayers, lineStyle } = options;
   const { zoom, pan } = view;
 
   // Background
@@ -52,7 +56,7 @@ export function renderTileMap(
       if (isTileLayer(layer)) {
         drawTileLayer(ctx, map, layer, zoom, onImageLoad);
       } else if (isObjectLayer(layer)) {
-        drawObjectLayer(ctx, layer, map.tilewidth, zoom);
+        drawObjectLayer(ctx, layer, map.tilewidth, zoom, lineStyle);
       }
       ctx.globalAlpha = 1;
     }
@@ -123,9 +127,15 @@ function drawObjectLayer(
   layer: TmjObjectLayer,
   tileW: number,
   zoom: number,
+  lineStyle?: LineStyleFn,
 ): void {
   for (const obj of layer.objects) {
     if (!obj.visible) continue;
+    if (obj.polyline) {
+      const style = lineStyle?.(obj);
+      if (style) drawLine(ctx, obj, zoom, style.cls, style.pixelsPerMeter);
+      continue;
+    }
     drawObjectMarker(ctx, obj, tileW, zoom);
   }
 }

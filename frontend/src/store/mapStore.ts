@@ -19,6 +19,11 @@ import { HEIGHTS_PROPERTY, createPatch, heightsPropertyValue, unionRect } from '
 import type { HeightBrush } from '../utils/heightBrush';
 import { DEFAULT_HEIGHT_BRUSH, applyDab } from '../utils/heightBrush';
 import { SPOT_LAYER, SPOT_TYPE, isSpot, spotProperties } from '../utils/spotHeights';
+import { isLine, toPolyline, writeWidths } from '../utils/lines';
+import type { Pt } from '../utils/lines';
+
+/** Object layer new lines go into when the active layer isn't an object layer. */
+export const LINE_LAYER = 'Roads and rivers';
 
 /** One changed height sample, for undo/redo. */
 export interface HeightChange {
@@ -78,7 +83,7 @@ export interface LayerSnapshot {
 // Store interface
 // ---------------------------------------------------------------------------
 
-export type ToolName = 'inspect' | 'paint' | 'erase' | 'fill' | 'point' | 'height';
+export type ToolName = 'inspect' | 'paint' | 'erase' | 'fill' | 'point' | 'height' | 'line';
 
 export interface MapStore {
   // ---- Map data ----
@@ -140,6 +145,15 @@ export interface MapStore {
   addSpotHeight: (x: number, y: number, cm: number, reachCells: number) => number | null;
   updateSpotHeight: (id: number, changes: { name?: string; cm?: number; reachCells?: number }) => void;
   deleteSpotHeight: (id: number) => void;
+
+  // ---- Lines: roads and rivers (each change is one undo step) ----
+  /**
+   * Add a line (map-pixel points) of a class. It goes into the active layer if that is
+   * an object layer, else into "Roads and rivers" (created if needed). Returns its ID.
+   */
+  addLine: (points: Pt[], classId: string) => number | null;
+  updateLine: (id: number, changes: { name?: string; classId?: string; points?: Pt[]; widths?: (number | null)[] }) => void;
+  deleteLine: (id: number) => void;
 
   // ---- Editor state actions ----
   setActiveLayer: (index: number) => void;
@@ -507,6 +521,67 @@ export const useMapStore = create<MapStore>((set, get) => ({
     let found = false;
     const layers = mapData.layers.map((layer) => {
       if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isSpot(o))) return layer;
+      found = true;
+      return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  addLine: (points, classId) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData || points.length < 2) return null;
+    const id = mapData.nextobjectid;
+    const line: TmjObject = { id, name: '', type: classId, width: 0, height: 0, visible: true, ...toPolyline(points) };
+    let layers = mapData.layers;
+    let nextlayerid = mapData.nextlayerid;
+    let index = isObjectLayer(layers[activeLayerIndex]) ? activeLayerIndex
+      : layers.findIndex((l) => isObjectLayer(l) && l.name === LINE_LAYER);
+    if (index < 0) {
+      // Above the active layer, so lines are drawn over the terrain they cross
+      index = Math.min(activeLayerIndex + 1, layers.length);
+      layers = [...layers.slice(0, index), {
+        type: 'objectgroup' as const, id: nextlayerid, name: LINE_LAYER, visible: true, opacity: 1, offsetx: 0, offsety: 0,
+        color: '#c9a77c', draworder: 'topdown', objects: [],
+      }, ...layers.slice(index)];
+      nextlayerid += 1;
+    }
+    layers = updateObjectLayer(layers, index, (objects) => [...objects, line]);
+    const active = index <= activeLayerIndex && layers.length > mapData.layers.length ? activeLayerIndex + 1 : activeLayerIndex;
+    _commitLayers(set, get, layers, active, nextlayerid);
+    set((state) => ({ mapData: state.mapData && { ...state.mapData, nextobjectid: id + 1 } }));
+    return id;
+  },
+
+  updateLine: (id, changes) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isLine(o))) return layer;
+      found = true;
+      return {
+        ...layer,
+        objects: layer.objects.map((o) => {
+          if (o.id !== id) return o;
+          let next: TmjObject = { ...o };
+          if (changes.name !== undefined) next.name = changes.name;
+          if (changes.classId !== undefined) next.type = changes.classId;
+          if (changes.points && changes.points.length >= 2) next = { ...next, ...toPolyline(changes.points) };
+          if (changes.widths) next.properties = writeWidths(next.properties, changes.widths);
+          if (next.properties && next.properties.length === 0) delete next.properties;
+          return next;
+        }),
+      };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  deleteLine: (id) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isLine(o))) return layer;
       found = true;
       return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
     });

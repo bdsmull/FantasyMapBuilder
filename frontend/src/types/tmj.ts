@@ -23,6 +23,8 @@ export interface TmjObject {
   point?: true;
   ellipse?: true;
   polygon?: { x: number; y: number }[];
+  /** Open line (roads, rivers): points relative to x/y. */
+  polyline?: { x: number; y: number }[];
   gid?: number;
   properties?: TmjProperty[];
 }

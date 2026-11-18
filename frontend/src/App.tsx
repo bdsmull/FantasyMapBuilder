@@ -18,6 +18,8 @@ import type { OpenWorldSetDialogArgs } from './components/WorldHierarchyPanel';
 import { useMapStore } from './store/mapStore';
 import { useWorldSetStore } from './store/worldSetStore';
 import { useViewStore } from './store/viewStore';
+import { lineToolKey } from './tools/lineTool';
+import { LineClassesDialog } from './components/dialogs/LineClassesDialog';
 
 type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | 'mapProperties' | null;
 
@@ -32,7 +34,7 @@ export const App: React.FC = () => {
   const pendingNewMapCreatedRef = useRef<((name: string) => void) | null>(null);
   const { mapData, undo, redo, setTool, setShowGrid, showGrid, saveMapToServer } = useMapStore();
   useHeightsLoader();
-  const { showPalette, setShowPalette } = useViewStore();
+  const { showPalette, setShowPalette, lineClassesOpen, setLineClassesOpen } = useViewStore();
   useWorldSurface();
 
   const toggleLeftPanel = useCallback(() => {
@@ -83,6 +85,10 @@ export const App: React.FC = () => {
     }
 
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      // The Line tool's keys (Enter, Esc, Backspace, Delete) come first while it's active
+      const state = useMapStore.getState();
+      if (state.selectedTool === 'line' && lineToolKey(e.key, state)) { e.preventDefault(); return; }
+      if (e.key === '6') { setTool('line'); return; }
       if (e.key === 'i' || e.key === 'I') { setTool('inspect'); return; }
       if (e.key === 'p' || e.key === 'P') { setShowPalette(!useViewStore.getState().showPalette); return; }
       if (e.key === '1') { setTool('paint'); return; }
@@ -188,6 +194,7 @@ export const App: React.FC = () => {
           onRequestNewMap={handleRequestNewMap}
         />
       )}
+      {lineClassesOpen && <LineClassesDialog onClose={() => setLineClassesOpen(false)} />}
       {activeDialog === 'mapProperties' && mapData && (
         <MapPropertiesDialog onClose={() => setActiveDialog(null)} />
       )}

@@ -21,6 +21,9 @@ import { fillTool } from '../tools/fillTool';
 import { pointTool } from '../tools/pointTool';
 import { heightTool } from '../tools/heightTool';
 import { inspectTool } from '../tools/inspectTool';
+import { lineTool } from '../tools/lineTool';
+import { readLines, linePoints, pixelsPerMeter } from '../utils/lines';
+import { resolveLineClasses, classForType } from '../data/lineClasses';
 import { useViewStore } from '../store/viewStore';
 import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
@@ -43,6 +46,7 @@ import type { OpenWorldSetDialogArgs } from './WorldHierarchyPanel';
 
 const TOOLS: Record<string, Tool> = {
   inspect: inspectTool,
+  line: lineTool,
   paint: paintTool,
   erase: eraseTool,
   fill: fillTool,
@@ -78,6 +82,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const surfaceOverrides = surface.key === surfaceKey(store.mapWorldSet, store.mapName) ? surface.overrides : null;
   const inspected = useViewStore((s) => s.inspected);
   const selectedSpotId = useViewStore((s) => s.selectedSpotId);
+  const { selectedLineId, selectedPoint, draftLine, dragPoints } = useViewStore();
+  // Rubber band for the line being drawn: follow the pointer only while drawing
+  const cursorPos = useCursorStore((s) => (draftLine ? s.mapPos : null));
+  // Line selection and drafts belong to the open map and the Line tool
+  useEffect(() => {
+    const v = useViewStore.getState();
+    v.selectLine(null); v.setDraftLine(null); v.setDragPoints(null);
+  }, [store.mapName, store.mapWorldSet, store.selectedTool === 'line']);
   // A spot selection belongs to the open map
   useEffect(() => { useViewStore.getState().setSelectedSpotId(null); }, [store.mapName, store.mapWorldSet]);
   const inspecting = store.selectedTool === 'inspect';
@@ -129,8 +141,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const map = store.mapData;
     const { heights, elevationView } = store;
     const shown = heights && elevationView.showChildren ? displayPatch(heights, surfaceOverrides) : heights;
+    // Roads and rivers: the world set's classes when this map belongs to the active one
+    const lineClasses = resolveLineClasses(store.mapWorldSet === activeWorldSetName ? worldSetStore.activeWorldSet?.lineClasses : undefined);
+    const ppm = pixelsPerMeter(map, resolveMetersPerUnit(map, defaultUnits));
     const opts = {
       view,
+      lineStyle: (obj: import('../types/tmj').TmjObject) => ({ cls: classForType(obj.type, lineClasses).cls, pixelsPerMeter: ppm }),
       showGrid: store.showGrid,
       onImageLoad: () => { clearHexTileCache(); requestAnimationFrame(render); },
       afterTileLayers: shown && elevationView.visible
@@ -191,6 +207,52 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.restore();
     }
 
+    // Line tool: the line being drawn, and the selected line's handles
+    if (draftLine || selectedLineId !== null) {
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      const z = view.zoom;
+      const handle = (p: { x: number; y: number }, fill: string, size = 4) => {
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.fillRect(p.x * z - size, p.y * z - size, size * 2, size * 2);
+        ctx.strokeRect(p.x * z - size, p.y * z - size, size * 2, size * 2);
+      };
+      if (draftLine) {
+        const pts = cursorPos ? [...draftLine, cursorPos] : draftLine;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#ffd400';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * z, p.y * z) : ctx.lineTo(p.x * z, p.y * z)));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        draftLine.forEach((p) => handle(p, '#ffd400', 3));
+      } else {
+        const line = readLines(map).find((l) => l.id === selectedLineId);
+        if (line) {
+          const pts = dragPoints ?? linePoints(line.object);
+          ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * z, p.y * z) : ctx.lineTo(p.x * z, p.y * z)));
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // Midpoint handles (drag to insert a point)
+          for (let i = 0; i + 1 < pts.length; i++) {
+            ctx.beginPath();
+            ctx.arc((pts[i].x + pts[i + 1].x) / 2 * z, (pts[i].y + pts[i + 1].y) / 2 * z, 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fill();
+          }
+          pts.forEach((p, i) => handle(p, i === selectedPoint ? '#ffd400' : '#fff'));
+        }
+      }
+      ctx.restore();
+    }
+
     // Outline the inspected cell
     const cell = inspected && cellAt(map, inspected.x, inspected.y);
     if (cell) {
@@ -214,7 +276,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [inspected, selectedSpotId, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [inspected, selectedSpotId, selectedLineId, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.
@@ -391,8 +453,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     if (!tile) return;
 
     // Footprint interception — runs before tool dispatch. The Inspect tool inspects
-    // footprints instead (its card has an Open button for each child map).
-    if (store.mapData && store.selectedTool !== 'inspect' && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
+    // footprints instead (its card has an Open button for each child map), and the Line
+    // tool draws across them (roads and rivers run into child maps).
+    if (store.mapData && store.selectedTool !== 'inspect' && store.selectedTool !== 'line'
+      && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
       const canvasPt = getCanvasPoint(e.nativeEvent);
       const hits = footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);
 

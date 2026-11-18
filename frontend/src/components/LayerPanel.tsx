@@ -3,6 +3,7 @@ import { useMapStore } from '../store/mapStore';
 import { isTileLayer } from '../types/tmj';
 import type { TmjLayer } from '../types/tmj';
 import { ElevationPanel } from './ElevationPanel';
+import { LineControls } from './LineControls';
 
 /** True if deleting the layer would lose painted tiles or placed objects. */
 function hasContent(layer: TmjLayer): boolean {
@@ -12,7 +13,7 @@ function hasContent(layer: TmjLayer): boolean {
 export const LayerPanel: React.FC = () => {
   const {
     mapData, activeLayerIndex, setActiveLayer, setLayerVisible, setLayerOpacity,
-    addLayer, renameLayer, deleteLayer, moveLayer,
+    addLayer, renameLayer, deleteLayer, moveLayer, selectedTool,
   } = useMapStore();
   const [renaming, setRenaming] = useState<{ index: number; name: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
@@ -144,6 +145,7 @@ export const LayerPanel: React.FC = () => {
         </div>
       )}
 
+      {selectedTool === 'line' && <LineControls />}
       <ElevationPanel />
     </div>
   );

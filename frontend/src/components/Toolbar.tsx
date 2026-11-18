@@ -15,6 +15,7 @@ const TOOLS: ToolButtonProps[] = [
   { name: 'fill',  label: 'Fill',  shortcut: '3' },
   { name: 'point', label: 'Point', shortcut: '4' },
   { name: 'height', label: 'Height', shortcut: '5' },
+  { name: 'line', label: 'Line', shortcut: '6' },
 ];
 
 interface ToolbarProps {

@@ -11,6 +11,7 @@
 
 import { create } from 'zustand';
 import type { WorldSet, WorldSetNode } from '../types/worldSet';
+import type { LineClass } from '../data/lineClasses';
 import {
   getWorldSet as apiGetWorldSet,
   saveWorldSet as apiSaveWorldSet,
@@ -49,6 +50,8 @@ export interface WorldSetStore {
   setUnits: (units: 'metric' | 'imperial') => void;
   /** Set the world set's height generation seed and feature size. */
   setGeneration: (generation: { seed: number; featureSizeM: number; roughness?: number }) => void;
+  /** Set the world set's road and river classes (null = back to the built-in set). */
+  setLineClasses: (classes: LineClass[] | null) => void;
 
   // ---- Computed helpers ----
   childrenOf: (mapName: string) => WorldSetNode[];
@@ -226,6 +229,13 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
     const newNodes = [...activeWorldSet.nodes];
     newNodes[idx] = patched;
     set({ activeWorldSet: { ...activeWorldSet, nodes: newNodes } });
+  },
+
+  setLineClasses: (classes) => {
+    const { activeWorldSet } = get();
+    if (!activeWorldSet) return;
+    const { lineClasses: _old, ...rest } = activeWorldSet;
+    set({ activeWorldSet: classes ? { ...rest, lineClasses: classes } : rest });
   },
 
   setGeneration: (generation) => {

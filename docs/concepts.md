@@ -1,61 +1,91 @@
 # Core Concepts
 
-This page gives a high-level overview of how the editor is structured. Each section links to a more detailed reference page.
+How the editor's pieces fit together. Each section links to a more detailed page.
+
+---
+
+## World sets
+
+A **world set** is a folder of maps plus a hierarchy saying which map sits where on which:
+world → continent → kingdom → town → building. Maps can also exist in the folder without a
+place in the hierarchy. See [World Sets & Scales](world-sets.md).
 
 ---
 
 ## Maps
 
-A **map** is the top-level container for a scene. Two types are supported:
-
-| Type | Class | Grid shape | Typical use |
-|------|-------|------------|-------------|
-| Tile map | `TileMap` | Square cells | Towns, dungeons, interiors, combat |
-| Hex map | `HexMap` | Hexagonal cells | Regions, continents, world overviews |
-
-Both types share the same layer, tileset, and object model and expose a nearly identical API. See [Map Types](map-types.md).
+A **map** is a grid of cells, either **square** or **hexagonal**, with a **scale**: the
+real-world size of one cell (1 m … 500 km, metric or imperial). The scale is what lets maps of
+different sizes line up. Maps are saved as Tiled `.tmj` files. See [Map Types](map-types.md).
 
 ---
 
 ## Layers
 
-A map is made up of **layers** stacked from bottom to top. There are two layer kinds:
+A map is a stack of **layers**, drawn bottom to top:
 
-| Kind | Class | Contents |
-|------|-------|----------|
-| Tile layer | `TileLayer` | A 2-D grid of integer tile IDs |
-| Object layer | `ObjectLayer` | An unordered list of `MapObject` entities |
+| Kind | Contents |
+|------|----------|
+| Tile layer | One tile per cell (`0` = empty) |
+| Object layer | Free-form objects: points, rectangles, ellipses, polygons, lines |
 
-Layers can be hidden, made translucent, and reordered. Tile ID `0` means "empty" — nothing is drawn for that cell. See [Layers](layers.md).
+Layers can be added, renamed, reordered, hidden and faded. See [Layers](layers.md).
 
 ---
 
 ## Tilesets
 
-A **tileset** is a named palette of tile definitions backed by a PNG sprite sheet. Each tile has a 1-based ID, a category (terrain, wall, object, special), an RGB display colour, and a position within the sheet.
-
-The editor ships with two built-in placeholder tilesets — one for tile maps (16 types) and one for hex maps (12 terrain types) — so no external artwork is required to get started. See [Tilesets](tilesets.md).
+A **tileset** is a palette of tiles: either a PNG sprite sheet or a set of plain colors.
+Tilesets are shared by every map in a world set, so a change to a tile shows everywhere it's
+used. Terrain tiles can also carry height settings. See [Tilesets](tilesets.md).
 
 ---
 
 ## Objects
 
-**Objects** are free-form entities placed on an `ObjectLayer`: NPCs, spawn points, region labels, anything that doesn't fit neatly into a tile grid. Objects have a shape (point, rectangle, ellipse, polygon, or tile-sprite), pixel coordinates, a name, a type string, and an arbitrary key/value properties dictionary. See [Objects](objects.md).
+**Objects** sit on object layers at any position: named places, spawn points, regions. The
+editor gives some objects special meaning:
+
+| Object | Meaning |
+|---|---|
+| Point of type `spot height` | A known ground height ([Elevation](elevation.md#spot-heights)) |
+| Polyline | A road or river ([Roads & Rivers](roads-rivers.md)) |
+
+See [Objects](objects.md).
 
 ---
 
-## Coordinate Systems
+## Elevation
 
-Square maps use column/row tile coordinates that map linearly to pixel space. Hex maps add a third representation — axial `(q, r)` — used internally for distance and neighbour calculations. See [Coordinate Systems](coordinates.md).
-
----
-
-## Rendering
-
-The `tileRenderer.ts` and `hexRenderer.ts` modules draw maps onto an HTML5 `<canvas>` element using the Canvas 2D API. Rendering runs entirely in the browser — no server round-trips are needed for display. Tileset images are fetched from the server once and cached for the session.
+A map can have a **height surface** (absolute, to the centimeter), stored alongside the map. It
+can be painted, built from terrain, generated, and pinned with spot heights, and it is shared
+across a world set's maps. See [Elevation](elevation.md).
 
 ---
 
-## File Format
+## Positions and coordinates
 
-Maps are saved and loaded in [Tiled](https://www.mapeditor.org/) `.tmj` format — a JSON schema compatible with the Tiled editor and any Tiled-compatible game engine. See [File Format](file-format.md).
+- **Cells** are addressed by column and row.
+- **Map pixels** position objects, exactly as in Tiled. Hex maps use Tiled's hex geometry.
+- **Real distance** (meters) links maps: a child map's position on its parent, line widths,
+  and world-wide generated terrain all work in meters.
+
+See [Coordinate Systems](coordinates.md).
+
+---
+
+## Rendering and saving
+
+The whole map lives in the browser while you edit, so painting needs no server round-trip;
+**Save** sends the map, its elevation and any changed tilesets to the server. The server stores
+plain files: no database. See [File Format](file-format.md) and [Architecture](architecture.md).
+
+---
+
+## The Python model library
+
+The repository also contains `map_editor/`, a pure-Python model of tile maps, hex maps,
+layers, tilesets and objects, with a Tiled `.tmj` reader and writer. It predates the web editor
+and is used by the Python tests and for scripting; the web editor does not use it. Its API is
+described in the "Python model" sections of [Map Types](map-types.md), [Layers](layers.md),
+[Tilesets](tilesets.md), [Objects](objects.md) and [Coordinate Systems](coordinates.md).

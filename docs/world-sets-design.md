@@ -1,6 +1,11 @@
-# World Set Feature — Requirements & Design Spec
+# World Set Feature — Original Design Spec
 
-Captured from planning session 2026-03-31.
+Captured from planning session 2026-03-31 and built in the World Sets milestone (May 2026).
+
+!!! note "Historical document"
+    This is the original design, kept for reference. Several decisions have since changed (see
+    [Changes since the original design](#changes-since-the-original-design) at the end). For how
+    world sets work today, see [World Sets & Scales](world-sets.md) and [File Format](file-format.md).
 
 ---
 
@@ -36,7 +41,7 @@ Captured from planning session 2026-03-31.
 export interface MapScale {
   id: string;
   label: string;
-  metric: { metresPerUnit: number; unit: string };
+  metric: { metersPerUnit: number; unit: string };
   imperial: { feetPerUnit: number; unit: string };
   defaultShape: 'tile' | 'hex';   // suggestion only
 }
@@ -64,7 +69,7 @@ the footprint math below). A map-level `metersPerUnit` (custom cell size) is onl
 
 ### World Set File Format
 
-Stored at: `<data_dir>/world_sets/<name>.worldset.json`
+Originally stored at `world_sets/<name>.worldset.json`; now `<data folder>/<World set>/<World set>.worldset.json`, inside the world set's own folder.
 
 Flat node list with parent references (easier to query and update than a nested tree):
 
@@ -238,3 +243,19 @@ Warnings appear: (a) at the moment a relationship is created, and (b) as persist
 ### Phase 5 — "Add Child Here" Context Menu
 16. Add right-click context menu to `MapCanvas.tsx` (when a world set is active and the map can have children)
 17. "Add child map here" mini-dialog: anchor pre-filled from clicked cell; select existing map or create new; set Z and optional label
+
+---
+
+## Changes since the original design
+
+| Original decision | Now |
+|---|---|
+| 8 imperial-only scale presets with `feetPerUnit` | 11 levels, each metric and imperial; cell size resolved in meters (`metersPerUnit`); world set default units with a per-map override (PR #5) |
+| World set files in a shared `world_sets/` folder next to `maps/` | One self-contained folder per world set, with its maps, tilesets and heights, in a configurable data folder (PR #16) |
+| Centre-cell anchor, "no sub-tile precision" | Optional `parentOffset` places a child at an exact point (PR #32) |
+| Footprint = whole parent cells (rounded up) | Footprint drawn at the child's real size (tiny maps as markers); the rounded cells only show on hover (PR #32) |
+| Overlap = footprint cells intersect | Overlap = real areas intersect (PR #32) |
+| `worldSetOverlay.ts` | Built as `canvas/footprintOverlay.ts` |
+
+Later features built on the hierarchy: elevation across maps (#8), roads and rivers across scales
+(#6), and world-anchored terrain generation.

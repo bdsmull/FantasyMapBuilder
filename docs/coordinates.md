@@ -1,138 +1,80 @@
 # Coordinate Systems
 
-The editor uses different coordinate systems for tile maps and hex maps.
+The editor works with four kinds of position.
+
+| Space | Units | Used for |
+|---|---|---|
+| **Cell** | column, row | Tiles, anchor cells, the cursor |
+| **Map pixels** | pixels from the map's top-left corner | Objects, lines, the canvas (exactly Tiled's object coordinates) |
+| **Cell space** | fractional cells (`u`, `v`) | Where child maps sit on their parents |
+| **Real distance** | meters | Scale, line widths, elevation, world-wide generation |
 
 ---
 
-## Tile map coordinates
+## Square maps
 
-Square tile maps use two related coordinate spaces:
+Cell `(col, row)` covers pixels `col × tilewidth … (col+1) × tilewidth` across and
+`row × tileheight … (row+1) × tileheight` down. Heights are stored at the cell **corners**.
+
+---
+
+## Hex maps
+
+Hex maps use Tiled's hex geometry (`frontend/src/canvas/hexGeometry.ts` mirrors Tiled's
+`HexagonalRenderer`, including its integer rounding):
+
+- `tilewidth` × `tileheight` is each hex's bounding box; `hexsidelength` is its flat side.
+- With `staggeraxis: x` (flat-topped), columns are `sideOffsetX + hexsidelength` pixels apart and
+  every other column (`staggerindex`) is shifted down half a hex. With `staggeraxis: y`
+  (pointy-topped), the same applies to rows.
+- Offset coordinates `(col, row)` index the layer data, as in Tiled.
+
+Heights are stored at hex **centres**.
+
+---
+
+## Cell space and real distance
+
+To relate maps of different scales, the editor treats one cell as one unit along both axes
+(**cell space**): cell `(c, r)` spans `[c, c+1] × [r, r+1]`. A map's scale gives the size of a
+cell in meters.
+
+A **child map** is placed on its parent in the parent's cell space:
+
+1. Its real size is `width × its cell size` by `height × its cell size`, which is
+   `size ÷ parent cell size` parent cells.
+2. By default it is centred on its anchor cell (on the block of cells its size rounds up to).
+3. An optional offset moves it to an exact point (see [Exact placement](world-sets.md#exact-placement)).
+
+Chaining placements up the hierarchy gives every map a position in meters relative to the root
+map. That's how a parent shows a child's heights and roads, and how generated terrain lines up
+across maps.
+
+!!! note "Hex maps in cell space"
+    On hex maps, cell space spaces columns by the column pitch and rows by the row pitch, so a hex
+    parent's footprints and placements line up with its columns and rows rather than with
+    perfectly round distances. This is a deliberate simplification.
+
+---
+
+## Python model
+
+The Python `HexMap` (`map_editor/models/hex_map.py`) uses its own geometry, which predates the
+switch to Tiled's: a circumradius `hex_size`, orientation `FLAT_TOP` / `POINTY_TOP`, and three
+coordinate representations.
 
 | Space | Notation | Description |
 |-------|----------|-------------|
-| Tile | `(col, row)` | Integer column/row within the grid |
-| Pixel | `(px, py)` | Float position on the rendered canvas |
-
-### Conversion
-
-```python
-# Tile → pixel: returns the top-left corner of the cell
-px, py = tile_map.tile_to_pixel(col, row)
-# px = col * tile_width
-# py = row * tile_height
-
-# Pixel → tile: floors to the nearest cell
-col, row = tile_map.pixel_to_tile(px, py)
-# col = int(px // tile_width)
-# row = int(py // tile_height)
-```
-
-### Bounds checking
+| Offset | `(col, row)` | Storage; matches `TileLayer` indices |
+| Axial | `(q, r)` | Used internally for neighbours and distance (`s = -q - r` implicit) |
+| Pixel | `(px, py)` | Position on the model's own pixel layout |
 
 ```python
-if tile_map.in_bounds(col, row):
-    tile_map.set_tile(col, row, tile_id)
-```
-
----
-
-## Hex map coordinates
-
-Hex maps use three coordinate representations:
-
-| Space | Notation | Description |
-|-------|----------|-------------|
-| Offset | `(col, row)` | Storage and display; matches `TileLayer` data indices |
-| Axial | `(q, r)` | Math-friendly; used internally for neighbours and distance |
-| Pixel | `(px, py)` | Float position on the canvas |
-
-### Offset coordinates
-
-Offset coordinates map directly to the column/row indices used when reading and writing tiles:
-
-```python
-terrain = hex_map.tile_layers()[0]
-terrain.set_tile(col=3, row=2, tile_id=1)
-```
-
-For `FLAT_TOP` orientation, odd columns are shifted down by half a hex height.
-For `POINTY_TOP`, odd rows are shifted right by half a hex width.
-
-### Axial coordinates
-
-Axial coordinates `(q, r)` form a skewed 2-D axis aligned with the hex grid. A third cube
-coordinate `s = -q - r` is always implicit. Axial space is used internally for algorithms:
-it makes distance and neighbour lookups simple arithmetic.
-
-```python
-# Offset ↔ axial conversion (available for advanced use)
-q, r = hex_map._offset_to_axial(col, row)
-col, row = hex_map._axial_to_offset(q, r)
-```
-
-### Pixel coordinates
-
-```python
-# Centre pixel of the hex at (col, row)
-cx, cy = hex_map.hex_center(col, row)
-
-# Nearest hex from a pixel position
-col, row = hex_map.pixel_to_hex(px, py)
-
-# Six corner points of the hex polygon at (col, row)
-corners = hex_map.hex_corners(col, row)
-# → list of 6 (x, y) float tuples
-```
-
-### Hex bounding box
-
-```python
-hw, hh = hex_map.hex_pixel_size()
-# FLAT_TOP:   hw = 2 × hex_size,           hh = √3 × hex_size
-# POINTY_TOP: hw = √3 × hex_size,          hh = 2 × hex_size
-```
-
-For `hex_size = 40`:
-
-| Orientation | `hw` | `hh` |
-|-------------|------|------|
-| `FLAT_TOP` | 80.0 | ≈ 69.3 |
-| `POINTY_TOP` | ≈ 69.3 | 80.0 |
-
----
-
-## Neighbour and distance algorithms
-
-These methods work in offset space externally but use axial math internally:
-
-```python
-# All 6 neighbours of the hex at (col, row), filtered to in-bounds only
+cx, cy = hex_map.hex_center(col, row)        # centre of a hex
+col, row = hex_map.pixel_to_hex(px, py)      # nearest hex
+corners = hex_map.hex_corners(col, row)      # six (x, y) points
 neighbours = hex_map.axial_neighbors(col, row)
-# → list of (col, row) offset pairs
-
-# Exact hex-grid distance in hex steps
-d = hex_map.axial_distance(col1, row1, col2, row2)
+d = hex_map.axial_distance(c1, r1, c2, r2)   # steps between hexes
 ```
 
-### Distance example
-
-```
-hex_map.axial_distance(0, 0, 3, 0)  → 3
-hex_map.axial_distance(0, 0, 2, 2)  → 3  (FLAT_TOP)
-```
-
----
-
-## Visual reference
-
-```
-FLAT_TOP — hex_size = 40
-  hex_pixel_size → (80.0, 69.3)
-  hex_center(0, 0) → (40.0, 34.6)
-  hex_center(1, 0) → (120.0, 34.6)   ← next column, same row
-
-POINTY_TOP — hex_size = 40
-  hex_pixel_size → (69.3, 80.0)
-  hex_center(0, 0) → (34.6, 40.0)
-  hex_center(0, 1) → (34.6, 120.0)   ← same column, next row
-```
+`TileMap` offers `tile_to_pixel(col, row)`, `pixel_to_tile(px, py)` and `in_bounds(col, row)`.

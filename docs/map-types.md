@@ -1,11 +1,67 @@
 # Map Types
 
-## Tile Map
+Every map is a grid of either **square** cells or **hexagons**, at any [scale](world-sets.md#scales-and-units).
+Squares suit buildings, dungeons and battle grids; hexes suit overland travel. Both support
+the same layers, tilesets, objects, elevation, and roads and rivers.
 
-`TileMap` represents a rectangular grid of square cells, typically used for small-scale areas
-such as towns, dungeons, interiors, and tactical combat arenas.
+---
 
-### Properties
+## Square maps
+
+| Setting | Meaning |
+|---|---|
+| Width × height | Size in cells |
+| Tile W × Tile H | On-screen cell size in pixels (does not change the real-world size, which is the scale) |
+
+Saved with Tiled `orientation: "orthogonal"`.
+
+---
+
+## Hex maps
+
+Hex maps use **Tiled's hex geometry** exactly, so a map looks and lines up the same in Tiled and
+in the editor:
+
+| Tiled field | Meaning |
+|---|---|
+| `tilewidth` × `tileheight` | The hex's bounding box in pixels |
+| `hexsidelength` | Length of the flat sides along the stagger axis |
+| `staggeraxis` | `x`: flat-topped hexes, columns shifted; `y`: pointy-topped, rows shifted |
+| `staggerindex` | `odd` or `even`: which columns (or rows) are shifted half a cell |
+
+**New Map** creates regular, flat-topped hexes (`staggeraxis: x`, `staggerindex: odd`) from the
+**Hex Side** length. Maps with other settings, made in Tiled, open and edit correctly.
+
+```
+Flat-topped (stagger axis x)      Pointy-topped (stagger axis y)
+   ___     ___                        /\    /\
+  /   \___/   \                      /  \  /  \
+  \___/   \___/                     |    ||    |
+      \___/                          \  /  \  /
+                                      \/    \/
+```
+
+---
+
+## Changing a map
+
+- **File → Map Properties…** — scale and units
+- **Layers panel** — add, remove, reorder and fade layers ([Layers](layers.md))
+- The grid size and shape are fixed once a map is created.
+
+---
+
+## Python model
+
+The Python library in `map_editor/` (used by the Python tests and for scripting, not by the web
+editor) has its own map classes.
+
+!!! note
+    The Python `HexMap` describes hexes by their circumradius (`hex_size`) and uses its own
+    geometry; it predates the editor's switch to Tiled's hex geometry. Use Tiled's fields above
+    when working with files the editor saves.
+
+### `TileMap`
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -17,17 +73,7 @@ such as towns, dungeons, interiors, and tactical combat arenas.
 | `tilesets` | `list[Tileset]` | — | Tilesets attached to this map |
 | `layers` | `list[Layer]` | — | Layers, ordered bottom → top |
 
-### Computed
-
-| Property | Value |
-|----------|-------|
-| `pixel_width` | `width × tile_width` |
-| `pixel_height` | `height × tile_height` |
-
-### Creating a tile map
-
-Use the factory method to get a blank map with a default `Ground` tile layer, an `Objects`
-object layer, and the built-in placeholder tileset:
+`pixel_width` = `width × tile_width`; `pixel_height` = `height × tile_height`.
 
 ```python
 from pathlib import Path
@@ -41,14 +87,10 @@ tile_map = TileMap.create_new(
 )
 ```
 
----
+`create_new` adds a `Ground` tile layer, an `Objects` object layer and the built-in
+placeholder tileset.
 
-## Hex Map
-
-`HexMap` represents a hexagonal-cell grid, typically used for large-scale maps such as
-regional overviews, continents, and world maps.
-
-### Properties
+### `HexMap`
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -59,29 +101,6 @@ regional overviews, continents, and world maps.
 | `orientation` | `HexOrientation` | — | `FLAT_TOP` or `POINTY_TOP` |
 | `tilesets` | `list[Tileset]` | — | Tilesets attached to this map |
 | `layers` | `list[Layer]` | — | Layers, ordered bottom → top |
-
-### Computed
-
-| Property | Description |
-|----------|-------------|
-| `pixel_width` | Total canvas width in pixels |
-| `pixel_height` | Total canvas height in pixels |
-
-### Hex orientations
-
-```
-FLAT_TOP                   POINTY_TOP
-   ___                        /\
-  /   \                      /  \
- |     |                    |    |
-  \___/                      \  /
-                               \/
-```
-
-- **`FLAT_TOP`** — flat edges at the top and bottom; odd columns are shifted down by half a hex height.
-- **`POINTY_TOP`** — vertices at the top and bottom; odd rows are shifted right by half a hex width.
-
-### Creating a hex map
 
 ```python
 from pathlib import Path
@@ -97,50 +116,19 @@ hex_map = HexMap.create_new(
 )
 ```
 
----
+### Shared API
 
-## Opening a Map in the Editor
-
-Use **File → New Tile Map** (Ctrl+T) or **File → New Hex Map** (Ctrl+H) to open the New
-Map dialog. The dialog lets you choose:
-
-**For tile maps** — name, width (columns), height (rows), and tile size (16, 32, or 64 px).
-
-**For hex maps** — name, number of columns and rows, hex circumradius in pixels, and
-orientation (flat-top or pointy-top).
-
-Click **OK** and the map opens as a sub-window inside the workspace. Multiple maps can be
-open simultaneously and arranged with **Window → Tile Windows** or **Window → Cascade**.
-
----
-
-## Shared API
-
-Both `TileMap` and `HexMap` expose the same interface for tilesets and layers.
-
-### Tileset helpers
+Both classes expose the same helpers.
 
 | Method | Description |
 |--------|-------------|
-| `primary_tileset()` | Returns the first tileset |
-| `add_tileset(ts)` | Appends a tileset |
-| `tileset_for_gid(gid)` | Returns the tileset that owns the given global tile ID |
-| `local_id(gid)` | Converts a global tile ID to a local (1-based) tileset ID |
-
-### Layer helpers
-
-| Method | Description |
-|--------|-------------|
-| `tile_layers()` | Returns all `TileLayer` instances |
-| `object_layers()` | Returns all `ObjectLayer` instances |
-| `layer_by_name(name)` | Looks up a layer by name |
-| `add_tile_layer(layer)` | Appends a new tile layer |
-| `add_object_layer(layer)` | Appends a new object layer |
-| `remove_layer(layer)` | Removes a layer |
-| `move_layer_up(layer)` | Moves a layer one step toward the top |
-| `move_layer_down(layer)` | Moves a layer one step toward the bottom |
-
-### Tile access shortcuts
-
-Both map types also expose `get_tile(col, row)` and `set_tile(col, row, tile_id)` that
-delegate to the first tile layer, for convenience when a map has a single tile layer.
+| `primary_tileset()` | The first tileset |
+| `add_tileset(ts)` | Append a tileset |
+| `tileset_for_gid(gid)` | The tileset that owns a global tile ID |
+| `local_id(gid)` | Global tile ID → local (1-based) ID |
+| `tile_layers()` / `object_layers()` | Layers of each kind |
+| `layer_by_name(name)` | Look up a layer |
+| `add_tile_layer(layer)` / `add_object_layer(layer)` | Append a layer |
+| `remove_layer(layer)` | Remove a layer |
+| `move_layer_up(layer)` / `move_layer_down(layer)` | Reorder |
+| `get_tile(col, row)` / `set_tile(col, row, tile_id)` | Shortcuts to the first tile layer |

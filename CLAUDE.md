@@ -12,7 +12,7 @@ A web-based tile map editor for fantasy RPG worldbuilding, accessible from deskt
 - **Tech stack:** FastAPI + React/TypeScript — no new frameworks; extend existing patterns
 - **Data format:** Tiled TMJ JSON — world set files are a companion format (`.worldset.json`), maps stay clean
 - **Backward compatibility:** Existing maps without a scale (`scale` / `metersPerUnit`) must load and work; World Set overlay degrades gracefully (placeholder footprint + prompt)
-- **No database:** File-based storage only; world sets live in `world_sets/` alongside `maps/`
+- **No database:** File-based storage only; each world set is a self-contained folder (maps, .tsj tilesets, heights) in a configurable data folder (default `world_sets/`)
 - **Local LAN only:** CORS open, no auth needed; not designed for internet exposure
 <!-- GSD:project-end -->
 
@@ -34,7 +34,7 @@ A web-based tile map editor for fantasy RPG worldbuilding, accessible from deskt
 - `fastapi.middleware.cors.CORSMiddleware` — CORS open to `*` (LAN-only server)
 - `fastapi.staticfiles.StaticFiles` — serves React SPA from `frontend/dist/` in production
 - `server/api/maps.py` — map CRUD (list, get, save, delete, upload, download)
-- `server/api/tilesets.py` — serve sprite-sheet images from local filesystem
+- `server/api/tilesets.py` — tileset images; also `world_sets.py`, `heights.py`, `mapsets.py`, `map_imports.py` (full list: docs/architecture.md)
 ## Frontend
 - React 18.3 with TypeScript (`frontend/src/`)
 - JSX transform: `react-jsx` (no explicit React import needed)
@@ -46,7 +46,7 @@ A web-based tile map editor for fantasy RPG worldbuilding, accessible from deskt
 - Target: `ES2020`, module resolution: `bundler`
 - Strict mode: on; `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` all enabled
 ## Data / Storage
-- **Local filesystem** — map files stored as `.tmj` (Tiled Map JSON) in `maps/` directory at project root
+- **Local filesystem** — one folder per world set in the data folder (`server/data_dir.py`): `<WS>.worldset.json`, `maps/*.tmj`, `tilesets/*.tsj|png`, `heights/*.tif|mask.png` (see docs/file-format.md)
 - No database — pure file-based persistence
 - No cache layer — in-memory only during server lifetime
 - Tileset images referenced by absolute filesystem path within `.tmj` files; served via `GET /api/tilesets/{path:path}`
@@ -116,7 +116,7 @@ A web-based tile map editor for fantasy RPG worldbuilding, accessible from deskt
 - **Entry point**: `main.py` → invokes `uvicorn server.main:app`
 - **App factory**: `server/main.py` — creates FastAPI app, registers CORS middleware, includes routers, mounts React dist as SPA
 - **Routers**:
-- **Storage**: flat `.tmj` files in `maps/` directory — no database
+- **Storage**: world set folders in the data folder — no database (see docs/architecture.md for all routers)
 - **Python domain models** (`map_editor/` package): `TileMap`, `HexMap`, `Layer`, `TileLayer`, `ObjectLayer`, `Tileset`, `MapObject` — used by Python tests and IO layer; NOT used by the FastAPI server at runtime (server works directly with JSON)
 - **IO layer** (`map_editor/io/`): `tmj_reader.py`, `tmj_writer.py` — read/write Tiled TMJ format
 ## Frontend Architecture
@@ -134,7 +134,7 @@ A web-based tile map editor for fantasy RPG worldbuilding, accessible from deskt
 - `activeLayerIndex`, `activeGid`, `selectedTool`, `zoom`, `pan`, `showGrid`
 - **Undo/redo**: `past: UndoStep[]`, `future: UndoStep[]`, `pendingTiles: TileChange[]`
 ## Key Design Decisions
-- **No database** — maps stored as `.tmj` files (Tiled-compatible JSON format) in `maps/` directory; simple and portable
+- **No database** — maps stored as `.tmj` files (Tiled-compatible JSON) in world set folders; simple and portable
 - **Python models not used at runtime** — the FastAPI server passes TMJ JSON through without deserializing into Python domain objects; models exist for tests and IO only
 - **Upload route must precede `{name}` route** — FastAPI matches routes in order; `/api/maps/upload` must be registered before `/api/maps/{name}` or upload requests are captured by the name route
 - **TMJ format** — uses Tiled map editor's JSON format, enabling compatibility with Tiled tooling

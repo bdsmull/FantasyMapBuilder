@@ -151,7 +151,7 @@ export interface MapStore {
    * Add a line (map-pixel points) of a class. It goes into the active layer if that is
    * an object layer, else into "Roads and rivers" (created if needed). Returns its ID.
    */
-  addLine: (points: Pt[], classId: string) => number | null;
+  addLine: (points: Pt[], classId: string, extra?: { name?: string; widths?: (number | null)[]; properties?: TmjProperty[] }) => number | null;
   updateLine: (id: number, changes: { name?: string; classId?: string; points?: Pt[]; widths?: (number | null)[] }) => void;
   deleteLine: (id: number) => void;
 
@@ -527,11 +527,13 @@ export const useMapStore = create<MapStore>((set, get) => ({
     if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
   },
 
-  addLine: (points, classId) => {
+  addLine: (points, classId, extra) => {
     const { mapData, activeLayerIndex } = get();
     if (!mapData || points.length < 2) return null;
     const id = mapData.nextobjectid;
-    const line: TmjObject = { id, name: '', type: classId, width: 0, height: 0, visible: true, ...toPolyline(points) };
+    const line: TmjObject = { id, name: extra?.name ?? '', type: classId, width: 0, height: 0, visible: true, ...toPolyline(points) };
+    const props = writeWidths(extra?.properties, extra?.widths ?? []);
+    if (props.length) line.properties = props;
     let layers = mapData.layers;
     let nextlayerid = mapData.nextlayerid;
     let index = isObjectLayer(layers[activeLayerIndex]) ? activeLayerIndex

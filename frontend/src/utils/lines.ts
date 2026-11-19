@@ -92,12 +92,16 @@ export interface LineRef {
   object: TmjObject;
 }
 
-/** All lines on the map, in drawing order (bottom first); hidden layers are skipped when asked. */
-export function readLines(map: TmjMap, visibleOnly = false): LineRef[] {
+/**
+ * All lines on the map, in drawing order (bottom first). Lines show whatever their
+ * layer's visibility (the "Roads & rivers" toggle governs them); with `shownOnly`, a
+ * line hidden by itself (object `visible: false`) is left out.
+ */
+export function readLines(map: TmjMap, shownOnly = false): LineRef[] {
   const out: LineRef[] = [];
   map.layers.forEach((layer, layerIndex) => {
-    if (!isObjectLayer(layer) || (visibleOnly && !layer.visible)) return;
-    for (const o of layer.objects) if (isLine(o) && (!visibleOnly || o.visible)) out.push({ id: o.id, layerIndex, object: o });
+    if (!isObjectLayer(layer)) return;
+    for (const o of layer.objects) if (isLine(o) && (!shownOnly || o.visible !== false)) out.push({ id: o.id, layerIndex, object: o });
   });
   return out;
 }

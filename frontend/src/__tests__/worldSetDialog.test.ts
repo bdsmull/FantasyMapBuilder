@@ -296,7 +296,7 @@ describe('WorldSetDialog Plan 07-01: NewMapDialog onCreated prop', () => {
     const { App } = await import('../App');
     expect(App).toBeDefined();
     expect(typeof App).toBe('function');
-  });
+  }, 20_000); // loads the whole app's module graph: slow on a busy machine
 });
 
 describe('WorldSetDialog Phase 7 prop contracts (Plan 07-01)', () => {

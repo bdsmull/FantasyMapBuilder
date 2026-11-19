@@ -29,7 +29,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const { showPalette, setShowPalette } = useViewStore();
+  const { showPalette, setShowPalette, showLines, setShowLines } = useViewStore();
   const toggle = (name: MenuName) => setOpenMenu((prev) => (prev === name ? null : name));
   const close = () => setOpenMenu(null);
 
@@ -168,6 +168,9 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
             </li>
             <li onClick={() => { close(); setShowPalette(!showPalette); }}>
               {showPalette ? '✓ ' : '  '}Tile Palette <kbd>P</kbd>
+            </li>
+            <li onClick={() => { close(); setShowLines(!showLines); }} title="This map's roads and rivers, and faded ones from parent and child maps">
+              {showLines ? '✓ ' : '  '}Roads &amp; Rivers
             </li>
           </ul>
         )}

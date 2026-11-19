@@ -5,6 +5,29 @@ import { useViewStore } from '../store/viewStore';
 import { resolveLineClasses, classForType } from '../data/lineClasses';
 import { resolveMetersPerUnit, resolveUnits } from '../data/mapScales';
 import { readLines, linePoints, readWidths, lineLengthM, pixelsPerMeter } from '../utils/lines';
+import { useCrossScaleStore } from '../store/crossScaleStore';
+import { surfaceKey } from '../store/worldSurfaceStore';
+import {
+  refinedByIndex, refinesOf, lineKey, adoptPieces, REFINES_PROPERTY,
+} from '../utils/crossScaleLines';
+import type { RelatedMap } from '../utils/crossScaleLines';
+
+/** "parent", "grandparent", "child map"… for a related map's depth. */
+function _relation(depth: number): string {
+  if (depth === -1) return 'parent';
+  if (depth === -2) return 'grandparent';
+  if (depth < 0) return `ancestor (${-depth} levels up)`;
+  if (depth === 1) return 'child map';
+  return `descendant (${depth} levels down)`;
+}
+
+/** A map name with an Open button. */
+const MapLink: React.FC<{ name: string; onOpen: (name: string) => void }> = ({ name, onOpen }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 6 }}>
+    {name}
+    <button className="btn-secondary" style={{ fontSize: 10, padding: '0 5px' }} onClick={() => onOpen(name)}>Open</button>
+  </span>
+);
 
 /** Text field applied on Enter or when leaving it (one undo step per edit). */
 const CommitField: React.FC<{ value: string; onCommit: (v: string) => void; placeholder?: string; width?: number; invalid?: (v: string) => boolean; title?: string }> = ({
@@ -33,10 +56,17 @@ const _parseWidth = (t: string): number | null | undefined => {
 
 /** Line tool panel: the class for new lines, and editing of the selected line and point. */
 export const LineControls: React.FC = () => {
-  const { mapData, mapWorldSet, updateLine, deleteLine } = useMapStore();
+  const { mapData, mapName, mapWorldSet, updateLine, deleteLine, addLine } = useMapStore();
   const { activeWorldSetName, activeWorldSet } = useWorldSetStore();
-  const { selectedLineId, selectedPoint, selectLine, newLineClass, setNewLineClass, draftLine, setLineClassesOpen } = useViewStore();
+  const {
+    selectedLineId, selectedPoint, selectLine, newLineClass, setNewLineClass, draftLine, setLineClassesOpen,
+    selectedGhost, setSelectedGhost, requestOpenMap,
+  } = useViewStore();
+  const cross = useCrossScaleStore();
   if (!mapData) return null;
+  const related: RelatedMap[] = cross.key === surfaceKey(mapWorldSet, mapName) ? cross.related : [];
+  const index = refinedByIndex(mapName, mapData, related);
+  const ghost = selectedGhost ? cross.ghosts.find((g) => g.key === selectedGhost) : undefined;
   const classes = resolveLineClasses(mapWorldSet === activeWorldSetName ? activeWorldSet?.lineClasses : undefined);
   const units = resolveUnits(mapData, activeWorldSet?.units);
   const ppm = pixelsPerMeter(mapData, resolveMetersPerUnit(mapData, activeWorldSet?.units));
@@ -67,11 +97,54 @@ export const LineControls: React.FC = () => {
       <label style={{ display: 'block', marginBottom: 4 }}>
         New lines: {classSelect(newLineClass, setNewLineClass)}
       </label>
+
       <div style={{ color: '#888', marginBottom: 4 }}>
         {draftLine
           ? `Drawing (${draftLine.length} point${draftLine.length === 1 ? '' : 's'}): double-click or Enter to finish, Backspace removes the last point, Esc cancels.`
           : 'Click to start a line. Click a line to select it; drag its points, or drag a midpoint handle to add one.'}
       </div>
+
+      {ghost && (() => {
+        const gcls = classForType(ghost.object.type, classes);
+        const ancestor = ghost.source.depth < 0;
+        const copied = index.get(ghost.key)?.includes(mapName) ?? false;
+        const pieces = ancestor && cross.openRect ? adoptPieces(ghost, cross.openRect) : [];
+        return (
+          <div style={{ borderTop: '1px solid #333', paddingTop: 4 }}>
+            <div style={{ color: '#aaa', marginBottom: 4 }}>
+              From {_relation(ghost.source.depth)} <strong>{ghost.source.name}</strong> (read-only)
+            </div>
+            <div style={{ marginBottom: 4 }}>{ghost.object.name || <span style={{ color: '#888' }}>(unnamed)</span>} · {gcls.cls.name}</div>
+            {ancestor && (
+              <button
+                className="btn-primary"
+                style={{ fontSize: 11, marginRight: 6 }}
+                disabled={copied || pieces.length === 0}
+                title={copied ? 'Already copied to this map' : pieces.length === 0 ? "It doesn't cross this map"
+                  : "Copy the part inside this map, to refine it here. It's linked to the original, and replaces it in this map's area."}
+                onClick={() => {
+                  let first: number | null = null;
+                  for (const piece of pieces) {
+                    const id = addLine(piece.points, ghost.object.type, {
+                      name: ghost.object.name,
+                      widths: piece.widths,
+                      properties: [{ name: REFINES_PROPERTY, type: 'string', value: ghost.key }],
+                    });
+                    if (first === null) first = id;
+                  }
+                  setSelectedGhost(null);
+                  if (first !== null) selectLine(first);
+                }}
+              >
+                {copied ? 'Copied to this map' : 'Copy to this map'}
+              </button>
+            )}
+            <button className="btn-secondary" style={{ fontSize: 11 }} onClick={() => requestOpenMap(ghost.source.name)}>
+              Open {ghost.source.name}
+            </button>
+          </div>
+        );
+      })()}
 
       {line && cls && (
         <div style={{ borderTop: '1px solid #333', paddingTop: 4 }}>
@@ -112,6 +185,28 @@ export const LineControls: React.FC = () => {
           ) : (
             <div style={{ color: '#888', marginBottom: 4 }}>Click a point to set its width (rivers widening downstream, etc.).</div>
           )}
+          {(() => {
+            const refinedOn = (index.get(lineKey(mapName, line.id)) ?? []).filter((n) => n !== mapName);
+            const src = refinesOf(line.object);
+            const srcMap = src ? related.find((m) => m.name === src.map) : undefined;
+            const srcLine = srcMap ? readLines(srcMap.map).find((l) => l.id === src!.id) : undefined;
+            return (
+              <>
+                {src && (
+                  <div style={{ marginBottom: 4 }}>
+                    Refines {srcLine ? <>"{srcLine.object.name || 'unnamed line'}" on </> : null}
+                    <MapLink name={src.map} onOpen={requestOpenMap} />
+                    {srcMap && !srcLine && <span style={{ color: '#fbbf24' }}>(that line no longer exists)</span>}
+                  </div>
+                )}
+                {refinedOn.length > 0 && (
+                  <div style={{ marginBottom: 4 }}>
+                    Refined on: {refinedOn.map((n) => <MapLink key={n} name={n} onOpen={requestOpenMap} />)}
+                  </div>
+                )}
+              </>
+            );
+          })()}
           <button className="btn-danger" style={{ fontSize: 11 }} onClick={() => { deleteLine(line.id); selectLine(null); }}>
             Delete line
           </button>

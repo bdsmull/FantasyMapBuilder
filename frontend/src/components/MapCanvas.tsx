@@ -8,7 +8,7 @@
  * state, handles click-to-navigate (desktop) and two-tap model (iPad).
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { renderTileMap } from '../canvas/tileRenderer';
 import { renderHexMap, clearHexTileCache } from '../canvas/hexRenderer';
@@ -24,6 +24,12 @@ import { inspectTool } from '../tools/inspectTool';
 import { lineTool } from '../tools/lineTool';
 import { readLines, linePoints, pixelsPerMeter } from '../utils/lines';
 import { resolveLineClasses, classForType } from '../data/lineClasses';
+import { drawLine } from '../canvas/lineRenderer';
+import { useCrossScaleStore } from '../store/crossScaleStore';
+import { refinedByIndex, hiddenAreas, lineKey, mapExtent } from '../utils/crossScaleLines';
+
+/** Opacity of roads and rivers from other maps. */
+const _GHOST_ALPHA = 0.5;
 import { useViewStore } from '../store/viewStore';
 import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
@@ -82,14 +88,35 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const surfaceOverrides = surface.key === surfaceKey(store.mapWorldSet, store.mapName) ? surface.overrides : null;
   const inspected = useViewStore((s) => s.inspected);
   const selectedSpotId = useViewStore((s) => s.selectedSpotId);
-  const { selectedLineId, selectedPoint, draftLine, dragPoints } = useViewStore();
+  const { selectedLineId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
+  // Roads and rivers from ancestor and descendant maps (when they belong to this map)
+  const cross = useCrossScaleStore();
+  const crossOk = cross.key === surfaceKey(store.mapWorldSet, store.mapName) && showLines;
+  const related = crossOk ? cross.related : [];
+  const ghosts = crossOk ? cross.ghosts : [];
+  const refIndex = useMemo(
+    () => (store.mapData ? refinedByIndex(store.mapName, store.mapData, related) : new Map<string, string[]>()),
+    [store.mapData?.layers, related, store.mapName], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   // Rubber band for the line being drawn: follow the pointer only while drawing
   const cursorPos = useCursorStore((s) => (draftLine ? s.mapPos : null));
   // Line selection and drafts belong to the open map and the Line tool
   useEffect(() => {
     const v = useViewStore.getState();
-    v.selectLine(null); v.setDraftLine(null); v.setDragPoints(null);
+    v.selectLine(null); v.setDraftLine(null); v.setDragPoints(null); v.setSelectedGhost(null);
   }, [store.mapName, store.mapWorldSet, store.selectedTool === 'line']);
+  // Choosing the Line tool shows roads and rivers, so you never edit lines you can't see
+  useEffect(() => {
+    if (store.selectedTool === 'line') useViewStore.getState().setShowLines(true);
+  }, [store.selectedTool]);
+  // A panel asked to open a map: guard unsaved changes like a footprint click does
+  useEffect(() => {
+    if (!openMapRequest) return;
+    useViewStore.getState().requestOpenMap(null);
+    if (useMapStore.getState().isDirty) setDirtyGuardTarget(openMapRequest);
+    else navigateToMap(openMapRequest, { saveFirst: false }).catch(console.error);
+  }, [openMapRequest]);
+
   // A spot selection belongs to the open map
   useEffect(() => { useViewStore.getState().setSelectedSpotId(null); }, [store.mapName, store.mapWorldSet]);
   const inspecting = store.selectedTool === 'inspect';
@@ -144,18 +171,41 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     // Roads and rivers: the world set's classes when this map belongs to the active one
     const lineClasses = resolveLineClasses(store.mapWorldSet === activeWorldSetName ? worldSetStore.activeWorldSet?.lineClasses : undefined);
     const ppm = pixelsPerMeter(map, resolveMetersPerUnit(map, defaultUnits));
+    const openRect = mapExtent(map);
+    // Roads and rivers, governed by the "Roads & rivers" toggle rather than their layers'
+    // visibility: other maps' lines (faded), then this map's, above the terrain and under
+    // the other objects. A line is hidden where a more detailed map refines it.
+    const drawLines = (c: CanvasRenderingContext2D) => {
+      if (!showLines) return;
+      for (const g of ghosts) {
+        if (refIndex.get(g.key)?.includes(store.mapName)) continue;
+        drawLine(c, g.placed, view.zoom, classForType(g.object.type, lineClasses).cls, ppm, {
+          exclude: hiddenAreas(g.key, refIndex, store.mapName, openRect, related),
+          clipTo: g.clipTo,
+          alpha: _GHOST_ALPHA,
+        });
+      }
+      for (const { object, layerIndex } of readLines(map, true)) {
+        drawLine(c, object, view.zoom, classForType(object.type, lineClasses).cls, ppm, {
+          exclude: related.length ? hiddenAreas(lineKey(store.mapName, object.id), refIndex, store.mapName, openRect, related) : undefined,
+          alpha: map.layers[layerIndex].opacity,
+        });
+      }
+    };
     const opts = {
       view,
-      lineStyle: (obj: import('../types/tmj').TmjObject) => ({ cls: classForType(obj.type, lineClasses).cls, pixelsPerMeter: ppm }),
       showGrid: store.showGrid,
       onImageLoad: () => { clearHexTileCache(); requestAnimationFrame(render); },
-      afterTileLayers: shown && elevationView.visible
-        ? (c: CanvasRenderingContext2D) => renderElevationOverlay(c, map, shown, view.zoom, view.pan, {
-          opacity: elevationView.opacity,
-          hillshade: elevationView.hillshade,
-          intervalCm: bandIntervalCm(map.scale, resolveUnits(map, defaultUnits)),
-        })
-        : undefined,
+      afterTileLayers: (c: CanvasRenderingContext2D) => {
+        if (shown && elevationView.visible) {
+          renderElevationOverlay(c, map, shown, view.zoom, view.pan, {
+            opacity: elevationView.opacity,
+            hillshade: elevationView.hillshade,
+            intervalCm: bandIntervalCm(map.scale, resolveUnits(map, defaultUnits)),
+          });
+        }
+        drawLines(c);
+      },
     };
 
     if (store.mapData.orientation === 'hexagonal') {
@@ -208,6 +258,20 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     }
 
     // Line tool: the line being drawn, and the selected line's handles
+    // A selected line from another map: outline it
+    const ghost = selectedGhost ? ghosts.find((g) => g.key === selectedGhost) : undefined;
+    if (ghost?.placed.polyline) {
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ghost.placed.polyline.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+      ctx.stroke();
+      ctx.restore();
+    }
+
     if (draftLine || selectedLineId !== null) {
       ctx.save();
       ctx.translate(view.pan.x, view.pan.y);
@@ -276,7 +340,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [inspected, selectedSpotId, selectedLineId, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedLineId, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

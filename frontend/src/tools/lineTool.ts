@@ -7,14 +7,37 @@
  * midpoint handle to insert a point there. Delete removes the selected point (or the
  * line, if it would get shorter than two points, or no point is selected).
  * A drag is committed on release as one undo step.
+ * Lines from other maps (ghosts) can be selected, read-only, to copy or open them.
  */
 
 import type { Tool, MapPoint } from './baseTool';
 import type { MapStore } from '../store/mapStore';
 import { useViewStore } from '../store/viewStore';
 import {
-  readLines, lineAt, linePoints, pointAt, midpointAt, readWidths, insertPoint, removePoint,
+  readLines, lineAt, linePoints, pointAt, midpointAt, readWidths, insertPoint, removePoint, nearestOnLine,
 } from '../utils/lines';
+import { useCrossScaleStore } from '../store/crossScaleStore';
+import { surfaceKey } from '../store/worldSurfaceStore';
+import { refinedByIndex, hiddenAreas, mapExtent } from '../utils/crossScaleLines';
+import type { Rect } from '../utils/crossScaleLines';
+
+const _inRect = (p: MapPoint, r: Rect) => p.x >= r.x0 && p.x <= r.x1 && p.y >= r.y0 && p.y <= r.y1;
+
+/** The visible line from another map under (x, y), or null: "<map>#<id>". */
+export function ghostAt(store: MapStore, p: MapPoint, radius: number): string | null {
+  const cs = useCrossScaleStore.getState();
+  if (!store.mapData || !_view().showLines || cs.key !== surfaceKey(store.mapWorldSet, store.mapName)) return null;
+  const index = refinedByIndex(store.mapName, store.mapData, cs.related);
+  const openRect = mapExtent(store.mapData);
+  for (let i = cs.ghosts.length - 1; i >= 0; i--) {
+    const g = cs.ghosts[i];
+    if (index.get(g.key)?.includes(store.mapName)) continue; // refined here: hidden
+    if (g.clipTo && !_inRect(p, g.clipTo)) continue;
+    if (hiddenAreas(g.key, index, store.mapName, openRect, cs.related).some((r) => _inRect(p, r))) continue;
+    if (nearestOnLine(g.placed.polyline ?? [], p.x, p.y).d <= radius) return g.key;
+  }
+  return null;
+}
 
 /** Screen pixels around a line, point or handle that count as clicking it. */
 export const LINE_PICK_RADIUS_PX = 8;
@@ -83,9 +106,12 @@ export const lineTool: Tool = {
       }
     }
 
-    const hit = lineAt(readLines(store.mapData, true), pos.x, pos.y, r);
-    if (hit) { _view().selectLine(hit.id); return; }
-    if (selectedId !== null) { _view().selectLine(null); return; } // a click off the line deselects
+    const hit = _view().showLines ? lineAt(readLines(store.mapData, true), pos.x, pos.y, r) : null;
+    if (hit) { _view().setSelectedGhost(null); _view().selectLine(hit.id); return; }
+    const ghost = ghostAt(store, pos, r);
+    if (ghost) { _view().selectLine(null); _view().setSelectedGhost(ghost); return; }
+    // A click off any line deselects; the next click starts a line
+    if (selectedId !== null || _view().selectedGhost !== null) { _view().selectLine(null); _view().setSelectedGhost(null); return; }
     _view().setDraftLine([pos]);
   },
 
@@ -128,6 +154,7 @@ export function lineToolKey(key: string, store: MapStore): boolean {
     }
     return false;
   }
+  if (view.selectedGhost !== null && key === 'Escape') { view.setSelectedGhost(null); return true; }
   if (view.selectedLineId === null || !store.mapData) return false;
   if (key === 'Escape') { view.selectLine(null); return true; }
   if (key !== 'Delete' && key !== 'Backspace') return false;

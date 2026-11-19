@@ -15,7 +15,19 @@ import type { WorldSetNode } from '../types/worldSet';
 import type { ViewState } from './canvasUtils';
 import { tileToScreen } from './canvasUtils';
 import { computeFootprint } from '../utils/worldSetUtils';
-import type { Footprint } from '../utils/worldSetUtils';
+import type { Footprint, ChildRect } from '../utils/worldSetUtils';
+import { cellToPixel } from '../utils/worldSurface';
+
+/** Smallest a footprint is drawn (screen px): tiny maps get a marker so they stay visible and clickable. */
+const _MIN_SCREEN_PX = 12;
+const _CELL_BOX_STROKE = 'rgba(160, 190, 220, 0.45)';
+
+/** Screen rectangle of a child's real area (parent cell space -> parent pixels -> screen). */
+function _rectToScreen(rect: ChildRect, map: TmjMap, view: ViewState): { x: number; y: number; w: number; h: number } {
+  const a = cellToPixel(map, rect.left, rect.top);
+  const b = cellToPixel(map, rect.left + rect.width, rect.top + rect.height);
+  return { x: view.pan.x + a.x * view.zoom, y: view.pan.y + a.y * view.zoom, w: (b.x - a.x) * view.zoom, h: (b.y - a.y) * view.zoom };
+}
 import { hexLayout, hexTopLeft } from './hexGeometry';
 
 // ---------------------------------------------------------------------------
@@ -155,9 +167,12 @@ function _truncateLabel(ctx: CanvasRenderingContext2D, label: string, maxWidth: 
  * @param parentMap       The currently displayed TmjMap (provides tilewidth, tileheight)
  * @param view            Current zoom/pan state
  * @param hoveredMapName  mapName of the child currently under the pointer, or null
- * @param footprintMap    Optional pre-computed footprints keyed by mapName. If not provided
- *                        (or for a child not in the map), a 1×1 placeholder footprint is used
- *                        at the child's parentAnchor. Children without a parentAnchor are skipped.
+ * @param footprintMap    Optional real areas (parent cell space) keyed by mapName. A child
+ *                        not in the map (no data or no scale) gets a 1×1 placeholder at its
+ *                        parentAnchor. Children without a parentAnchor are skipped.
+ *
+ * A footprint is the child's true area. One smaller than a few pixels is drawn as a
+ * marker with its name beside it; hovering shows the whole parent cells it touches.
  */
 export function renderFootprintOverlay(
   ctx: CanvasRenderingContext2D,
@@ -165,7 +180,7 @@ export function renderFootprintOverlay(
   parentMap: TmjMap,
   view: ViewState,
   hoveredMapName: string | null,
-  footprintMap?: Map<string, Footprint>,
+  footprintMap?: Map<string, ChildRect>,
 ): RenderedFootprint[] {
   if (children.length === 0) return [];
 
@@ -173,28 +188,41 @@ export function renderFootprintOverlay(
 
   ctx.save();
 
-  // Keep stroke width in pixel-space regardless of zoom
-  ctx.lineWidth = _STROKE_WIDTH / view.zoom;
+  // Drawn in screen pixels (positions already include the zoom), so no scaling
+  ctx.lineWidth = _STROKE_WIDTH;
 
   for (const child of children) {
     // Cannot place a footprint without an anchor
     if (child.parentAnchor === null) continue;
 
-    // Determine footprint: use pre-computed if available, else 1×1 placeholder
-    const precomputed = footprintMap?.get(child.mapName);
-    const fp: Footprint = precomputed ?? {
-      colMin: child.parentAnchor.col,
-      colMax: child.parentAnchor.col,
-      rowMin: child.parentAnchor.row,
-      rowMax: child.parentAnchor.row,
-    };
-
-    // A footprint is a placeholder when no pre-computed data is available.
-    // If precomputed exists, the caller already resolved both cell sizes successfully.
-    const isPlaceholder = !precomputed;
-
-    const { x, y, w, h } = _computeScreenRect(fp, parentMap, view);
+    // The real area when known; else a 1×1 placeholder at the anchor (no data or no scale)
+    const real = footprintMap?.get(child.mapName);
+    const isPlaceholder = !real;
     const isHovered = child.mapName === hoveredMapName;
+    const area = real
+      ? _rectToScreen(real, parentMap, view)
+      : _computeScreenRect({
+        colMin: child.parentAnchor.col, colMax: child.parentAnchor.col,
+        rowMin: child.parentAnchor.row, rowMax: child.parentAnchor.row,
+      }, parentMap, view);
+    // Too small to see or click: a marker of the minimum size, centred on it
+    const tiny = !isPlaceholder && (area.w < _MIN_SCREEN_PX || area.h < _MIN_SCREEN_PX);
+    const { x, y, w, h } = tiny
+      ? { x: area.x + area.w / 2 - _MIN_SCREEN_PX / 2, y: area.y + area.h / 2 - _MIN_SCREEN_PX / 2, w: _MIN_SCREEN_PX, h: _MIN_SCREEN_PX }
+      : area;
+
+    // Hover: the whole parent cells the child touches (what the old rounded footprint showed)
+    if (real && isHovered) {
+      const cells: ChildRect = {
+        left: Math.floor(real.left), top: Math.floor(real.top),
+        width: Math.ceil(real.left + real.width) - Math.floor(real.left),
+        height: Math.ceil(real.top + real.height) - Math.floor(real.top),
+      };
+      const c = _rectToScreen(cells, parentMap, view);
+      ctx.setLineDash([2, 4]);
+      ctx.strokeStyle = _CELL_BOX_STROKE;
+      ctx.strokeRect(c.x, c.y, c.w, c.h);
+    }
 
     // Choose colors
     const fill   = isPlaceholder
@@ -205,13 +233,13 @@ export function renderFootprintOverlay(
       : (isHovered ? _NORMAL_STROKE_HOVER : _NORMAL_STROKE);
     const dash   = isPlaceholder ? _WARN_DASH : _NORMAL_DASH;
 
-    // Draw filled rect
-    ctx.setLineDash(dash);
-    ctx.fillStyle = fill;
+    // Draw filled rect (a tiny map's marker is solid, so it stands out)
+    ctx.setLineDash(tiny ? [] : dash);
+    ctx.fillStyle = tiny ? stroke : fill;
     ctx.fillRect(x, y, w, h);
 
     // Draw stroked rect
-    ctx.strokeStyle = stroke;
+    ctx.strokeStyle = tiny ? '#fff' : stroke;
     ctx.strokeRect(x, y, w, h);
 
     // Draw label centered in rect
@@ -222,6 +250,8 @@ export function renderFootprintOverlay(
     let label: string;
     if (isPlaceholder) {
       label = '?';
+    } else if (tiny) {
+      label = child.mapName; // drawn beside the marker
     } else {
       const maxLabelWidth = w - _LABEL_H_PAD * 2;
       label = maxLabelWidth > 0
@@ -233,7 +263,12 @@ export function renderFootprintOverlay(
     ctx.shadowColor = 'rgba(0,0,0,0.7)';
     ctx.shadowBlur  = 3;
     ctx.fillStyle   = isPlaceholder ? _LABEL_COLOR_WARN : _LABEL_COLOR_NORMAL;
-    ctx.fillText(label, x + w / 2, y + h / 2);
+    if (tiny) {
+      ctx.textAlign = 'left';
+      ctx.fillText(label, x + w + 4, y + h / 2);
+    } else {
+      ctx.fillText(label, x + w / 2, y + h / 2);
+    }
 
     // Reset shadow
     ctx.shadowBlur  = 0;
@@ -280,6 +315,5 @@ export function footprintAtPoint(
     .sort();
 }
 
-// Re-export computeFootprint as a convenience for callers that build footprintMap
-// (e.g. MapCanvas, which fetches child map data and pre-computes footprints).
+// Re-exported for callers that work with whole-cell footprints
 export { computeFootprint };

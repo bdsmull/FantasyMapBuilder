@@ -18,8 +18,8 @@ import {
   scaleLabel, resolveUnits, resolveMetersPerUnit, defaultScaleForShape,
 } from '../../data/mapScales';
 import type { UnitSystem } from '../../data/mapScales';
-import { computeFootprint, detectOverlaps } from '../../utils/worldSetUtils';
-import type { FootprintedNode } from '../../utils/worldSetUtils';
+import { childRect, detectRectOverlaps } from '../../utils/worldSetUtils';
+import type { RectNode } from '../../utils/worldSetUtils';
 import type { WorldSet, WorldSetNode } from '../../types/worldSet';
 import { WORLD_SET_VERSION } from '../../types/worldSet';
 import type { TmjMap } from '../../types/tmj';
@@ -353,37 +353,38 @@ export const WorldSetDialog: React.FC<Props> = ({
           );
         }
 
-        // Footprint overlap against existing siblings at same parent + same z.
+        // Overlap of real areas against existing siblings at same parent + same z.
         if (parentMPU && activeWorldSet) {
-          const candidate: FootprintedNode = {
+          // A node keeps its fine position while its anchor cell stays the same
+          const existing = activeWorldSet.nodes.find((n) => n.mapName === selectedMap);
+          const sameCell = existing?.parentAnchor?.col === anchorCol && existing?.parentAnchor?.row === anchorRow;
+          const candidate: RectNode = {
             mapName: selectedMap,
             z,
-            footprint: computeFootprint(
+            rect: childRect(
               finalMapData.width, finalMapData.height,
               childMPU, parentMPU,
               { col: anchorCol, row: anchorRow },
+              sameCell ? existing?.parentOffset : null,
             ),
           };
           const siblings = activeWorldSet.nodes.filter(
             (n) => n.parentMapName === parentMapName && n.z === z && n.parentAnchor !== null,
           );
-          const siblingFootprints: FootprintedNode[] = [];
+          const siblingFootprints: RectNode[] = [];
           for (const sib of siblings) {
             const sibData = mapDataCache[sib.mapName];
             if (!sibData) continue;
             const sibMPU = resolveMetersPerUnit(sibData, worldSetUnits);
             if (!sibMPU) continue;
+            if (sib.mapName === selectedMap) continue;
             siblingFootprints.push({
               mapName: sib.mapName,
               z: sib.z,
-              footprint: computeFootprint(
-                sibData.width, sibData.height,
-                sibMPU, parentMPU,
-                sib.parentAnchor!,
-              ),
+              rect: childRect(sibData.width, sibData.height, sibMPU, parentMPU, sib.parentAnchor!, sib.parentOffset),
             });
           }
-          const overlaps = detectOverlaps([candidate, ...siblingFootprints]);
+          const overlaps = detectRectOverlaps([candidate, ...siblingFootprints]);
           for (const [a, b] of overlaps) {
             const other = a === selectedMap ? b : a;
             localWarnings.push(`Footprint overlaps with '${other}' at the same Z level.`);

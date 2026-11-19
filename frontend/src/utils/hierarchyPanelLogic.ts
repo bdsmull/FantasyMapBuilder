@@ -2,8 +2,8 @@ import type { WorldSetNode } from '../types/worldSet';
 import type { TmjMap } from '../types/tmj';
 import { resolveMetersPerUnit } from '../data/mapScales';
 import type { UnitSystem } from '../data/mapScales';
-import { computeFootprint, detectOverlaps } from './worldSetUtils';
-import type { FootprintedNode } from './worldSetUtils';
+import { childRect, detectRectOverlaps } from './worldSetUtils';
+import type { RectNode } from './worldSetUtils';
 
 /** Per-world-set collapsed-mapName sets. Outer key = world set name. */
 export type CollapseState = Record<string, Set<string>>;
@@ -60,12 +60,12 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
 
       // Overlap: build candidate + sibling footprints, run detectOverlaps
       if (node.parentAnchor) {
-        const candidate: FootprintedNode = {
+        const candidate: RectNode = {
           mapName: node.mapName,
           z: node.z,
-          footprint: computeFootprint(data.width, data.height, childMPU, parentMPU, node.parentAnchor),
+          rect: childRect(data.width, data.height, childMPU, parentMPU, node.parentAnchor, node.parentOffset),
         };
-        const siblingFootprints: FootprintedNode[] = [];
+        const siblingFootprints: RectNode[] = [];
         for (const sib of ctx.allNodes) {
           if (sib.mapName === node.mapName) continue;
           if (sib.parentMapName !== node.parentMapName) continue;
@@ -77,10 +77,10 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
           siblingFootprints.push({
             mapName: sib.mapName,
             z: sib.z,
-            footprint: computeFootprint(sibData.width, sibData.height, sibMPU, parentMPU, sib.parentAnchor),
+            rect: childRect(sibData.width, sibData.height, sibMPU, parentMPU, sib.parentAnchor, sib.parentOffset),
           });
         }
-        const overlaps = detectOverlaps([candidate, ...siblingFootprints]);
+        const overlaps = detectRectOverlaps([candidate, ...siblingFootprints]);
         for (const [a, b] of overlaps) {
           const other = a === node.mapName ? b : a;
           warnings.push(`Footprint overlap: conflicts with '${other}' at the same Z level`);

@@ -1,8 +1,13 @@
 site_name: Fantasy RPG Map Editor
-site_description: A Python desktop application for creating and editing fantasy RPG maps with tile and hex grid support.
+site_description: A web-based editor for fantasy RPG maps, from rooms to whole worlds, linked into navigable world sets. Saves Tiled .tmj maps.
 
-# repo_url: https://github.com/<your-username>/FantasyMapBuilder
-# repo_name: FantasyMapBuilder
+repo_url: https://github.com/bdsmull/FantasyMapBuilder
+repo_name: FantasyMapBuilder
+
+# Fail the strict build (mkdocs build --strict) on broken links, including #section anchors
+validation:
+  anchors: warn
+  unrecognized_links: warn
 
 theme:
   name: material
@@ -42,6 +47,10 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - User Guide:
+    - World Sets & Scales: world-sets.md
+    - Elevation: elevation.md
+    - Roads & Rivers: roads-rivers.md
   - Core Concepts:
     - Overview: concepts.md
     - Map Types: map-types.md
@@ -54,3 +63,4 @@ nav:
     - Architecture: architecture.md
     - Testing: testing.md
     - Contributing: contributing.md
+    - World Sets Design (original): world-sets-design.md

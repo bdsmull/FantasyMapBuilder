@@ -8,6 +8,86 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Everything since the World Sets milestone. Issue and PR numbers refer to the
+[GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
+
+### Added
+- **True-size footprints and precise child placement** (#32)
+  - A child map's footprint on its parent is now its real area, not the whole parent cells it touches.
+    Maps too small to see get a marker with their name; hovering shows the cells touched.
+  - Right-click on a parent → **Move &lt;child&gt; here**, or **Move &lt;child&gt; to &lt;point&gt;** to
+    snap onto a point object such as a city marker. Stored as an optional `parentOffset` in the
+    world set file; existing world sets are unchanged.
+  - Overlap warnings compare real areas.
+- **Roads and rivers across map scales** (#31)
+  - Lines from parent and child maps show as faded, read-only "ghost" lines.
+  - **Copy to this map** adopts the part of a parent's line inside the open map, linked back to
+    it (`refines`); the most detailed version wins inside its map's area. "Refined on…" and
+    "Refines…" links with Open buttons.
+  - A fixed **Roads & rivers** row in every map's Layers panel (and **View → Roads & Rivers**)
+    shows or hides all lines, whatever their layer's visibility.
+- **Roads and rivers** (#30, issue #6)
+  - Tiled polylines with a class (Highway, Major road, Minor road, Path, Trail, River, Stream,
+    Brook, Canal) and optional per-point widths in meters.
+  - **Line tool** (`6`): draw, select, move and insert points, set point widths, delete.
+  - **Edit → Road & River Classes…** to edit a world set's classes.
+- **Spot heights** (#29, issue #8 phase 3c) — known heights at points (Height tool → Spot mode),
+  and **Fit to spot heights**, which bends the surface through them while keeping its shape.
+- **Generated height detail** (#28, #8 phase 3b) — world-anchored noise with a shared seed,
+  feature size and roughness per world set, so parent and child maps generated separately match.
+- **Inspect tool** (`I`) and a way to hide the tile palette (`P`) (#26).
+- **Heights from terrain** (#25, #8 phase 3a) — base height and relief per terrain type (in the
+  shared tileset), with suggested values for common names.
+- **Elevation across maps** (#23, #24, #8 phase 2) — parents show their children's heights;
+  maps whose edges don't fit their parent are flagged and can be **re-based** (offset, optional tilt).
+- **Layer controls** (#22) — add, rename, delete, reorder layers and set opacity.
+- **Elevation** (#20, #21, #8 phase 1) — per-map height surface stored as a 32-bit integer TIFF
+  (whole centimeters), contour-band and hillshade overlay, height readout, and a height brush
+  (raise, lower, set, smooth, release) that protects hand-set heights.
+- **Single-map import** (#19) from another world set or a `.mapset`, with tileset merge choices.
+- **`.mapset` packages** (#18) — export or import a whole world set as one zip file.
+- **Shared tilesets** (#17) — each world set keeps its tilesets as Tiled external `.tsj` files.
+- **World set folders** (#16) — each world set is a self-contained folder in a configurable data
+  folder (`--data-dir`, `MAPEDITOR_DATA_DIR` or `mapeditor.config.json`).
+- **Scale system rework** (#5) — 11 levels from Room (1 m) to World (500 km), each with a metric
+  and an imperial size; world-set default units with a per-map override; squares or hexes at any level.
+
+### Changed
+- Scale, units and custom cell size are stored as Tiled custom properties; tile data is written
+  one row per line (#14).
+- Hex geometry matches Tiled's exactly everywhere (#15).
+- Footprint outlines keep a constant on-screen width at every zoom (#32).
+
+### Fixed
+- The frontend's `package.json`, lockfile and `tsconfig` are committed; a blanket `*.json`
+  ignore rule had kept them out of git, so a fresh clone couldn't build (#27).
+- Disabled secondary buttons now look disabled (#25).
+
+---
+
+## [1.1.0] - 2026-05-30 — World Sets
+
+### Added
+- **World sets** — link maps into a navigable hierarchy (world → region → town → building),
+  stored in `.worldset.json` files alongside the maps.
+- World set API: `GET/POST/DELETE /api/world_sets/{name}`, `GET /api/world_sets`.
+- **World Sets dialog** (Edit → World Sets…) — create, switch, delete; add maps to the hierarchy
+  with a parent, anchor cell and Z level (floors, caves).
+- **Hierarchy panel** — collapsible tree of the active world set with warning badges
+  (missing map, missing scale, scale inversion, footprint overlap); click to navigate.
+- **Footprint overlay** — children shown on their parent; hover for a tooltip, click to open
+  (two taps on touch screens); picker for overlapping children.
+- **Parent breadcrumb** in the status bar.
+- **Right-click "Add child map here"** on a parent map.
+- **Map Properties dialog** (File → Map Properties…) to set a map's scale.
+- Map scales (`mapScales.ts`) and footprint/overlap utilities.
+- Left-panel toggle for narrow screens.
+
+### Fixed
+- Mobile viewport overflow (uses `100dvh` and safe-area insets).
+- Hex map footprint positions.
+- The active world set is remembered between sessions.
+
 ---
 
 ## [1.0.0] - 2026-02-28

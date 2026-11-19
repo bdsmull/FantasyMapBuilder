@@ -44,7 +44,7 @@ export interface WorldSetStore {
   removeNode: (mapName: string) => void;
   updateNode: (
     mapName: string,
-    changes: Partial<Pick<WorldSetNode, 'parentAnchor' | 'z' | 'zLabel'>>,
+    changes: Partial<Pick<WorldSetNode, 'parentAnchor' | 'parentOffset' | 'z' | 'zLabel'>>,
   ) => void;
   /** Set the default unit system for maps in this world set that don't set their own. */
   setUnits: (units: 'metric' | 'imperial') => void;
@@ -219,8 +219,15 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
     if (idx === -1) return;
 
     const current = activeWorldSet.nodes[idx];
+    // Moving to a different anchor cell without a new offset means "centred on that
+    // cell": the old fine position no longer applies. The same anchor keeps it.
+    const { parentOffset: _oldOffset, ...rest } = current;
+    const a = changes.parentAnchor, b = current.parentAnchor;
+    const anchorMoved = a !== undefined && !(a && b && a.col === b.col && a.row === b.row);
+    const offset = changes.parentOffset !== undefined ? changes.parentOffset : anchorMoved ? null : current.parentOffset;
     const patched: WorldSetNode = {
-      ...current,
+      ...rest,
+      ...(offset ? { parentOffset: offset } : {}),
       ...(changes.parentAnchor !== undefined ? { parentAnchor: changes.parentAnchor } : {}),
       ...(changes.z !== undefined ? { z: changes.z } : {}),
       ...(changes.zLabel !== undefined ? { zLabel: changes.zLabel } : {}),

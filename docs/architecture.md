@@ -1,22 +1,28 @@
 # Architecture
 
-## Stack overview
+## Overview
 
 ```
-iPad / Desktop Browser
-        ↕  HTTP (port 8000, LAN)
-┌───────────────────────────────────────┐
-│  FastAPI server (Python)              │
-│  ├── /api/maps    (CRUD + upload)     │  map_editor/models/ + io/ (unchanged)
-│  ├── /api/tilesets (image serving)   │
-│  └── /            (React SPA build)  │
-└───────────────────────────────────────┘
+Browser (desktop or iPad)
+  React + TypeScript editor (Vite build)
+  ├── Zustand stores: the open map, world set, view state
+  ├── Canvas renderers: tiles, hexes, elevation, lines, footprints
+  └── fetch → /api
+        ↕  HTTP (port 8000, local network)
+FastAPI server (Python)
+  ├── /api/...          maps, world sets, tilesets, heights, .mapset, map import
+  └── /                 the built editor (frontend/dist)
+        ↕
+Data folder (plain files, no database)
+  <World set>/<World set>.worldset.json, maps/*.tmj, tilesets/*.tsj|png, heights/*.tif|png
 ```
 
-**Client-authoritative state model:** the full TMJ JSON document lives in the
-browser (Zustand store). All edits mutate local state immediately for zero-latency
-feedback. Save = a single `POST /api/maps/{name}`. No round-trips on individual
-paint strokes.
+**The browser owns the open map.** The whole map (Tiled JSON), its height patch and the undo
+history live in the browser, so editing needs no server round-trips. **Save** sends the map,
+writes its tilesets back to the shared `.tsj` files, and saves or deletes its height files.
+
+**The server passes Tiled JSON through.** It stores and serves files, splits and joins external
+tilesets, encodes height TIFFs, and builds or reads `.mapset` zips; it doesn't model maps.
 
 ---
 
@@ -24,114 +30,121 @@ paint strokes.
 
 ```
 FantasyMapBuilder/
-├── main.py                        # Entry point — starts uvicorn on :8000
-├── requirements.txt               # Runtime: fastapi, uvicorn, Pillow, python-multipart
-├── requirements-dev.txt           # Dev: pytest, httpx, pytest-asyncio, mkdocs
+├── main.py                      # Starts uvicorn on 0.0.0.0:8000 (--dev reload, --data-dir PATH)
+├── requirements.txt             # fastapi, uvicorn, python-multipart, Pillow
+├── requirements-dev.txt         # pytest, pytest-asyncio, pytest-cov, httpx, mkdocs, mkdocs-material
 │
-├── server/                        # FastAPI backend
-│   ├── main.py                    # FastAPI app, CORS, static file mount
+├── server/
+│   ├── main.py                  # App, CORS, routers, serves frontend/dist
+│   ├── data_dir.py              # Where the data folder is; safe names
+│   ├── tileset_files.py         # Inline / externalize .tsj tilesets, swatch images
+│   ├── heights.py               # Height TIFF + mask read/write
+│   ├── map_import.py            # Single-map import planning (tileset merge, GID remap)
 │   └── api/
-│       ├── maps.py                # Map CRUD + upload/download endpoints
-│       └── tilesets.py            # Tileset image serving
+│       ├── maps.py              # Map CRUD, upload, download, Tiled-style formatting
+│       ├── world_sets.py        # World set CRUD, data folder info
+│       ├── tilesets.py          # Tileset image upload and serving
+│       ├── heights.py           # Binary height patch GET / PUT / DELETE
+│       ├── mapsets.py           # .mapset export / import
+│       └── map_imports.py       # Inspect a .mapset, plan and run a map import
 │
-├── map_editor/                    # Pure-Python model layer (unchanged from desktop)
-│   ├── models/                    # Zero Qt dependency
-│   │   ├── tileset.py             # TileCategory, TileDefinition, Tileset
-│   │   ├── layer.py               # TileLayer (2-D grid), ObjectLayer
-│   │   ├── tile_map.py            # TileMap container
-│   │   ├── hex_map.py             # HexMap + hex coordinate math
-│   │   └── map_object.py          # MapObject (free-form entities)
-│   ├── io/
-│   │   ├── tmj_writer.py          # write_tile_map / write_hex_map → .tmj JSON
-│   │   └── tmj_reader.py          # read_map(path) → TileMap | HexMap
-│   └── assets/
-│       └── placeholders/          # Auto-generated sprite sheets (git-ignored)
+├── map_editor/                  # Python model library + TMJ reader/writer (tests, scripting)
 │
-├── frontend/                      # React + TypeScript SPA (Vite)
-│   ├── index.html
-│   ├── package.json               # React 18, Zustand 5, Vite 6, Vitest 2
-│   ├── vite.config.ts             # Dev proxy: /api → http://localhost:8000
-│   └── src/
-│       ├── types/tmj.ts           # TypeScript interfaces mirroring TMJ format
-│       ├── store/mapStore.ts      # Zustand store — map state + undo/redo
-│       ├── api/client.ts          # fetch wrappers for all API endpoints
-│       ├── canvas/
-│       │   ├── tileRenderer.ts    # HTML5 Canvas tile map renderer
-│       │   ├── hexRenderer.ts     # HTML5 Canvas hex map renderer
-│       │   └── canvasUtils.ts     # screenToTile, tileToScreen, image cache
-│       ├── tools/
-│       │   ├── baseTool.ts        # Tool interface
-│       │   ├── paintTool.ts       # Paint on drag
-│       │   ├── eraseTool.ts       # Erase on drag
-│       │   ├── fillTool.ts        # BFS flood fill (ported from Python)
-│       │   └── pointTool.ts       # Place/remove point objects
-│       ├── components/
-│       │   ├── MapCanvas.tsx      # <canvas> + pointer events + pinch zoom
-│       │   ├── LayerPanel.tsx     # Layer list with visibility toggles
-│       │   ├── TilePalette.tsx    # Sprite sheet tile selector
-│       │   ├── Toolbar.tsx        # Tool buttons + zoom controls
-│       │   ├── MenuBar.tsx        # File/Edit/View menus
-│       │   ├── StatusBar.tsx      # Cursor position + zoom %
-│       │   └── dialogs/           # NewMapDialog, OpenMapDialog, TilesetDialog
-│       └── __tests__/             # Vitest unit tests (no DOM)
+├── frontend/src/
+│   ├── App.tsx, main.tsx        # Layout, keyboard shortcuts
+│   ├── types/                   # tmj.ts (Tiled JSON), worldSet.ts
+│   ├── api/                     # client.ts (fetch wrappers), tmjFile.ts (custom properties ↔ fields)
+│   ├── data/                    # mapScales.ts, lineClasses.ts, defaultTilesets.ts
+│   ├── store/
+│   │   ├── mapStore.ts          # The open map, heights, tools, undo/redo
+│   │   ├── worldSetStore.ts     # The active world set
+│   │   ├── worldSurfaceStore.ts # Child maps' heights for the open map
+│   │   ├── crossScaleStore.ts   # Related maps and ghost lines for the open map
+│   │   ├── viewStore.ts         # Palette, inspector, selections, Roads & rivers toggle
+│   │   └── cursorStore.ts       # Pointer position (for the status bar)
+│   ├── canvas/                  # tileRenderer, hexRenderer, hexGeometry, elevationOverlay,
+│   │                            # lineRenderer, footprintOverlay, canvasUtils
+│   ├── tools/                   # inspect, paint, erase, fill, point, height, line
+│   ├── utils/                   # heightGrid, heightBrush, terrainHeights, heightGeneration,
+│   │                            # spotHeights, elevationFit, worldSurface, worldSetUtils,
+│   │                            # lines, crossScaleLines, inspect, importPlan, navigation, …
+│   ├── components/              # MapCanvas, panels, dialogs, data-loading hooks
+│   └── __tests__/               # Vitest
 │
-├── tests/                         # Python tests
-│   ├── conftest.py                # autouse fixture: reset MapObject ID counter
-│   ├── models/                    # 144 unit tests — pure Python
-│   ├── io/                        # 20 TMJ round-trip tests
-│   └── api/                       # 14 FastAPI endpoint tests (httpx)
-│
-├── maps/                          # Server-side .tmj file storage
-└── docs/                          # MkDocs source (this documentation)
+├── tests/                       # pytest: models/, io/, api/
+└── docs/                        # This documentation (MkDocs)
 ```
 
 ---
 
-## API endpoints
+## API
+
+All routes are under `/api`. Names are world set and map names (URL-encoded).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/maps` | List saved map names |
-| `GET` | `/api/maps/{name}` | Load a map (returns TMJ JSON) |
-| `POST` | `/api/maps/{name}` | Save (create or overwrite) a map |
-| `DELETE` | `/api/maps/{name}` | Delete a map file |
-| `POST` | `/api/maps/upload` | Upload a `.tmj` file (multipart) |
-| `GET` | `/api/maps/{name}/download` | Download raw `.tmj` file |
-| `GET` | `/api/tilesets/{path:path}` | Serve a tileset image by absolute path |
+| `GET` | `/data_dir` | The data folder in use |
+| `GET` | `/world_sets` | List world sets |
+| `GET` / `POST` / `DELETE` | `/world_sets/{name}` | Load / create or replace / delete (moves to `.trash`) a world set |
+| `GET` | `/maps` | List maps in every world set |
+| `GET` | `/world_sets/{ws}/maps` | List a world set's maps |
+| `GET` / `POST` / `DELETE` | `/world_sets/{ws}/maps/{name}` | Load (tilesets inlined) / save (tilesets written back; returns their references) / delete a map |
+| `POST` | `/world_sets/{ws}/maps/upload` | Upload a `.tmj` (multipart). Registered before `{name}` so it isn't taken as a map name |
+| `GET` | `/world_sets/{ws}/maps/{name}/download` | The raw `.tmj` |
+| `POST` | `/world_sets/{ws}/tilesets/images` | Upload a sprite sheet |
+| `GET` | `/world_sets/{ws}/tilesets/{file}` | Serve a tileset image |
+| `GET` | `/tilesets/{path}` | Serve an image by absolute path (old maps) |
+| `GET` / `PUT` / `DELETE` | `/world_sets/{ws}/heights/{name}` | Height patch as binary: little-endian int32 cm, then one mask byte per sample; size in `X-Height-Cols` / `X-Height-Rows` headers |
+| `GET` | `/mapsets/{ws}` | Export a world set as `.mapset` |
+| `POST` | `/mapsets` | Import a `.mapset` (optional new name) |
+| `POST` | `/mapsets/inspect` | List the maps in an uploaded `.mapset` (for single-map import) |
+| `POST` | `/world_sets/{ws}/import_map/plan` | Plan importing one map: tileset conflicts and choices |
+| `POST` | `/world_sets/{ws}/import_map` | Import one map with the chosen tileset handling |
 
 ---
 
 ## Key design decisions
 
-### Axial hex coordinates
+### Tiled compatibility first
 
-All hex math is performed in axial space `(q, r)`. The third cube coordinate `s = -q - r`
-is implicit. Offset coordinates `(col, row)` are used only at storage boundaries.
+Maps, tilesets and objects are plain Tiled files; editor settings are Tiled custom properties;
+hex geometry mirrors Tiled's renderer exactly. Anything Tiled can open stays openable, and Tiled
+keeps the editor's data when it saves.
 
-### 1-based tile IDs / GIDs
+### One folder per world set
 
-Tile IDs stored in layers are 1-based; `0` is reserved for "empty". This matches the
-Tiled editor convention. When multiple tilesets are attached, `firstgid` offsets are baked
-in to produce *global* IDs (GIDs).
+A world set's maps, tilesets and heights travel together (and as one `.mapset` zip). No database:
+the server reads and writes files, and the data folder is configurable.
 
-### Patch-based undo/redo
+### Child maps lead, parents summarize
 
-The Zustand store records undo history as `TileChange[]` batches — one batch per stroke —
-rather than full state snapshots. This keeps memory bounded on large maps. A single
-`commitPendingTiles()` call promotes the accumulated `pendingTiles` to one undo step.
+Each map owns its heights and lines. A parent shows its children's heights and lines derived from
+the children's files, without changing its own. A child's position in meters (its anchor, real
+size and optional offset, chained up the hierarchy) is computed in one place
+(`worldSetUtils.childRect` / `worldSurface.placeChild`) and used by elevation, lines, generation,
+footprints and overlap warnings.
 
-### Pointer Events API
+### One store per concern
 
-`MapCanvas.tsx` uses the W3C Pointer Events API (`onPointerDown/Move/Up`) for unified
-mouse and touch handling. Two active pointers trigger pinch-to-zoom via distance delta.
+Stores don't import each other. Cross-store steps (opening a map with an unsaved-changes guard,
+switching world sets) live in `utils/navigation.ts`. Data from other maps (child heights, related
+maps' lines) is fetched by hooks (`useWorldSurface`, `useCrossScaleLines`) into their own stores
+when the open map changes.
 
-### Pure model layer
+### Patch-based undo
 
-`map_editor/models/` has zero Qt dependency. Models are imported by the FastAPI server
-for TMJ serialisation without touching the UI.
+Undo steps record what changed, not snapshots of the whole map: tile changes per stroke, object
+additions and removals, height-sample changes per stroke (or, for whole-surface operations like
+re-base and generation, the grid before and after), and the layer list before and after for
+layer and line edits (layers are never mutated in place, so keeping the old list is cheap).
+
+### Pointer Events
+
+`MapCanvas` uses Pointer Events for mouse and touch alike; two pointers pinch-zoom. Tools
+implement one interface (`onPress`, `onDrag`, `onRelease`, optional `onRightPress`, `onCancel`).
 
 ---
 
-## Testing strategy
+## Testing
 
-See [Testing](testing.md) for commands and coverage details.
+See [Testing](testing.md).

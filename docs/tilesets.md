@@ -1,49 +1,56 @@
 # Tilesets
 
-A **tileset** is a named collection of tile definitions backed by a PNG sprite sheet. Tiles
-are identified by a 1-based integer ID matching the Tiled editor convention (`0` means "empty").
+A **tileset** is a palette of tiles: a PNG sprite sheet, or a set of plain colors. Tiles are
+painted onto tile layers; each tile can carry a name and custom properties.
 
 ---
 
-## Tile categories
+## Shared by the world set
 
-| Category | `TileCategory` | Notes |
-|----------|---------------|-------|
-| Terrain | `TERRAIN` | Ground, water, grass — passable by default |
-| Wall | `WALL` | Solid blocking tiles — always impassable |
-| Object | `OBJECT` | Furniture, decorations — passable by default |
-| Special | `SPECIAL` | Doors, traps, triggers — passable by default |
+A world set keeps its tilesets as **Tiled external tilesets** (`tilesets/<Name>.tsj`) that every
+map in it refers to. Change a tile (its name, color, or height settings) and every map using that
+tileset shows the change. Tiled opens these files directly.
 
-The `is_passable` property on `TileDefinition` returns `False` for wall tiles only.
+Color-only tilesets also get a generated swatch image (`tilesets/<Name>.png`) so Tiled can show
+them; the editor draws them from each tile's `color_r` / `color_g` / `color_b` properties.
 
 ---
 
-## Tile definitions
+## Managing tilesets
 
-Each tile in a tileset is a `TileDefinition`:
+**Edit → Manage Tilesets…** lists the open map's tilesets:
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `id` | `int` | Unique 1-based tile ID within this tileset |
-| `name` | `str` | Human-readable label (e.g. `"Stone Floor"`) |
-| `color` | `tuple[int, int, int]` | RGB fallback colour when no sprite sheet is loaded |
-| `category` | `TileCategory` | Gameplay category |
-| `sheet_col` | `int` | Column of this tile in the sprite sheet |
-| `sheet_row` | `int` | Row of this tile in the sprite sheet |
+| Action | Effect |
+|---|---|
+| **Load Built-in Default** | Adds the color tileset for square or hex maps (once) |
+| **Add from PNG…** | Adds your own sprite sheet: give a name and the tile size; one tile per cell of the sheet |
+| **Heights…** | Base height and relief for each terrain type (see below) |
+| **Remove** | Removes a tileset no layer uses |
+
+The **tile palette** shows the active tileset; hover a tile to see its name, click to select it
+for Paint and Fill. Hide the palette with its × or `P`.
 
 ---
 
-## Built-in default tilesets
+## Terrain heights
 
-The editor ships two built-in tilesets. No external artwork is required — tiles render as
-solid-coloured blocks using the `color_r/g/b` properties defined on each tile entry.
+Each tile can have two optional custom properties (floats, meters), used by
+[Heights from terrain](elevation.md#heights-from-terrain) and [Generate](elevation.md#generate):
 
-The appropriate default is offered automatically when creating a new map and can be added to
-an existing map at any time via **Manage Tilesets → Load Built-in Default**.
+| Property | Meaning |
+|---|---|
+| `heightBase` | Typical ground height of this terrain |
+| `heightRelief` | How much the ground varies within it |
 
-### Tile-map tileset — "Default Tile" (16 tiles, 8 columns)
+Edit them with **Heights…** (in the map's units). **Suggest values** fills blanks for common
+terrain names; nothing changes until **Apply**. They're saved into the shared `.tsj` when the map
+is saved.
 
-Intended for orthogonal (dungeon / overworld) maps.
+---
+
+## Built-in tilesets
+
+### "Default Tile" — square maps (16 tiles)
 
 | Local ID | Name | Category |
 |----------|------|----------|
@@ -64,9 +71,7 @@ Intended for orthogonal (dungeon / overworld) maps.
 | 14 | Door | Object |
 | 15 | Spawn | Special |
 
-### Hex-map tileset — "Default Hex" (12 tiles, 8 columns)
-
-Intended for hexagonal world-scale maps. Sprite-sheet cells are drawn as flat-top hexagons.
+### "Default Hex" — hex maps (12 tiles)
 
 | Local ID | Name | Category |
 |----------|------|----------|
@@ -83,31 +88,17 @@ Intended for hexagonal world-scale maps. Sprite-sheet cells are drawn as flat-to
 | 10 | City | Object |
 | 11 | Dungeon | Special |
 
-> **Note:** Local IDs in the TMJ `tiles` array are 0-based. GIDs stored in layer data
-> are `firstgid + localId` (Tiled convention).
+Each built-in tile carries `color_r`, `color_g`, `color_b` and `category` properties.
 
 ---
 
-## Placeholder PNG generation (Python backend)
+## Global tile IDs (GIDs)
 
-The Python model (`map_editor/models/tileset.py`) can generate PNG sprite sheets via Pillow:
+Layer data stores **global** tile IDs, as in Tiled: each tileset in a map has a `firstgid`, and a
+tile's GID is `firstgid + local ID`. `0` means an empty cell. The top bits of a GID are Tiled's
+flip flags; the editor preserves them.
 
-- **Tile maps** — each cell is a coloured rectangle with a short text label.
-- **Hex maps** — each cell is a coloured flat-top hexagon polygon with a text label.
-
-Generated files are saved to `map_editor/assets/placeholders/`. The web frontend does not
-require these PNGs — it renders tiles as solid-coloured blocks directly from the
-`color_r/g/b` properties stored in the TMJ file.
-
----
-
-## Custom sprite sheets
-
-To use your own artwork, open **Manage Tilesets** and click **Add from PNG…**.
-Browse to any PNG sprite sheet, enter a tileset name and tile dimensions, and the editor
-builds tile stubs automatically — one per cell in the sheet.
-
-Each tile's position in the sheet is derived from its local ID:
+For a sprite sheet, a tile's position follows from its local ID:
 
 ```
 srcX = (localId % columns) * tilewidth
@@ -116,22 +107,22 @@ srcY = floor(localId / columns) * tileheight
 
 ---
 
-## Global tile IDs (GIDs)
+## Python model
 
-When a map has multiple tilesets, each tileset is assigned a `first_gid` offset. Tile IDs
-stored in layers are *global* — they encode both the tileset and the local tile position.
+The Python library (`map_editor/models/tileset.py`) models tilesets as `Tileset` objects with
+`TileDefinition` entries (1-based `id`, `name`, RGB `color`, `category`, sheet position) and can
+generate placeholder PNG sheets with Pillow (rectangles for square maps, flat-topped hexagons for
+hex maps) into `map_editor/assets/placeholders/`. The web editor doesn't need these files.
 
-Use the map helpers to resolve them:
+| Category | `TileCategory` | Notes |
+|----------|---------------|-------|
+| Terrain | `TERRAIN` | Passable |
+| Wall | `WALL` | Impassable (`is_passable` is `False` only for walls) |
+| Object | `OBJECT` | Passable |
+| Special | `SPECIAL` | Doors, traps, triggers |
 
 ```python
-# Which tileset owns this GID?
-ts = tile_map.tileset_for_gid(gid)
-
-# Local 1-based ID within that tileset
-local = tile_map.local_id(gid)
-
-# Resolve the TileDefinition
-tile_def = ts.tile_by_id(local)
+ts = tile_map.tileset_for_gid(gid)   # which tileset owns this GID
+local = tile_map.local_id(gid)       # 1-based ID within it
+tile_def = ts.tile_by_id(local)      # the TileDefinition
 ```
-
-This convention matches the Tiled editor.

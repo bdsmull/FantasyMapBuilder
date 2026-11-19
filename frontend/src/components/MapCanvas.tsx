@@ -36,9 +36,11 @@ import { cellAt } from '../utils/inspect';
 import { readSpots } from '../utils/spotHeights';
 import { formatHeight } from '../utils/heightGrid';
 import { hexTopLeft, hexPolygon } from '../canvas/hexGeometry';
-import { renderFootprintOverlay, footprintAtPoint, computeFootprint } from '../canvas/footprintOverlay';
+import { renderFootprintOverlay, footprintAtPoint } from '../canvas/footprintOverlay';
+import { childRect, placementAt } from '../utils/worldSetUtils';
+import type { ChildRect } from '../utils/worldSetUtils';
+import { pixelToCell } from '../utils/worldSurface';
 import type { RenderedFootprint } from '../canvas/footprintOverlay';
-import type { Footprint } from '../utils/worldSetUtils';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { navigateToMap } from '../utils/navigation';
 import { getMap } from '../api/client';
@@ -142,13 +144,17 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     col: number;
     row: number;
     footprintMapName?: string;
+    /** Map-pixel point clicked, snapped to a point object (e.g. a city marker) under the pointer. */
+    mapX: number;
+    mapY: number;
+    snapName?: string;
   } | null;
   const [canvasCtxMenu, setCanvasCtxMenu] = useState<CanvasCtxMenuState>(null);
   const ctxMenuRef = useRef<HTMLUListElement>(null);
 
   // Pre-computed footprint map: child mapName → tile-space Footprint on the parent grid.
   // Rebuilt whenever the children list or the parent's cell size changes.
-  const [footprintMap, setFootprintMap] = useState<Map<string, Footprint>>(new Map());
+  const [footprintMap, setFootprintMap] = useState<Map<string, ChildRect>>(new Map());
   // Cache of fetched child TmjMap data so we don't re-fetch on every hover re-render.
   // Keyed by "<world set>/<map>": map names are only unique within a world set.
   const childMapCacheRef = useRef<Map<string, import('../types/tmj').TmjMap>>(new Map());
@@ -361,15 +367,13 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
 
     const buildMap = () => {
       if (cancelled) return;
-      const fp = new Map<string, Footprint>();
+      const fp = new Map<string, ChildRect>();
       for (const child of children) {
         if (!child.parentAnchor) continue;
         const data = childMapCacheRef.current.get(cacheKey(child.mapName));
         const childMPU = resolveMetersPerUnit(data, defaultUnits);
         if (!data || !childMPU) continue;
-        fp.set(child.mapName, computeFootprint(
-          data.width, data.height, childMPU, parentMPU, child.parentAnchor,
-        ));
+        fp.set(child.mapName, childRect(data.width, data.height, childMPU, parentMPU, child.parentAnchor, child.parentOffset));
       }
       setFootprintMap(fp);
     };
@@ -586,12 +590,29 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         // Dismiss picker first to avoid z-index conflict
         setPickerPos(null);
         setPickerCandidates([]);
+        // Snap to a point object near the pointer, so a child can be put exactly on its marker
+        const at = pointerToMap(e.nativeEvent);
+        const snapRadius = 12 / store.zoom;
+        let snap: { x: number; y: number; name: string } | undefined;
+        for (const layer of store.mapData.layers) {
+          if (layer.type !== 'objectgroup') continue;
+          for (const o of layer.objects) {
+            const isPoint = o.point || (o.width === 0 && o.height === 0 && !o.polyline && !o.polygon);
+            if (isPoint && Math.hypot(o.x - at.x, o.y - at.y) <= snapRadius
+              && (!snap || Math.hypot(o.x - at.x, o.y - at.y) < Math.hypot(snap.x - at.x, snap.y - at.y))) {
+              snap = { x: o.x, y: o.y, name: o.name || 'the marker' };
+            }
+          }
+        }
         setCanvasCtxMenu({
           x: e.clientX,
           y: e.clientY,
           col: tile.col,
           row: tile.row,
           footprintMapName: hits.length > 0 ? hits[0] : undefined,
+          mapX: snap?.x ?? at.x,
+          mapY: snap?.y ?? at.y,
+          snapName: snap?.name,
         });
         return; // gate passed — do NOT dispatch to tool
       }
@@ -834,6 +855,40 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
           >
             Add child map here
           </li>
+          {(() => {
+            // Move a child map so its centre sits exactly here (or on the marker clicked)
+            const parentMPU = resolveMetersPerUnit(store.mapData ?? undefined, defaultUnits);
+            const movable = (mapName ? worldSetStore.childrenOf(mapName) : []).filter((c) => {
+              const data = childMapCacheRef.current.get(cacheKey(c.mapName));
+              return c.parentAnchor && data && resolveMetersPerUnit(data, defaultUnits);
+            });
+            if (!store.mapData || !parentMPU || movable.length === 0) return null;
+            const map = store.mapData;
+            const where = canvasCtxMenu.snapName ? `to ${canvasCtxMenu.snapName}` : 'here';
+            return (
+              <>
+                <li role="separator" className="separator" />
+                {movable.map((c) => (
+                  <li
+                    key={c.mapName}
+                    role="menuitem"
+                    title="Centre this child map exactly on this point (saved with the world set)"
+                    onClick={async () => {
+                      setCanvasCtxMenu(null);
+                      const data = childMapCacheRef.current.get(cacheKey(c.mapName))!;
+                      const childMPU = resolveMetersPerUnit(data, defaultUnits)!;
+                      const { u, v } = pixelToCell(map, canvasCtxMenu.mapX, canvasCtxMenu.mapY);
+                      const { anchor, offset } = placementAt(data.width, data.height, childMPU, parentMPU, u, v);
+                      worldSetStore.updateNode(c.mapName, { parentAnchor: anchor, parentOffset: offset });
+                      await worldSetStore.saveWorldSet();
+                    }}
+                  >
+                    Move {c.mapName} {where}
+                  </li>
+                ))}
+              </>
+            );
+          })()}
           {canvasCtxMenu.footprintMapName && (
             <>
               <li role="separator" className="separator" />

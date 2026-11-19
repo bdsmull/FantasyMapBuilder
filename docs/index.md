@@ -1,47 +1,38 @@
 # Fantasy RPG Map Editor
 
-A web-based application for creating and editing fantasy RPG maps, built with FastAPI and React.
+A web-based editor for fantasy RPG maps, built with FastAPI and React.
 
-The editor supports two map scales in a unified workspace:
+Maps range from a single room to the whole world, and link into a navigable hierarchy called a
+**world set**: click from a world map down to a dungeon room and back, with every level of
+geography connected.
 
-- **Tile grid** — square-cell maps for towns, dungeons, interiors, and combat arenas
-- **Hex grid** — hexagonal-cell maps for regions, continents, and world overviews
-
-Maps save and load in [Tiled](https://www.mapeditor.org/) `.tmj` format and can be exported as PNG images.
-
----
-
-## Current Status
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 1 | ✅ Done | Data models — tileset, layers, tile map, hex map, objects |
-| 2 | ✅ Done | File I/O — Tiled TMJ save/load, tileset management |
-| 3 | ✅ Done | FastAPI backend — map CRUD, upload/download, tileset image serving |
-| 4 | ✅ Done | React frontend — canvas renderers, editing tools, undo/redo, UI panels |
-| 5 | ✅ Done | Touch support — pinch-to-zoom, Pointer Events API, iPad LAN access |
+Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format, so Tiled and Tiled-compatible
+game engines can open them. The editor runs in any modern browser, including on an iPad on the
+same network.
 
 ---
 
-## Key Features
+## Key features
 
-- Dual-mode workspace: tile and hex maps side by side
-- Multiple layers per map (tile layers and object/entity layers)
-- Flexible layer system — per-layer visibility, opacity, and ordering
-- Custom tileset support — load your own PNG sprite sheets
-- Object and entity placement (NPCs, chests, spawn points, triggers, …)
-- Full undo/redo history per canvas (independent stacks)
-- Tiled `.tmj` compatible save/load — maps open in Tiled and any compatible engine
-- Touch support with pinch-to-zoom (iPad / touchscreen)
-- Tileset management — add from PNG sprite sheet or remove unused tilesets
-- Placeholder tile generator — usable out of the box with no external art
+| Area | What you can do |
+|------|-----------------|
+| **Maps** | Square or hex grids at 11 scale levels, from Room (1 m) to World (500 km), metric or imperial |
+| **World sets** | Place child maps on their parents, navigate by clicking, true-size footprints, exact placement |
+| **Layers** | Tile and object layers: add, rename, delete, reorder, opacity, visibility |
+| **Tilesets** | Built-in color tilesets or your own sprite sheets, shared across a world set |
+| **Elevation** | Paint heights, build them from terrain types, generate natural detail, pin spot heights; parents show their children's heights |
+| **Roads and rivers** | Lines with real-world widths that show across map scales and can be refined on more detailed maps |
+| **Inspect** | Click anywhere to see terrain, elevation, objects and child maps |
+| **Sharing** | Export or import a world set as one `.mapset` file, or import a single map |
 
 ---
 
-## Quick Links
+## Where to start
 
-- [Getting Started](getting-started.md) — install, set up, and run the editor
-- [Core Concepts](concepts.md) — maps, layers, tilesets, and objects explained
-- [Coordinate Systems](coordinates.md) — tile/pixel for square maps; axial/offset/pixel for hex maps
-- [Architecture](architecture.md) — code structure and design decisions
-- [Contributing](contributing.md) — dev environment and running tests
+- [Getting Started](getting-started.md) — install, run, and the editor's tools and panels
+- [World Sets & Scales](world-sets.md) — building a hierarchy of maps
+- [Elevation](elevation.md) — giving maps a height surface
+- [Roads & Rivers](roads-rivers.md) — drawing lines and carrying them across scales
+- [File Format](file-format.md) — what is stored where, for Tiled and game-engine use
+- [Architecture](architecture.md) — how the code is organized
+- [Changelog](https://github.com/bdsmull/FantasyMapBuilder/blob/main/CHANGELOG.md) — what changed in each release

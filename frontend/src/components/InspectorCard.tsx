@@ -8,7 +8,7 @@ import type { UnitSystem } from '../data/mapScales';
 import { formatHeight, heightAt } from '../utils/heightGrid';
 import { surfaceAt, pixelToCell } from '../utils/worldSurface';
 import { inspectAt } from '../utils/inspect';
-import type { Footprint } from '../utils/worldSetUtils';
+import type { ChildRect } from '../utils/worldSetUtils';
 
 /** Screen pixels around a point object that count as clicking it. */
 const _PICK_RADIUS_PX = 10;
@@ -28,7 +28,7 @@ const _label: React.CSSProperties = { color: '#888', fontSize: 11, textTransform
 
 interface Props {
   /** Child map footprints on this map, to list the ones covering the inspected cell. */
-  footprints: Map<string, Footprint>;
+  footprints: Map<string, ChildRect>;
   onOpenMap: (name: string) => void;
 }
 
@@ -58,8 +58,10 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
     elevation = { ...here, handSet: !!heights.mask[si] };
   }
 
+  // Child maps whose real area holds the inspected point
+  const at = pixelToCell(mapData, inspected.x, inspected.y);
   const childMaps = info
-    ? [...footprints].filter(([, fp]) => info.col >= fp.colMin && info.col <= fp.colMax && info.row >= fp.rowMin && info.row <= fp.rowMax).map(([n]) => n)
+    ? [...footprints].filter(([, r]) => at.u >= r.left && at.u <= r.left + r.width && at.v >= r.top && at.v <= r.top + r.height).map(([n]) => n)
     : [];
 
   return (

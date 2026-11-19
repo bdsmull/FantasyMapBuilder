@@ -2,18 +2,16 @@
 
 ## Prerequisites
 
-- Python 3.11 or later
-- [Node.js 20+](https://nodejs.org/) (for building the frontend)
+- Python 3.11 or later (developed on 3.14)
+- [Node.js 20+](https://nodejs.org/)
 - Git
 
 ---
 
 ## Installation
 
-Clone the repository and create a virtual environment:
-
 ```bash
-git clone <repo-url>
+git clone https://github.com/bdsmull/FantasyMapBuilder.git
 cd FantasyMapBuilder
 python -m venv .venv
 ```
@@ -25,178 +23,188 @@ Activate the environment:
 | Windows | `.venv\Scripts\activate` |
 | macOS / Linux | `source .venv/bin/activate` |
 
-Install Python dependencies:
+Install the dependencies:
 
 ```bash
 pip install -r requirements.txt
-```
-
-Install frontend dependencies:
-
-```bash
 cd frontend
-npm install
+npm ci
 cd ..
 ```
 
 ---
 
-## Running the Editor
+## Running the editor
 
 ### Development mode (two terminals)
 
-**Terminal 1 — API server** (auto-reloads Python changes):
+**Terminal 1 — API server** (reloads Python changes):
 
 ```bash
 python main.py --dev
 ```
 
-**Terminal 2 — Vite dev server** (hot-reloads React changes):
+**Terminal 2 — Vite dev server** (hot-reloads frontend changes):
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-Then open `http://localhost:5173` in your browser.
-The Vite dev server proxies all `/api` requests to the FastAPI server on port 8000.
+Open `http://localhost:5173`. The Vite dev server passes `/api` requests to the API server on
+port 8000.
 
-### Production mode (single server, including iPad access)
-
-Build the React app first:
+### Production mode (one server, including iPad access)
 
 ```bash
 cd frontend
 npm run build
 cd ..
-```
-
-Then start the server:
-
-```bash
 python main.py
 ```
 
-The server serves both the API and the React app on `http://localhost:8000`.
+The server serves both the API and the editor on `http://localhost:8000`.
 
-**iPad access (same WiFi network):**
+**From an iPad or another computer on the same network:** find this computer's address
+(`ipconfig | findstr IPv4` on Windows, `ip addr show | grep "inet "` on macOS / Linux) and open
+`http://<address>:8000`. The server has no login and is meant for a home or studio network only.
 
-```bash
-# Find your PC's LAN IP (Windows)
-ipconfig | findstr IPv4
+### Where maps are stored
 
-# Find your PC's LAN IP (macOS / Linux)
-ip addr show | grep "inet "
-```
+Each world set is a folder in the **data folder**, by default `world_sets/` in the project.
+To keep your maps somewhere else (for example a synced drive), use one of these, highest
+priority first:
 
-Open `http://<your-pc-ip>:8000` on your iPad.
+| How | Example |
+|-----|---------|
+| Command-line option | `python main.py --data-dir D:\Maps` |
+| Environment variable | `MAPEDITOR_DATA_DIR=D:\Maps` |
+| Config file `mapeditor.config.json` in the project | `{"dataDir": "D:/Maps"}` |
 
----
-
-## Using the Editor
-
-### Creating a map
-
-1. Go to **File → New Map** (or press `Ctrl+N`).
-2. Choose **Tile Map** or **Hex Map**, enter a name, and set dimensions.
-3. Leave **Include default tileset** checked (recommended) to start with a ready-to-use
-   colour-coded tileset — 16 tiles for tile maps, 12 for hex maps.
-4. Click **Create**. If you have unsaved changes the editor will offer to save first.
-
-### Editing tools
-
-| Tool | Keyboard | Description |
-|------|----------|-------------|
-| Paint | `1` | Paint the active tile onto the map |
-| Erase | `2` | Erase tiles (set to empty) |
-| Fill | `3` | Flood-fill a contiguous region |
-| Point | `4` | Place / remove a named point object |
-
-Paint and Erase accumulate the entire drag stroke into a **single undo step**.
-
-### Navigation
-
-| Action | Mouse | Touch (iPad) |
-|--------|-------|--------------|
-| Pan | Middle-drag or two-finger drag | Two-finger drag |
-| Zoom | Scroll wheel | Pinch |
-| Grid toggle | `G` | Toolbar button |
-
-### Tile Palette
-
-The **Tile Palette** panel shows the active tileset's sprite sheet. Tap / click any tile
-to select it. The selected tile is used by the Paint and Fill tools.
-
-### Layers
-
-The **Layers** panel lists every layer. Click a layer name to make it active; toggle the
-eye icon to show or hide it.
-
-### Undo / Redo
-
-| Action | Keyboard |
-|--------|----------|
-| Undo | `Ctrl+Z` |
-| Redo | `Ctrl+Y` |
-
-### Saving and Loading
-
-| Action | Keyboard | Description |
-|--------|----------|-------------|
-| New Map | `Ctrl+N` | Open the New Map dialog |
-| Open… | `Ctrl+O` | Browse server-saved maps or upload a `.tmj` file |
-| Save | `Ctrl+S` | Save to the server |
-| Download | — | Download raw `.tmj` to your device |
-
-Maps are stored in Tiled's `.tmj` JSON format — compatible with Tiled and any
-Tiled-compatible game engine.
+See [World Sets & Scales](world-sets.md#on-disk) for what's inside a world set folder.
 
 ---
 
-## Managing Tilesets
+## The editor at a glance
 
-Go to **Edit → Manage Tilesets…** to add or remove tilesets.
+| Area | Contents |
+|------|----------|
+| **Menu bar** | File, Edit and View menus |
+| **Toolbar** | Tools, undo/redo, zoom, grid |
+| **Left panel** | World set hierarchy, Layers (with the Roads & rivers row), Elevation, and the active tool's settings |
+| **Canvas** | The map |
+| **Tile palette** | The active tileset (hide it with × or `P`; show it again from View → Tile Palette) |
+| **Status bar** | Parent map link, map name (`*` = unsaved), size, scale, elevation under the cursor, zoom |
 
-- **Load Built-in Default** — adds the built-in colour-coded tileset for the current map
-  type (tile or hex). Does nothing if it is already loaded.
-- **Add from PNG…** — browse for a PNG sprite sheet and enter a tileset name and tile
-  dimensions. Tile stubs are created automatically.
-- **Remove** — removes the selected tileset. Blocked if any tile layer still references it.
-
----
-
-## Installing Development Dependencies
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-Run the Python test suite:
-
-```bash
-pytest tests/models tests/io tests/api -v
-```
-
-Run the frontend (Vitest) tests:
-
-```bash
-cd frontend
-npm test
-```
-
-Preview the documentation locally:
-
-```bash
-PYTHONUTF8=1 mkdocs serve   # Windows
-mkdocs serve                 # macOS / Linux
-```
-
-Then open `http://127.0.0.1:8000` (if the API server is not running on that port).
+On narrow screens (an iPad in portrait) the left panel slides in from the **☰** button and the
+palette sits under the map.
 
 ---
 
-## Next Steps
+## Creating and opening maps
 
-- Read [Core Concepts](concepts.md) to understand how maps, layers, and tilesets fit together.
-- Explore [Map Types](map-types.md) to learn how tile and hex maps differ.
-- See [Architecture](architecture.md) for an overview of the codebase and build phases.
+**File → New Map…** (`Ctrl+N`):
+
+1. Choose the **world set** the map belongs to, a **name**, and **Type**: square tiles or hexes.
+2. Pick a **Scale** (Room 1 m … World 500 km) and, if needed, **Units** (metric or imperial;
+   by default the world set's).
+3. Set the size in cells and the on-screen cell size: tile width and height in pixels for square
+   maps, the side length for hex maps (new hex maps are regular, flat-topped hexes; pointy-topped
+   maps made in Tiled open fine).
+4. Leave **Include default tileset** checked to start with a color tileset.
+
+**File → Open…** (`Ctrl+O`) lists the maps of the active world set, or of **All world sets**.
+You can also upload a `.tmj` file from your device.
+
+**File → Map Properties…** changes a map's scale and units.
+
+---
+
+## Tools
+
+| Tool | Key | What it does |
+|------|-----|--------------|
+| **Inspect** | `I` | Click to see what's at a point (terrain on each layer, elevation, objects and their properties, child maps); drag to pan. Never changes the map |
+| **Paint** | `1` | Paint the selected tile; a whole stroke is one undo step |
+| **Erase** | `2` | Clear tiles |
+| **Fill** | `3` | Flood-fill a connected area of the same tile |
+| **Point** | `4` | Place a point object; right-click removes the nearest (on maps outside a world set; inside one, right-click opens the map menu) |
+| **Height** | `5` | Paint elevation, or place spot heights (needs elevation on the map; see [Elevation](elevation.md)) |
+| **Line** | `6` | Draw and edit roads and rivers (see [Roads & Rivers](roads-rivers.md)) |
+
+### Navigating the map
+
+| Action | Mouse | Touch |
+|--------|-------|-------|
+| Pan | Middle-drag, or drag with the Inspect tool | Drag with the Inspect tool |
+| Zoom | Scroll wheel, or the toolbar − / + | Pinch |
+| Reset to 100% | Toolbar ⤢, View → Reset Zoom | Toolbar ⤢ |
+| Grid on/off | `G` | Toolbar Grid |
+
+### Undo and redo
+
+`Ctrl+Z` and `Ctrl+Y` (or the toolbar). Every edit is undoable: tiles, objects, layer changes,
+heights, spot heights and lines.
+
+---
+
+## Layers panel
+
+The **Layers** panel lists the map's layers, top first.
+
+- **Select** a layer by clicking it; tools work on the selected layer.
+- **Show / hide** with the checkbox (hidden layers can still be edited).
+- **+ Tile** / **+ Objects** add a layer above the selected one.
+- **↑ / ↓** reorder, **Rename** (or double-click), **Delete** (asks first if the layer has content),
+  and the **Opacity** slider.
+- The fixed **Roads & rivers** row shows or hides every road and river on the map, plus those
+  from parent and child maps (see [Roads & Rivers](roads-rivers.md#showing-lines)).
+
+Below the layers is the **Elevation** section (see [Elevation](elevation.md)).
+
+---
+
+## Saving and sharing
+
+| Action | Where | Notes |
+|--------|-------|-------|
+| Save | File → Save, `Ctrl+S` | Saves the map, its elevation and any changed tilesets |
+| Download | File → Download .tmj | The raw Tiled file |
+| Export image | File → Export as PNG | The whole map as a picture |
+| Export a world set | Edit → World Sets… → Export | One `.mapset` file with every map, tileset and height file |
+| Import | Edit → World Sets… → Import .mapset… / Import map… | See [World Sets](world-sets.md#moving-world-sets-between-computers) |
+
+---
+
+## Tilesets
+
+**Edit → Manage Tilesets…** lists the map's tilesets:
+
+- **Load Built-in Default** — the color tileset for square or hex maps
+- **Add from PNG…** — your own sprite sheet (name and tile size)
+- **Heights…** — base height and relief per terrain type (see [Elevation](elevation.md#heights-from-terrain))
+- **Remove** — only when no layer uses the tileset
+
+Tilesets are shared by every map in the world set. See [Tilesets](tilesets.md).
+
+---
+
+## Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+N` / `Ctrl+O` / `Ctrl+S` | New map / Open / Save |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
+| `I`, `1`–`6` | Tools: Inspect, Paint, Erase, Fill, Point, Height, Line |
+| `G` | Grid on/off |
+| `P` | Tile palette on/off |
+| `Esc` | Close a dialog or the inspector; cancel a line being drawn |
+| `Enter` / `Backspace` / `Delete` | Line tool: finish a line / remove its last point / delete the selected point or line |
+
+---
+
+## Next steps
+
+- [World Sets & Scales](world-sets.md) — link maps from world to room
+- [Core Concepts](concepts.md) — how maps, layers, tilesets and objects fit together
+- [Testing](testing.md) and [Contributing](contributing.md) — for development

@@ -47,8 +47,11 @@ function _pixelToCell(map: TmjMap): Affine {
 }
 
 /** A child's pixels -> its parent's pixels, given where the child sits. */
-export function childToParent(child: TmjMap, childMPU: number, parent: TmjMap, parentMPU: number, anchor: { col: number; row: number }): Affine {
-  const place = placeChild(child.width, child.height, childMPU, parentMPU, anchor);
+export function childToParent(
+  child: TmjMap, childMPU: number, parent: TmjMap, parentMPU: number,
+  anchor: { col: number; row: number }, offset?: { x: number; y: number } | null,
+): Affine {
+  const place = placeChild(child.width, child.height, childMPU, parentMPU, anchor, offset);
   const cellToParentCell: Affine = { sx: 1 / place.scale, sy: 1 / place.scale, ox: place.left, oy: place.top };
   return compose(compose(_pixelToCell(child), cellToParentCell), invert(_pixelToCell(parent)));
 }
@@ -107,7 +110,7 @@ export function relatedMaps(
     if (!node?.parentMapName || !node.parentAnchor || node.z !== 0 || seen.has(node.parentMapName)) break;
     const parentSrc = lookup(node.parentMapName);
     if (!parentSrc) break;
-    const parentToChild = invert(childToParent(childSrc.map, childSrc.mpu, parentSrc.map, parentSrc.mpu, node.parentAnchor));
+    const parentToChild = invert(childToParent(childSrc.map, childSrc.mpu, parentSrc.map, parentSrc.mpu, node.parentAnchor, node.parentOffset));
     toOpen = compose(parentToChild, toOpen);
     depth -= 1;
     seen.add(node.parentMapName);
@@ -122,7 +125,7 @@ export function relatedMaps(
       if (n.parentMapName !== name || !n.parentAnchor || n.z !== 0 || seen.has(n.mapName)) continue;
       const kid = lookup(n.mapName);
       if (!kid) continue;
-      const kidToOpen = compose(childToParent(kid.map, kid.mpu, src.map, src.mpu, n.parentAnchor), toOpenFromHere);
+      const kidToOpen = compose(childToParent(kid.map, kid.mpu, src.map, src.mpu, n.parentAnchor, n.parentOffset), toOpenFromHere);
       const rect = applyRect(kidToOpen, mapExtent(kid.map));
       if (!include(kid, rect)) continue;
       seen.add(n.mapName);

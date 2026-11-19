@@ -1,108 +1,71 @@
 # Objects
 
-**Objects** are free-form entities placed on an `ObjectLayer`. Unlike tiles, objects are not
-constrained to a grid — they sit at arbitrary pixel coordinates and can take a variety of
-shapes.
+**Objects** live on object layers at any pixel position, not tied to the grid: named places,
+spawn points, regions, roads. Each has an ID, a name, a type, a shape and optional custom
+properties, exactly as in Tiled.
 
 ---
 
 ## Shapes
 
-Each `MapObject` has an `ObjectShape` that determines how it is drawn and hit-tested:
+| Shape | Tiled representation | Typical use |
+|---|---|---|
+| Point | `"point": true` | Places, NPCs, spawn points, spot heights |
+| Rectangle | `width` and `height` | Rooms, trigger zones |
+| Ellipse | `"ellipse": true` | Circular areas |
+| Polygon | `polygon` points | Regions with irregular outlines |
+| Polyline | `polyline` points | Roads and rivers |
+| Tile object | `gid` | A tile placed as a sprite |
 
-| Shape | `ObjectShape` | Typical use |
-|-------|--------------|-------------|
-| Point | `POINT` | NPCs, spawn points, waypoints, markers |
-| Rectangle | `RECTANGLE` | Rooms, trigger zones, collision regions |
-| Ellipse | `ELLIPSE` | Circular areas of effect |
-| Polygon | `POLYGON` | Irregular region outlines |
-| Tile | `TILE` | A specific tileset sprite placed as a sprite object |
-
----
-
-## Attributes
-
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `object_id` | `int` | Auto-assigned unique ID; never reused within a session |
-| `name` | `str` | Human-readable label (e.g. `"Innkeeper"`) |
-| `object_type` | `str` | Category string (e.g. `"NPC"`, `"Chest"`, `"Spawn"`) |
-| `x` | `float` | Pixel X of the object's anchor |
-| `y` | `float` | Pixel Y of the object's anchor |
-| `width` | `float` | Width in pixels (used by RECTANGLE, ELLIPSE, TILE) |
-| `height` | `float` | Height in pixels |
-| `shape` | `ObjectShape` | The shape enum value |
-| `gid` | `int` | Global tile ID for TILE-shape objects (`0` = none) |
-| `visible` | `bool` | Whether the object is rendered |
-| `properties` | `dict[str, Any]` | Arbitrary key/value metadata |
-| `polygon` | `list[tuple[float, float]] \| None` | Vertex offsets for POLYGON shapes |
+The editor draws all of them. Points show as a colored circle with the first letter of their
+name; the color follows the object's type.
 
 ---
 
-## Factory methods
+## Working with objects
 
-Rather than constructing `MapObject` directly, use the provided factory methods:
+| Task | How |
+|---|---|
+| Place a point | **Point** tool (`4`): click the map. Right-click removes the nearest point, on maps outside a world set; inside one, right-click opens the map menu |
+| See an object's details | **Inspect** tool (`I`): click it to see its name, type, shape, layer and custom properties |
+| Spot heights | **Height** tool → Spot mode ([Elevation](elevation.md#spot-heights)) |
+| Roads and rivers | **Line** tool (`6`) ([Roads & Rivers](roads-rivers.md)) |
+| Snap a child map to a place | Right-click the point on the parent → **Move &lt;child&gt; to &lt;point&gt;** ([World Sets](world-sets.md#exact-placement)) |
+
+Other shapes and general property editing aren't built into the editor yet; create them in
+Tiled and the editor shows them.
+
+---
+
+## Objects the editor gives meaning to
+
+| Object | Type / properties | Meaning |
+|---|---|---|
+| Spot height | point, type `spot height`; `height` (m), `reach` (cells) | A known ground height |
+| Road or river | polyline, type = class ID (e.g. `major-road`); optional `widths`, `refines` | A line with real-world width |
+
+All other objects are kept exactly as they are. See
+[File Format](file-format.md#editor-custom-properties).
+
+---
+
+## Python model
+
+The Python library (`map_editor/models/map_object.py`) models objects as `MapObject` with an
+`ObjectShape` (`POINT`, `RECTANGLE`, `ELLIPSE`, `POLYGON`, `TILE`), `object_id`, `name`,
+`object_type`, `x`, `y`, `width`, `height`, `gid`, `visible`, a `properties` dict and optional
+`polygon` points. It doesn't model polylines.
 
 ```python
 from map_editor.models.map_object import MapObject
 
-# A point marker
 npc = MapObject.make_point("Innkeeper", x=320.0, y=128.0, object_type="NPC")
+room = MapObject.make_rect("Boss Room", x=64.0, y=64.0, width=192.0, height=128.0)
+barrel = MapObject.make_tile_object("Barrel", gid=14, x=160.0, y=96.0, width=32.0, height=32.0)
 
-# A rectangular region
-room = MapObject.make_rect(
-    "Boss Room", x=64.0, y=64.0, width=192.0, height=128.0
-)
+npc.set_property("loot_table", "dungeon_common")
+npc.get_property("loot_table")   # "dungeon_common"
+npc.move_to(330.0, 130.0)
 
-# A tile sprite placed in the world
-barrel = MapObject.make_tile_object(
-    "Barrel", gid=14, x=160.0, y=96.0, width=32.0, height=32.0
-)
+MapObject.reset_id_counter(0)    # IDs come from a class-level counter (reset in tests)
 ```
-
----
-
-## Object IDs
-
-IDs are assigned from a class-level counter and are unique within a session. They are never
-reused after an object is deleted.
-
-```python
-# Reset the counter (used in tests for deterministic IDs)
-MapObject.reset_id_counter(0)
-```
-
----
-
-## Custom properties
-
-Store arbitrary metadata on any object using the properties dictionary:
-
-```python
-chest = MapObject.make_point("Chest", x=100.0, y=200.0, object_type="Chest")
-chest.set_property("loot_table", "dungeon_common")
-chest.set_property("locked", True)
-
-loot = chest.get_property("loot_table")   # "dungeon_common"
-locked = chest.get_property("locked")     # True
-chest.move_to(110.0, 205.0)               # update position
-```
-
-Properties are serialised as a key/value list in the Tiled `.tmj` format (Phase 5).
-
----
-
-## Renderer markers
-
-While the interactive UI is being built, the renderers draw placeholder markers on object
-layers to make objects visible:
-
-| Shape | Marker |
-|-------|--------|
-| `POINT` | Filled circle, labelled with the first letter of the object name |
-| `RECTANGLE` | Outline rectangle with a text label |
-| `ELLIPSE` | Outline ellipse |
-| `POLYGON` | Outline polygon |
-| `TILE` | Small filled square |
-
-Marker colour is keyed by `object_type` (e.g. all "NPC" objects share one accent colour).

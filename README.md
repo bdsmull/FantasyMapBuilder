@@ -1,48 +1,53 @@
 # Fantasy RPG Map Builder
 
-A web-based application for creating and editing fantasy RPG maps, built with FastAPI and React.
+A web-based editor for fantasy RPG maps, built with FastAPI and React.
 
-Supports two map scales in a single workspace:
+Maps range from a single room to the whole world. They link into a navigable hierarchy
+called a **world set**, so you can click from a world map down to a dungeon room and back,
+with every level of geography connected.
 
-- **Tile grid** — small-scale maps for towns, dungeons, interiors, and combat (square grid)
-- **Hex grid** — large-scale maps for regions, continents, and world overviews (hexagonal grid)
-
-Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format. The editor runs in any modern browser and is accessible from other devices (e.g. an iPad) on the same network.
+Maps are saved in [Tiled](https://www.mapeditor.org/) `.tmj` format, so Tiled and
+Tiled-compatible game engines can open them. The editor runs in any modern browser and
+works from other devices on the same network, such as an iPad.
 
 ---
 
 ## Features
 
-- Dual-mode workspace: tile and hex maps side by side
-- Multiple layers per map (tile layers and object/entity layers)
-- Custom tileset support — load your own PNG sprite sheets
-- Object and entity placement (NPCs, chests, spawn points, triggers, …)
-- Full undo/redo history
-- Tiled `.tmj` compatible save/load
-- Touch support with pinch-to-zoom (iPad / touchscreen)
-- Placeholder tile generator — usable out of the box with no external art
+- **Square or hex grids at any scale** — 11 scale levels from Room (1 m / 2 ft cells) to
+  World (500 km / 500 mi), in metric or imperial
+- **World sets** — place child maps on their parents, navigate by clicking, see true-size
+  footprints, and position small maps exactly (e.g. a town on its city marker)
+- **Layers** — tile and object layers; add, rename, delete, reorder, opacity
+- **Tilesets** — built-in color tilesets or your own PNG sprite sheets, shared by every map in a
+  world set as Tiled external tilesets
+- **Elevation** — a height surface per map: paint it, build it from terrain types, generate
+  natural detail, pin known spot heights, and see child maps' heights on their parents
+- **Roads and rivers** — drawn as lines with real-world widths; lines show across map scales
+  and can be copied down to a more detailed map and refined there
+- **Inspect tool** — click anywhere to see terrain, elevation, objects and child maps
+- **Undo / redo** for every edit
+- **Portable** — export or import a whole world set as one `.mapset` file, or import a single map
+- **Touch support** — pinch to zoom and pan on iPad and touchscreens
 
 ---
 
 ## Requirements
 
-- Python 3.11+
-- Node.js 20+
+- Python 3.11 or later (developed on 3.14)
+- Node.js 20 or later
 
 ---
 
 ## Setup
 
 ```bash
-# Clone the repository
-git clone <repo-url>
+git clone https://github.com/bdsmull/FantasyMapBuilder.git
 cd FantasyMapBuilder
-
-# Create a virtual environment
 python -m venv .venv
 ```
 
-Activate it:
+Activate the virtual environment:
 
 | Platform | Command |
 |----------|---------|
@@ -50,11 +55,8 @@ Activate it:
 | macOS / Linux | `source .venv/bin/activate` |
 
 ```bash
-# Install Python dependencies
 pip install -r requirements.txt
-
-# Install frontend dependencies
-cd frontend && npm install && cd ..
+cd frontend && npm ci && cd ..
 ```
 
 ---
@@ -63,126 +65,90 @@ cd frontend && npm install && cd ..
 
 ### Development mode (two terminals)
 
-**Terminal 1 — API server** (auto-reloads Python changes):
+**Terminal 1 — API server** (reloads Python changes):
 
 ```bash
 python main.py --dev
 ```
 
-**Terminal 2 — Vite dev server** (hot-reloads React changes):
+**Terminal 2 — Vite dev server** (hot-reloads frontend changes):
 
 ```bash
 cd frontend && npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173**.
 
-### Production mode (single server)
+### Production mode (one server)
 
 ```bash
 cd frontend && npm run build && cd ..
 python main.py
 ```
 
-Open **http://localhost:8000** in your browser.
+Open **http://localhost:8000**. From an iPad or another computer on the same network,
+open `http://<this computer's IP>:8000` (on Windows, `ipconfig | findstr IPv4` shows the IP).
 
-**LAN access** (e.g. iPad on the same WiFi): find your PC's IP and open `http://<ip>:8000`.
+### Where your maps are stored
 
-```bash
-# Windows
-ipconfig | findstr IPv4
-```
+World sets live in a data folder, by default `world_sets/` in the project. To use another
+folder (for example a synced drive), use any of these, highest priority first:
+
+- `python main.py --data-dir PATH`
+- the `MAPEDITOR_DATA_DIR` environment variable
+- `{"dataDir": "PATH"}` in `mapeditor.config.json` at the project root
+
+The data folder is not committed to git.
 
 ---
 
 ## Testing
 
-Install development dependencies:
-
 ```bash
 pip install -r requirements-dev.txt
-```
-
-Run the Python test suite (178 tests):
-
-```bash
-pytest
-```
-
-Run the frontend test suite (27 tests):
-
-```bash
-cd frontend && npm test
+pytest                         # Python: models, TMJ I/O and API (253 tests)
+cd frontend && npm test        # Frontend: Vitest (340 tests)
 ```
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 FantasyMapBuilder/
-├── main.py                        # Entry point — starts uvicorn on :8000
-├── requirements.txt               # Runtime: fastapi, uvicorn, Pillow, python-multipart
-├── requirements-dev.txt           # Dev: pytest, httpx, pytest-asyncio, mkdocs
-│
-├── server/                        # FastAPI backend
-│   ├── main.py                    # FastAPI app, CORS, static file mount
-│   └── api/
-│       ├── maps.py                # Map CRUD + upload/download endpoints
-│       └── tilesets.py            # Tileset image serving
-│
-├── map_editor/                    # Pure-Python model + I/O layer
-│   ├── models/                    # Data models (zero Qt dependency)
-│   │   ├── tileset.py             # TileCategory, TileDefinition, Tileset
-│   │   ├── layer.py               # TileLayer (2-D grid), ObjectLayer
-│   │   ├── tile_map.py            # TileMap container
-│   │   ├── hex_map.py             # HexMap + hex coordinate math
-│   │   └── map_object.py          # MapObject (free-form entities)
-│   ├── io/
-│   │   ├── tmj_writer.py          # write_tile_map / write_hex_map → .tmj JSON
-│   │   └── tmj_reader.py          # read_map(path) → TileMap | HexMap
-│   └── assets/
-│       └── placeholders/          # Auto-generated sprite sheets (git-ignored)
-│
-├── frontend/                      # React + TypeScript SPA (Vite)
-│   ├── index.html
-│   ├── package.json               # React 18, Zustand 5, Vite 6, Vitest 2
-│   ├── vite.config.ts             # Dev proxy: /api → http://localhost:8000
+├── main.py                 # Entry point: starts the server on :8000 (--dev, --data-dir)
+├── server/                 # FastAPI backend: maps, world sets, tilesets, heights, .mapset, import
+├── map_editor/             # Python model library and TMJ reader/writer (used by tests and tools)
+├── frontend/               # React + TypeScript editor (Vite, Zustand)
 │   └── src/
-│       ├── types/tmj.ts           # TypeScript interfaces mirroring TMJ format
-│       ├── store/mapStore.ts      # Zustand store — map state + undo/redo
-│       ├── api/client.ts          # fetch wrappers for all API endpoints
-│       ├── canvas/                # HTML5 Canvas renderers (tile + hex)
-│       ├── tools/                 # Paint, erase, fill, point-object tools
-│       ├── components/            # React UI components + dialogs
-│       └── __tests__/             # Vitest unit tests
-│
-├── tests/                         # Python pytest suite (178 tests)
-│   ├── models/                    # Unit tests — pure data models
-│   ├── io/                        # TMJ round-trip tests
-│   └── api/                       # FastAPI endpoint tests (httpx)
-│
-├── maps/                          # Server-side .tmj file storage
-└── docs/                          # MkDocs documentation source
+│       ├── components/     # UI panels, canvas, dialogs
+│       ├── canvas/         # Renderers: tiles, hexes, elevation, lines, footprints
+│       ├── tools/          # Inspect, Paint, Erase, Fill, Point, Height, Line
+│       ├── store/          # Zustand stores
+│       ├── utils/          # Elevation, placement, lines, import logic
+│       └── __tests__/      # Vitest tests
+├── tests/                  # pytest suite
+├── docs/                   # Documentation (MkDocs)
+└── world_sets/             # Default data folder (not in git)
 ```
+
+See the [architecture page](docs/architecture.md) for details.
 
 ---
 
 ## Documentation
 
-Full documentation is in the `docs/` directory and built with [MkDocs](https://www.mkdocs.org/) + Material theme.
-
-Preview locally (install dev dependencies first):
+The full documentation is in [`docs/`](docs/index.md), built with
+[MkDocs](https://www.mkdocs.org/) and the Material theme:
 
 ```bash
-# macOS / Linux
-mkdocs serve
-
-# Windows
-PYTHONUTF8=1 mkdocs serve
+pip install -r requirements-dev.txt
+mkdocs serve -a 127.0.0.1:8001    # Windows: set PYTHONUTF8=1 first
 ```
 
-Then open `http://127.0.0.1:8000` (use a different port if the API server is already running there).
+Then open `http://127.0.0.1:8001` (port 8000 is used by the editor's server).
+
+The [changelog](CHANGELOG.md) lists what changed in each release.
 
 ---
 

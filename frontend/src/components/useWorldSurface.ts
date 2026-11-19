@@ -101,7 +101,7 @@ export function useWorldSurface(): void {
       setParent(key, null);
       return;
     }
-    const { parentMapName, parentAnchor } = node;
+    const { parentMapName, parentAnchor, parentOffset } = node;
     let cancelled = false;
     (async () => {
       const parentMap = await getMap(mapWorldSet, parentMapName);
@@ -113,7 +113,7 @@ export function useWorldSurface(): void {
         name: parentMapName,
         map: parentMap,
         patch,
-        place: placeChild(map.width, map.height, mpu, parentMPU, parentAnchor),
+        place: placeChild(map.width, map.height, mpu, parentMPU, parentAnchor, parentOffset),
         intervalCm: bandIntervalCm(parentMap.scale, resolveUnits(parentMap, defaultUnits)),
       });
     })().catch((e) => { if (!cancelled) { console.error('Loading parent elevation failed:', e); setParent(key, null); } });

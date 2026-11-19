@@ -44,6 +44,65 @@ export function computeFootprint(
   return { colMin, colMax, rowMin, rowMax };
 }
 
+/** A child's real area on its parent, in parent cell space (cell (c, r) spans [c, c + 1] x [r, r + 1]). */
+export interface ChildRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Where a child really sits on its parent: its real size (cells x cell size), centred on
+ * its rounded-up footprint around the anchor cell, then moved by the optional offset.
+ */
+export function childRect(
+  childWidth: number, childHeight: number, childUnitSize: number, parentUnitSize: number,
+  anchor: { col: number; row: number }, offset?: { x: number; y: number } | null,
+): ChildRect {
+  const fp = computeFootprint(childWidth, childHeight, childUnitSize, parentUnitSize, anchor);
+  const width = (childWidth * childUnitSize) / parentUnitSize;
+  const height = (childHeight * childUnitSize) / parentUnitSize;
+  const cu = (fp.colMin + fp.colMax + 1) / 2 + (offset?.x ?? 0);
+  const cv = (fp.rowMin + fp.rowMax + 1) / 2 + (offset?.y ?? 0);
+  return { left: cu - width / 2, top: cv - height / 2, width, height };
+}
+
+/**
+ * Anchor cell and offset that put a child's centre at parent cell-space point (u, v):
+ * the anchor is the cell containing the point, the offset the rest.
+ */
+export function placementAt(
+  childWidth: number, childHeight: number, childUnitSize: number, parentUnitSize: number, u: number, v: number,
+): { anchor: { col: number; row: number }; offset: { x: number; y: number } | null } {
+  const anchor = { col: Math.floor(u), row: Math.floor(v) };
+  const base = childRect(childWidth, childHeight, childUnitSize, parentUnitSize, anchor);
+  const x = u - (base.left + base.width / 2), y = v - (base.top + base.height / 2);
+  const tiny = (n: number) => Math.abs(n) < 1e-9;
+  return { anchor, offset: tiny(x) && tiny(y) ? null : { x, y } };
+}
+
+export interface RectNode {
+  mapName: string;
+  z: number;
+  rect: ChildRect;
+}
+
+/** Pairs of children at the same Z level whose real areas overlap (alphabetical). */
+export function detectRectOverlaps(nodes: RectNode[]): [string, string][] {
+  const out: [string, string][] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      if (a.z !== b.z) continue;
+      const hit = a.rect.left < b.rect.left + b.rect.width && b.rect.left < a.rect.left + a.rect.width
+        && a.rect.top < b.rect.top + b.rect.height && b.rect.top < a.rect.top + a.rect.height;
+      if (hit) out.push(a.mapName < b.mapName ? [a.mapName, b.mapName] : [b.mapName, a.mapName]);
+    }
+  }
+  return out;
+}
+
 export interface FootprintedNode {
   mapName: string;
   z: number;

@@ -2,107 +2,89 @@
 
 ## Setup
 
-Install the development dependencies:
-
 ```bash
 pip install -r requirements-dev.txt
-```
-
-Install frontend dependencies (requires Node.js 20+):
-
-```bash
-cd frontend && npm install
+cd frontend && npm ci
 ```
 
 ---
 
-## Running the Python test suite
+## Running the tests
+
+**Python** (253 tests: models, TMJ I/O, API):
 
 ```bash
-# All Python tests
-pytest tests/models tests/io tests/api -v
-
+pytest
 # With coverage
-pytest tests/models tests/io tests/api --cov=map_editor --cov=server --cov-report=term-missing
-
-# HTML coverage report
-pytest tests/models tests/io tests/api --cov=map_editor --cov=server --cov-report=html
-# Open htmlcov/index.html
+pytest --cov=map_editor --cov=server --cov-report=term-missing
 ```
 
-## Running the frontend (Vitest) tests
+**Frontend** (340 Vitest tests):
 
 ```bash
 cd frontend
-npm test          # run once
-npm run test:watch  # watch mode
+npm test              # once
+npm run test:watch    # watch mode
+npx tsc --noEmit -p . # type check (also part of npm run build)
 ```
 
 ---
 
-## Test layout
+## What's covered
 
-### Python tests
+### Python (`tests/`)
 
-| Path | Contents |
-|------|---------|
-| `tests/conftest.py` | `autouse` fixture resetting `MapObject._id_counter` to 0 before every test |
-| `tests/models/test_tileset.py` | 22 tests — tile definitions, placeholder PNG generation, sheet positions |
-| `tests/models/test_map_object.py` | 19 tests — factory methods, ID counter isolation, properties |
-| `tests/models/test_layer.py` | 39 tests — tile access, flood fill, object hit-testing |
-| `tests/models/test_tile_map.py` | 33 tests — GID resolution, layer management, coordinate helpers |
-| `tests/models/test_hex_map.py` | 31 tests — pixel↔hex round-trips, neighbour lookup, distance |
-| `tests/io/test_tmj_io.py` | 20 tests — TMJ round-trips, object shapes, multi-tileset GIDs, POINTY_TOP hex |
-| `tests/api/conftest.py` | `client` fixture (httpx `AsyncClient`), isolated temp `maps/` dir |
-| `tests/api/test_api.py` | 14 tests — all CRUD endpoints, upload, download, error cases |
+| Path | Covers |
+|------|--------|
+| `tests/models/` | The Python model library: tilesets, layers, objects, tile and hex maps |
+| `tests/io/` | TMJ reading and writing round trips |
+| `tests/api/test_api.py` | Map CRUD, upload, download, Tiled-style formatting |
+| `tests/api/test_world_sets.py` | World set CRUD, data folder |
+| `tests/api/test_tilesets.py` | External `.tsj` tilesets, swatches, image upload and serving |
+| `tests/api/test_heights.py` | Height TIFF and mask storage, binary API |
+| `tests/api/test_mapsets.py` | `.mapset` export and import |
+| `tests/api/test_map_import.py` | Single-map import: tileset merge, keep both, GID remapping |
 
-**Total Python tests: 178**
+`tests/api/conftest.py` points the data folder at a temporary directory with a world set named
+`ws`, and provides an `httpx.AsyncClient` fixture.
 
-### Frontend tests (Vitest)
+### Frontend (`frontend/src/__tests__/`)
 
-| Path | Contents |
-|------|---------|
-| `frontend/src/__tests__/fillTool.test.ts` | 6 tests — `bfsFloodFill`: 1×1, same-GID no-op, row fill, boundary stop, 2-D, no diagonal |
-| `frontend/src/__tests__/tileRenderer.test.ts` | 10 tests — `screenToTile` and `tileToScreen` with zoom/pan; inverse relationship |
-| `frontend/src/__tests__/mapStore.test.ts` | 11 tests — `loadMap`, `applyTile`, `commitPendingTiles`, undo (single/batch/no-op), redo, dirty flag |
-
-**Total frontend tests: 27**
+| Area | Test files |
+|------|------------|
+| Map store and editing | `mapStore`, `layers`, `fillTool`, `tileRenderer` |
+| Tiled format | `tmjFile`, `tilesetRefs`, `hexGeometry` |
+| World sets | `worldSetStore`, `worldSetUtils`, `hierarchyPanelLogic`, `worldHierarchyPanel`, `worldSetDialog`, `navigation`, `canvasContextMenu`, `placement` |
+| Import / export | `mapset`, `importPlan` |
+| Elevation | `heightGrid`, `elevation`, `heightBrush`, `worldSurface`, `elevationFit`, `terrainHeights`, `heightGeneration`, `spotHeights` |
+| Roads and rivers | `lines`, `crossScaleLines` |
+| Inspect | `inspect` |
 
 ---
 
-## Writing new tests
+## Writing tests
 
-### Python model tests
-
-Place in `tests/models/test_<module>.py`. No server fixtures needed. The `autouse`
-ID-reset fixture applies automatically.
-
-### API tests
-
-Place in `tests/api/test_<feature>.py`. Use the `client` fixture provided by
-`tests/api/conftest.py` — it supplies an `httpx.AsyncClient` wired to an in-process
-FastAPI app with an isolated temporary `maps/` directory.
+- **Python models** → `tests/models/test_<module>.py`
+- **API endpoints** → `tests/api/test_<feature>.py`, using the `client` fixture:
 
 ```python
 import pytest
 
 @pytest.mark.asyncio
-async def test_my_endpoint(client):
-    response = await client.get("/api/maps")
+async def test_list_world_sets(client):
+    response = await client.get("/api/world_sets")
     assert response.status_code == 200
 ```
 
-### Frontend tests
-
-Place in `frontend/src/__tests__/`. Import pure functions directly (no DOM setup needed
-for logic tests). Use `useMapStore.setState(...)` to reset Zustand state in `beforeEach`.
+- **Frontend logic** → `frontend/src/__tests__/<feature>.test.ts`. Most logic is pure functions
+  you can import directly; stores can be driven through `useMapStore.getState()`:
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useMapStore } from '../store/mapStore';
 
 beforeEach(() => {
-  useMapStore.setState({ mapData: null, past: [], future: [] });
+  useMapStore.getState().loadMap(myMap, 'm', 'ws');
 });
 
 describe('my feature', () => {
@@ -112,8 +94,12 @@ describe('my feature', () => {
 });
 ```
 
+Every fixed bug should get a test that would have caught it.
+
 ---
 
-## Bug regressions
+## Checking in a browser
 
-Every fixed bug should have a corresponding test that would have caught it before the fix.
+For changes you can see, also try them in the running editor. Use a throwaway copy of a world set
+(Edit → World Sets… → Export, then Import .mapset… under a new name) rather than real maps, and
+delete it afterwards.

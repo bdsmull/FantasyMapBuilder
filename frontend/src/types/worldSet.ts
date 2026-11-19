@@ -5,6 +5,12 @@ export interface WorldSetNode {
   mapName: string;
   parentMapName: string | null;
   parentAnchor: { col: number; row: number } | null;
+  /**
+   * Fine position: how far (in parent cells) the child's centre is moved from its
+   * default spot (centred on its rounded-up footprint around the anchor cell). Lets a
+   * small map sit at an exact point, e.g. a town on its city marker. Absent = 0, 0.
+   */
+  parentOffset?: { x: number; y: number } | null;
   z: number;
   zLabel?: string | null;
 }

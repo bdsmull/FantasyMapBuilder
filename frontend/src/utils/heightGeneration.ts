@@ -147,7 +147,7 @@ export function mapOriginMeters(
   if (!node?.parentMapName || !node.parentAnchor || !self || seen.has(name)) return { x: 0, y: 0 };
   const parent = lookup(node.parentMapName);
   if (!parent) return { x: 0, y: 0 };
-  const place = placeChild(self.map.width, self.map.height, self.mpu, parent.mpu, node.parentAnchor);
+  const place = placeChild(self.map.width, self.map.height, self.mpu, parent.mpu, node.parentAnchor, node.parentOffset);
   const o = mapOriginMeters(node.parentMapName, nodes, lookup, new Set([...seen, name]));
   return { x: o.x + place.left * parent.mpu, y: o.y + place.top * parent.mpu };
 }

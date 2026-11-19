@@ -19,7 +19,7 @@ import type { WorldSetNode } from '../types/worldSet';
 import type { HeightPatch, CellRect } from './heightGrid';
 import { heightAt, unionRect } from './heightGrid';
 import { hexLayout, hexCenter } from '../canvas/hexGeometry';
-import { computeFootprint } from './worldSetUtils';
+import { childRect } from './worldSetUtils';
 
 // ---------------------------------------------------------------------------
 // Cell space <-> map pixels
@@ -69,20 +69,17 @@ export interface ChildPlacement {
 }
 
 /**
- * The child's real rectangle, centred in its footprint. The blending band is one
- * parent cell, but at most a quarter of the child's narrower side.
+ * The child's real rectangle (see childRect: centred in its footprint, moved by the
+ * optional offset). The blending band is one parent cell, but at most a quarter of
+ * the child's narrower side.
  */
 export function placeChild(
   childWidth: number, childHeight: number, childMPU: number, parentMPU: number,
-  anchor: { col: number; row: number },
+  anchor: { col: number; row: number }, offset?: { x: number; y: number } | null,
 ): ChildPlacement {
-  const fp = computeFootprint(childWidth, childHeight, childMPU, parentMPU, anchor);
-  const width = (childWidth * childMPU) / parentMPU;
-  const height = (childHeight * childMPU) / parentMPU;
-  const cu = (fp.colMin + fp.colMax + 1) / 2;
-  const cv = (fp.rowMin + fp.rowMax + 1) / 2;
+  const { left, top, width, height } = childRect(childWidth, childHeight, childMPU, parentMPU, anchor, offset);
   return {
-    left: cu - width / 2, top: cv - height / 2, width, height,
+    left, top, width, height,
     scale: parentMPU / childMPU,
     band: Math.min(1, Math.min(width, height) / 4),
   };
@@ -142,7 +139,7 @@ export function placedChildren(
     const found = lookup(n.mapName);
     if (!found || !found.patch || !found.mpu) continue;
     const src = { map: found.map, patch: found.patch, mpu: found.mpu };
-    const place = placeChild(src.map.width, src.map.height, src.mpu, parentMPU, n.parentAnchor);
+    const place = placeChild(src.map.width, src.map.height, src.mpu, parentMPU, n.parentAnchor, n.parentOffset);
     if (!include(src, place)) continue;
     const node = buildSurface(n.mapName, src, nodes, lookup, include, new Set([...seen, n.mapName]));
     result.push({ node, place });

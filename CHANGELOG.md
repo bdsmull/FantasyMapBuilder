@@ -12,6 +12,11 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
+- **Mismatch flags for refined roads and rivers** (issue #6)
+  - A copy refined on a child map is checked against its original at the child's edge: its ends
+    should meet the original's crossings (within two child cells).
+  - Flagged with rings on the map, a message and **Snap ends to the original** in the Line panel,
+    ⚠ in the original's "Refined on" list, and a **Line mismatch** warning in the hierarchy panel.
 - **True-size footprints and precise child placement** (#32)
   - A child map's footprint on its parent is now its real area, not the whole parent cells it touches.
     Maps too small to see get a marker with their name; hovering shows the cells touched.

@@ -107,6 +107,24 @@ The links show both ways:
 
 If the original is edited later, the copy keeps its own shape.
 
+### When a copy no longer meets its original
+
+A refined copy can take its own course inside its map, but where it leaves the map it should
+meet the original. The editor compares the two at the map's edge: each end of the copy that lies
+on the edge should be within two of the map's cells of a point where the original crosses the
+edge, and each crossing should have a copy end near it. When that stops being true (typically
+after the original is moved on the parent), the copy is flagged:
+
+- **On the child map**, red rings mark the copy's ends that are off, and dashed orange rings mark
+  crossings no copy meets. Selecting the copy shows *This copy doesn't meet "Road east" at the
+  map's edge any more (up to 120 m off)*, with **Snap ends to the original**, which moves the
+  ends that are off onto the original's crossings (one undo step).
+- **On the parent**, the original's **Refined on** list marks the map with ⚠, and its rings show
+  inside that map's footprint.
+- **In the hierarchy panel**, the map holding the copy gets a **Line mismatch** warning.
+
+A copy is also flagged when its original no longer crosses the map at all, or no longer exists.
+
 !!! tip "Small maps need precise placement"
     A town map that's much smaller than one parent cell sits at the centre of its anchor cell
     unless you place it exactly. If roads that meet at the town's marker don't reach the town

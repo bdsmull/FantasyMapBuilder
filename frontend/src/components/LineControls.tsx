@@ -11,6 +11,9 @@ import {
   refinedByIndex, refinesOf, lineKey, adoptPieces, REFINES_PROPERTY,
 } from '../utils/crossScaleLines';
 import type { RelatedMap } from '../utils/crossScaleLines';
+import { useRefinementChecks } from './useRefinementChecks';
+import { describeRefinement } from '../utils/lineFit';
+import { linePoints as _pts } from '../utils/lines';
 
 /** "parent", "grandparent", "child map"… for a related map's depth. */
 function _relation(depth: number): string {
@@ -63,6 +66,7 @@ export const LineControls: React.FC = () => {
     selectedGhost, setSelectedGhost, requestOpenMap,
   } = useViewStore();
   const cross = useCrossScaleStore();
+  const checks = useRefinementChecks();
   if (!mapData) return null;
   const related: RelatedMap[] = cross.key === surfaceKey(mapWorldSet, mapName) ? cross.related : [];
   const index = refinedByIndex(mapName, mapData, related);
@@ -190,6 +194,19 @@ export const LineControls: React.FC = () => {
             const src = refinesOf(line.object);
             const srcMap = src ? related.find((m) => m.name === src.map) : undefined;
             const srcLine = srcMap ? readLines(srcMap.map).find((l) => l.id === src!.id) : undefined;
+            const metersPerPx = ppm ? 1 / ppm : null;
+            const dist = (m: number) => (units === 'imperial'
+              ? (m >= 1609.344 ? `${(m / 1609.344).toLocaleString('en-US', { maximumFractionDigits: 1 })} mi` : `${Math.round(m / 0.3048).toLocaleString('en-US')} ft`)
+              : (m >= 1000 ? `${(m / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} km` : `${Math.round(m).toLocaleString('en-US')} m`));
+            // This copy's fit with its original (the copies of one original are checked together)
+            const own = checks.find((c) => c.refiningMap === mapName && c.copyIds.includes(line.id));
+            const ownProblem = own && own.result.status !== 'missing' ? describeRefinement(own, metersPerPx, dist) : null;
+            const ownFixes = own ? own.result.fixes.filter((f) => f.copyId === line.id) : [];
+            // Copies of this line on child maps that no longer fit
+            const childProblem = (name: string) => {
+              const c = checks.find((x) => x.refiningMap === name && x.original === lineKey(mapName, line.id));
+              return c ? describeRefinement(c, metersPerPx, dist) : null;
+            };
             return (
               <>
                 {src && (
@@ -199,9 +216,38 @@ export const LineControls: React.FC = () => {
                     {srcMap && !srcLine && <span style={{ color: '#fbbf24' }}>(that line no longer exists)</span>}
                   </div>
                 )}
+                {ownProblem && (
+                  <div style={{ color: '#fbbf24', marginBottom: 4 }}>
+                    ⚠ This copy {ownProblem}.
+                    {ownFixes.length > 0 && (
+                      <div>
+                        <button
+                          className="btn-secondary"
+                          style={{ fontSize: 11, marginTop: 2 }}
+                          title="Move this line's ends that are off onto the original's crossing of the map's edge (one undo step)"
+                          onClick={() => {
+                            const pts = _pts(line.object).map((p) => ({ ...p }));
+                            for (const f of ownFixes) pts[f.index] = { x: f.to.x, y: f.to.y };
+                            updateLine(line.id, { points: pts });
+                          }}
+                        >
+                          Snap ends to the original
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {refinedOn.length > 0 && (
                   <div style={{ marginBottom: 4 }}>
-                    Refined on: {refinedOn.map((n) => <MapLink key={n} name={n} onOpen={requestOpenMap} />)}
+                    Refined on: {refinedOn.map((n) => {
+                      const problem = childProblem(n);
+                      return (
+                        <span key={n} title={problem ? `The copy on ${n} ${problem}` : undefined}>
+                          {problem && <span style={{ color: '#fbbf24' }}>⚠ </span>}
+                          <MapLink name={n} onOpen={requestOpenMap} />
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </>

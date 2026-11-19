@@ -19,6 +19,8 @@ export interface WarningContext {
   defaultUnits?: UnitSystem;
   /** Elevation mismatch summaries for the maps whose fit is known, by mapName. */
   elevationMismatch?: Record<string, string>;
+  /** Refined-line mismatch summaries for the maps whose lines were checked, by mapName. */
+  lineMismatch?: Record<string, string>;
 }
 
 export { resolveMetersPerUnit };
@@ -42,6 +44,8 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
 
   const mismatch = ctx.elevationMismatch?.[node.mapName];
   if (mismatch) warnings.push(`Elevation mismatch: ${mismatch}`);
+  const lines = ctx.lineMismatch?.[node.mapName];
+  if (lines) warnings.push(`Line mismatch: ${lines}`);
 
   // Missing scale
   const childMPU = resolveMetersPerUnit(data, ctx.defaultUnits);

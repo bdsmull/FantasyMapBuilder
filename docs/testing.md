@@ -19,7 +19,7 @@ pytest
 pytest --cov=map_editor --cov=server --cov-report=term-missing
 ```
 
-**Frontend** (340 Vitest tests):
+**Frontend** (350 Vitest tests):
 
 ```bash
 cd frontend
@@ -57,7 +57,7 @@ npx tsc --noEmit -p . # type check (also part of npm run build)
 | World sets | `worldSetStore`, `worldSetUtils`, `hierarchyPanelLogic`, `worldHierarchyPanel`, `worldSetDialog`, `navigation`, `canvasContextMenu`, `placement` |
 | Import / export | `mapset`, `importPlan` |
 | Elevation | `heightGrid`, `elevation`, `heightBrush`, `worldSurface`, `elevationFit`, `terrainHeights`, `heightGeneration`, `spotHeights` |
-| Roads and rivers | `lines`, `crossScaleLines` |
+| Roads and rivers | `lines`, `crossScaleLines`, `lineFit` |
 | Inspect | `inspect` |
 
 ---

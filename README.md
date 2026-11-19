@@ -107,7 +107,7 @@ The data folder is not committed to git.
 ```bash
 pip install -r requirements-dev.txt
 pytest                         # Python: models, TMJ I/O and API (253 tests)
-cd frontend && npm test        # Frontend: Vitest (340 tests)
+cd frontend && npm test        # Frontend: Vitest (350 tests)
 ```
 
 ---

@@ -27,6 +27,7 @@ import { resolveLineClasses, classForType } from '../data/lineClasses';
 import { drawLine } from '../canvas/lineRenderer';
 import { useCrossScaleStore } from '../store/crossScaleStore';
 import { refinedByIndex, hiddenAreas, lineKey, mapExtent } from '../utils/crossScaleLines';
+import { useRefinementChecks } from './useRefinementChecks';
 
 /** Opacity of roads and rivers from other maps. */
 const _GHOST_ALPHA = 0.5;
@@ -93,6 +94,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const { selectedLineId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
   // Roads and rivers from ancestor and descendant maps (when they belong to this map)
   const cross = useCrossScaleStore();
+  const refinementChecks = useRefinementChecks();
   const crossOk = cross.key === surfaceKey(store.mapWorldSet, store.mapName) && showLines;
   const related = crossOk ? cross.related : [];
   const ghosts = crossOk ? cross.ghosts : [];
@@ -263,6 +265,34 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.restore();
     }
 
+    // Refined lines that no longer meet their originals: rings at the ends that are off,
+    // and at crossings of the original that no copy meets
+    if (showLines) {
+      const bad = refinementChecks.filter((c) => c.result.status === 'moved');
+      if (bad.length) {
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        // A dark halo under each ring keeps it visible over lines and light terrain
+        const ring = (p: { x: number; y: number }, color: string, dashed: boolean) => {
+          ctx.beginPath();
+          ctx.arc(p.x * view.zoom, p.y * view.zoom, 10, 0, Math.PI * 2);
+          ctx.setLineDash([]);
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+          ctx.stroke();
+          ctx.setLineDash(dashed ? [4, 3] : []);
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = color;
+          ctx.stroke();
+        };
+        for (const c of bad) {
+          for (const e of c.result.badEnds) ring(e.at, '#ff5a3c', false);
+          for (const x of c.result.unmatchedCrossings) ring(x, '#ffb000', true);
+        }
+        ctx.restore();
+      }
+    }
+
     // Line tool: the line being drawn, and the selected line's handles
     // A selected line from another map: outline it
     const ghost = selectedGhost ? ghosts.find((g) => g.key === selectedGhost) : undefined;
@@ -346,7 +376,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedLineId, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedLineId, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

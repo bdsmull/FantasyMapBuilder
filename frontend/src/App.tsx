@@ -4,6 +4,7 @@ import { MapCanvas } from './components/MapCanvas';
 import { LayerPanel } from './components/LayerPanel';
 import { useHeightsLoader } from './components/useHeightsLoader';
 import { useWorldSurface } from './components/useWorldSurface';
+import { useCrossScaleLines } from './components/useCrossScaleLines';
 import { TilePalette } from './components/TilePalette';
 import { Toolbar } from './components/Toolbar';
 import { MenuBar } from './components/MenuBar';
@@ -36,6 +37,7 @@ export const App: React.FC = () => {
   useHeightsLoader();
   const { showPalette, setShowPalette, lineClassesOpen, setLineClassesOpen } = useViewStore();
   useWorldSurface();
+  useCrossScaleLines();
 
   const toggleLeftPanel = useCallback(() => {
     setLeftPanelOpen((prev) => !prev);

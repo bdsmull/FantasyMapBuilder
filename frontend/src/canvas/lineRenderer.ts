@@ -9,6 +9,18 @@ import type { TmjObject } from '../types/tmj';
 import type { LineClass } from '../data/lineClasses';
 import { linePoints, pointWidthsM } from '../utils/lines';
 
+/** A rectangle in map pixels. */
+export interface LineRect { x0: number; y0: number; x1: number; y1: number }
+
+export interface LineDrawOptions {
+  /** Areas where the line is hidden (a more detailed map refines it there). */
+  exclude?: LineRect[];
+  /** Only draw inside this area. */
+  clipTo?: LineRect | null;
+  /** Opacity (ghost lines from other maps are faded). */
+  alpha?: number;
+}
+
 /** Thinnest a line is drawn, in screen pixels. */
 const _MIN_SCREEN_PX = 1.5;
 /** Screen width when the map has no scale (meters can't be converted). */
@@ -16,7 +28,7 @@ const _NO_SCALE_PX: Record<LineClass['kind'], number> = { road: 3, water: 4 };
 const _CASING = 'rgba(40, 30, 20, 0.85)';
 
 /** How a renderer should draw line objects; null skips them. */
-export type LineStyleFn = (obj: TmjObject) => { cls: LineClass; pixelsPerMeter: number | null } | null;
+export type LineStyleFn = (obj: TmjObject) => { cls: LineClass; pixelsPerMeter: number | null; exclude?: LineRect[] } | null;
 
 /** Screen widths at each point. */
 export function screenWidths(obj: TmjObject, cls: LineClass, pixelsPerMeter: number | null, zoom: number): number[] {
@@ -45,11 +57,29 @@ function _stroke(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[],
   }
 }
 
-export function drawLine(ctx: CanvasRenderingContext2D, obj: TmjObject, zoom: number, cls: LineClass, pixelsPerMeter: number | null): void {
+export function drawLine(
+  ctx: CanvasRenderingContext2D, obj: TmjObject, zoom: number, cls: LineClass, pixelsPerMeter: number | null,
+  opts: LineDrawOptions = {},
+): void {
   const pts = linePoints(obj).map((p) => ({ x: p.x * zoom, y: p.y * zoom }));
   if (pts.length < 2) return;
   const widths = screenWidths(obj, cls, pixelsPerMeter, zoom);
   ctx.save();
+  if (opts.alpha !== undefined) ctx.globalAlpha *= opts.alpha;
+  if (opts.clipTo) {
+    const r = opts.clipTo;
+    ctx.beginPath();
+    ctx.rect(r.x0 * zoom, r.y0 * zoom, (r.x1 - r.x0) * zoom, (r.y1 - r.y0) * zoom);
+    ctx.clip();
+  }
+  if (opts.exclude && opts.exclude.length) {
+    // Everything except the excluded areas (holes via the even-odd rule)
+    const big = 1e7;
+    ctx.beginPath();
+    ctx.rect(-big, -big, 2 * big, 2 * big);
+    for (const r of opts.exclude) ctx.rect(r.x0 * zoom, r.y0 * zoom, (r.x1 - r.x0) * zoom, (r.y1 - r.y0) * zoom);
+    ctx.clip('evenodd');
+  }
   if (cls.kind === 'road') _stroke(ctx, pts, widths, _CASING, 2);
   _stroke(ctx, pts, widths, cls.color, 0);
   ctx.restore();

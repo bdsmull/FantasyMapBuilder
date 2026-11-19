@@ -232,7 +232,7 @@ function drawHexObjectLayer(
     if (!obj.visible) continue;
     if (obj.polyline) {
       const style = lineStyle?.(obj);
-      if (style) drawLine(ctx, obj, zoom, style.cls, style.pixelsPerMeter);
+      if (style) drawLine(ctx, obj, zoom, style.cls, style.pixelsPerMeter, { exclude: style.exclude });
       continue;
     }
     if (obj.point || (obj.width === 0 && obj.height === 0)) {

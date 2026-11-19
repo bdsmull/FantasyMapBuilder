@@ -133,7 +133,7 @@ function drawObjectLayer(
     if (!obj.visible) continue;
     if (obj.polyline) {
       const style = lineStyle?.(obj);
-      if (style) drawLine(ctx, obj, zoom, style.cls, style.pixelsPerMeter);
+      if (style) drawLine(ctx, obj, zoom, style.cls, style.pixelsPerMeter, { exclude: style.exclude });
       continue;
     }
     drawObjectMarker(ctx, obj, tileW, zoom);

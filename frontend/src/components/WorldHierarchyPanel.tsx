@@ -12,6 +12,7 @@ import { listWorldSets, listMaps, getMap } from '../api/client';
 import type { WorldSetNode } from '../types/worldSet';
 import type { TmjMap } from '../types/tmj';
 import { useEdgeFits } from './useEdgeFits';
+import { useRefinementChecks } from './useRefinementChecks';
 
 export interface OpenWorldSetDialogArgs {
   initialView?: 'list' | 'nodes' | 'configure';
@@ -170,6 +171,15 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
 
   // Elevation fit of the open map and its children (the only ones whose heights are loaded)
   const fits = useEdgeFits();
+  // Refined roads and rivers that no longer meet their originals, counted per map holding the copies
+  const checks = useRefinementChecks();
+  const lineMismatch: Record<string, string> = {};
+  for (const map of new Set(checks.filter((c) => c.result.status !== 'ok').map((c) => c.refiningMap))) {
+    const bad = checks.filter((c) => c.refiningMap === map && c.result.status !== 'ok');
+    lineMismatch[map] = bad.length === 1
+      ? `a refined line no longer meets ${bad[0].originalName ? `"${bad[0].originalName}"` : 'its original'}`
+      : `${bad.length} refined lines no longer meet their originals`;
+  }
   const elevationMismatch: Record<string, string> = {};
   if (fits.self?.mismatch && currentMapName) elevationMismatch[currentMapName] = fits.self.summary;
   for (const [name, report] of Object.entries(fits.children)) {
@@ -181,6 +191,7 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
 
   const ctx = {
     elevationMismatch,
+    lineMismatch,
     mapDataCache,
     knownMapNames,
     allNodes: activeWorldSet?.nodes ?? [],

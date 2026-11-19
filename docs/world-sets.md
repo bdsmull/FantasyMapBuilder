@@ -100,6 +100,10 @@ The hierarchy panel badges maps with problems:
 | Scale inversion | The map is the same size or larger per cell than its parent |
 | Footprint overlap | It overlaps a sibling at the same Z level (real areas are compared) |
 | Elevation mismatch | Its edges don't meet its parent's ground (see [Elevation](elevation.md#fitting-a-child-to-its-parent)) |
+| Line mismatch | A road or river refined on it no longer meets its original at the map's edge (see [Roads & Rivers](roads-rivers.md#when-a-copy-no-longer-meets-its-original)) |
+
+The elevation and line checks need the maps' data, so they cover the open map and the maps
+around it: open a map to check it.
 
 ---
 

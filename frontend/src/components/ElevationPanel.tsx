@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { resolveUnits } from '../data/mapScales';
@@ -8,7 +8,7 @@ import { GenerateControls } from './GenerateControls';
 import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { useEdgeFits } from './useEdgeFits';
 import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
-import { hasTerrainHeights, heightsFromTerrain } from '../utils/terrainHeights';
+import { hasTerrainHeights, heightsFromTerrain, terrainGaps, describeTerrainGaps } from '../utils/terrainHeights';
 import { readSpots, spotTargets } from '../utils/spotHeights';
 import { readContours, contourTargets } from '../utils/contours';
 import { fitHeights } from '../utils/surfaceFit';
@@ -36,11 +36,22 @@ export const ElevationPanel: React.FC = () => {
   const [tilt, setTilt] = useState(false);
   const { self: parentFit } = useEdgeFits();
   const replaceHeights = useMapStore((s) => s.replaceHeights);
-  const [terrainNote, setTerrainNote] = useState('');
+  const [terrainNote, setTerrainNoteOnly] = useState('');
   const [addNote, setAddNote] = useState('');
+  // Painted terrain that heights from terrain couldn't set (shown as a warning)
+  const [gapNote, setGapNote] = useState('');
+  // A gap note to show once the map's new elevation is in place (adding clears the notes)
+  const pendingGapNote = useRef<string | null>(null);
+  /** A note under the action buttons; a new one replaces any gap warning. */
+  const setTerrainNote = (text: string) => { setTerrainNoteOnly(text); setGapNote(''); };
   const [generating, setGenerating] = useState(false);
   const [fitting, setFitting] = useState(false);
-  useEffect(() => { setTerrainNote(''); setAddNote(''); }, [mapName, heights]);
+  useEffect(() => {
+    setTerrainNoteOnly('');
+    setAddNote('');
+    setGapNote(pendingGapNote.current ?? '');
+    pendingGapNote.current = null;
+  }, [mapName, heights]);
 
   if (!mapData) return null;
   const units = resolveUnits(mapData, worldSetUnits);
@@ -48,6 +59,12 @@ export const ElevationPanel: React.FC = () => {
   const startCm = parseHeightToCm(startHeight, units);
   const terrainReady = hasTerrainHeights(mapData);
   const setUpHint = 'Set them under Edit → Manage Tilesets → Heights… ("Suggest values" fills in common types).';
+  /** What heights from terrain left at their current height, with where to fix it; '' when nothing. */
+  const gapsAfterTerrain = () => {
+    const { gaps, emptyCells } = terrainGaps(mapData);
+    const note = describeTerrainGaps(gaps, emptyCells);
+    return note && gaps.length ? `${note} ${setUpHint}` : note;
+  };
   /** Why heights from terrain set nothing. */
   const terrainProblem = () => (terrainReady
     ? `None of the terrain painted on this map has a base height. ${setUpHint}`
@@ -67,6 +84,7 @@ export const ElevationPanel: React.FC = () => {
     if (startCm === null) return;
     const result = heightsFromTerrain(mapData, createPatch(mapData, startCm));
     if (result.changed === 0) { setAddNote(terrainProblem()); return; }
+    pendingGapNote.current = gapsAfterTerrain();
     addElevation(startCm);
     replaceHeights(result.cm);
     setAdding(false);
@@ -240,9 +258,11 @@ export const ElevationPanel: React.FC = () => {
           onClick={() => {
             const n = fromTerrain();
             const allHandSet = terrainReady && heightsFromTerrain(mapData, { ...heights, mask: new Uint8Array(heights.mask.length) }).changed > 0;
+            const gaps = n > 0 ? gapsAfterTerrain() : '';
             setTerrainNote(n > 0 ? `Set ${n.toLocaleString('en-US')} heights from terrain.`
               : allHandSet ? 'All the terrain with base heights is under hand-set heights (Release unprotects them).'
               : terrainProblem());
+            setGapNote(gaps);
           }}
         >
           Heights from terrain
@@ -319,6 +339,7 @@ export const ElevationPanel: React.FC = () => {
           );
         })()}
         {terrainNote && <div style={{ color: '#888', marginTop: 4 }}>{terrainNote}</div>}
+        {gapNote && <div style={{ color: '#fbbf24', marginTop: 4 }}>⚠ {gapNote}</div>}
       </div>
       {generating && <GenerateControls units={units} onClose={() => setGenerating(false)} />}
       {selectedTool === 'height' && <HeightBrushControls units={units} />}

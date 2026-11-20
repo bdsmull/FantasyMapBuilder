@@ -22,7 +22,7 @@ them; the editor draws them from each tile's `color_r` / `color_g` / `color_b` p
 
 | Action | Effect |
 |---|---|
-| **Load Built-in Default** | Adds the color tileset for square or hex maps (once) |
+| **Add Coarse Detail** / **Add Fine Detail** | Adds a built-in color tileset (once); the one that suits the map's scale is listed first |
 | **Add from PNG…** | Adds your own sprite sheet: give a name and the tile size; one tile per cell of the sheet |
 | **Heights…** | Base height and relief for each terrain type (see below) |
 | **Remove** | Removes a tileset no layer uses |
@@ -50,7 +50,15 @@ is saved.
 
 ## Built-in tilesets
 
-### "Default Tile" — square maps (16 tiles)
+Two color tilesets come with the editor. They differ by level of detail, not map shape: squares
+and hexes work with either. A new map gets the one that suits its scale.
+
+World sets made before these names keep their tilesets as **Default Tile** (now Fine Detail) and
+**Default Hex** (now Coarse Detail); the tiles are the same.
+
+### "Fine Detail" — Site scale and smaller (16 tiles)
+
+Ground, floors, walls and objects for rooms, dungeons and sites.
 
 | Local ID | Name | Category |
 |----------|------|----------|
@@ -71,7 +79,9 @@ is saved.
 | 14 | Door | Object |
 | 15 | Spawn | Special |
 
-### "Default Hex" — hex maps (12 tiles)
+### "Coarse Detail" — Town scale and larger (12 tiles)
+
+Landscape types for towns, regions, kingdoms and the world.
 
 | Local ID | Name | Category |
 |----------|------|----------|

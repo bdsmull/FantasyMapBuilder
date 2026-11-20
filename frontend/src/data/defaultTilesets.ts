@@ -1,10 +1,15 @@
 /**
- * Built-in default tileset definitions.
+ * Built-in tileset definitions, by level of detail rather than map shape (squares and
+ * hexes work at any scale):
+ *   Fine Detail   – ground, floors, walls and objects, for Site scale and smaller
+ *   Coarse Detail – landscape types (plains, forest, mountains, ocean…), for Town scale and larger
  * Mirrors the placeholder tile data from map_editor/models/tileset.py.
  * Tiles render as solid-colored blocks using their color_r/g/b properties.
+ * They used to be named "Default Tile" and "Default Hex"; world sets made then keep those names.
  */
 
 import type { TmjTileset, TmjTileEntry } from '../types/tmj';
+import { MAP_SCALE_BY_ID } from './mapScales';
 
 function t(
   id: number, type: string,
@@ -23,10 +28,10 @@ function t(
   };
 }
 
-/** 16-tile dungeon/overworld tileset for orthogonal maps. */
-export const DEFAULT_TILE_TILESET: TmjTileset = {
+/** 16 tiles of ground, floors, walls and objects, for detailed maps (Site scale and smaller). */
+export const FINE_DETAIL_TILESET: TmjTileset = {
   firstgid: 1,
-  name: 'Default Tile',
+  name: 'Fine Detail',
   tilewidth: 32,
   tileheight: 32,
   tilecount: 16,
@@ -54,10 +59,10 @@ export const DEFAULT_TILE_TILESET: TmjTileset = {
   ],
 };
 
-/** 12-tile world-scale tileset for hexagonal maps. */
-export const DEFAULT_HEX_TILESET: TmjTileset = {
+/** 12 landscape types, for overview maps (Town scale and larger). */
+export const COARSE_DETAIL_TILESET: TmjTileset = {
   firstgid: 1,
-  name: 'Default Hex',
+  name: 'Coarse Detail',
   tilewidth: 32,
   tileheight: 32,
   tilecount: 12,
@@ -80,3 +85,15 @@ export const DEFAULT_HEX_TILESET: TmjTileset = {
     t(11, 'Dungeon',    80,  60,  80, 'SPECIAL'),
   ],
 };
+
+/** The built-in tilesets, coarse first. */
+export const BUILTIN_TILESETS: TmjTileset[] = [COARSE_DETAIL_TILESET, FINE_DETAIL_TILESET];
+
+/**
+ * The built-in tileset that suits a map: Coarse Detail for Town scale and larger, Fine
+ * Detail for Site scale and smaller. Without a preset scale it goes by shape (hex: coarse).
+ */
+export function builtinTilesetFor(scaleId: string | undefined, orientation: string): TmjTileset {
+  const shape = MAP_SCALE_BY_ID[scaleId ?? '']?.defaultShape ?? (orientation === 'hexagonal' ? 'hex' : 'tile');
+  return shape === 'hex' ? COARSE_DETAIL_TILESET : FINE_DETAIL_TILESET;
+}

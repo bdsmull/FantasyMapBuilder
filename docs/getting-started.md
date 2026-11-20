@@ -111,7 +111,9 @@ palette sits under the map.
 3. Set the size in cells and the on-screen cell size: tile width and height in pixels for square
    maps, the side length for hex maps (new hex maps are regular, flat-topped hexes; pointy-topped
    maps made in Tiled open fine).
-4. Leave **Include default tileset** checked to start with a color tileset.
+4. Leave **Include default tileset** checked to start with a color tileset: **Coarse Detail**
+   (plains, forest, mountains…) for Town scale and larger, **Fine Detail** (grass, stone floor,
+   walls…) for Site scale and smaller.
 
 **File → Open…** (`Ctrl+O`) lists the maps of the active world set, or of **All world sets**.
 You can also upload a `.tmj` file from your device.
@@ -180,7 +182,7 @@ Below the layers is the **Elevation** section (see [Elevation](elevation.md)).
 
 **Edit → Manage Tilesets…** lists the map's tilesets:
 
-- **Load Built-in Default** — the color tileset for square or hex maps
+- **Add Coarse Detail** / **Add Fine Detail** — a built-in color tileset (see [Tilesets](tilesets.md#built-in-tilesets))
 - **Add from PNG…** — your own sprite sheet (name and tile size)
 - **Heights…** — base height and relief per terrain type (see [Elevation](elevation.md#heights-from-terrain))
 - **Remove** — only when no layer uses the tileset

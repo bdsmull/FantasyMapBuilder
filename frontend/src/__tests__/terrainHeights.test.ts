@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   tileTerrainHeight, terrainLookup, cellTerrain, heightsFromTerrain, hasTerrainHeights,
-  suggestTerrainHeight, withTerrainHeight, sampleNeighbours,
+  suggestTerrainHeight, withTerrainHeight, sampleNeighbours, terrainGaps, describeTerrainGaps,
 } from '../utils/terrainHeights';
+import { builtinTilesetFor, COARSE_DETAIL_TILESET, FINE_DETAIL_TILESET } from '../data/defaultTilesets';
 import { hexNeighbours } from '../utils/heightGrid';
 import { createPatch } from '../utils/heightGrid';
 import { useMapStore } from '../store/mapStore';
@@ -126,5 +127,48 @@ describe('setTileProperties (store)', () => {
     expect(tileTerrainHeight(t)).toEqual({ baseCm: 300, reliefCm: 100 });
     expect(s().isDirty).toBe(true);
     expect(s().mapData!.tilesets[0].tiles[0]).toBe(tileset.tiles[0]);
+  });
+});
+
+describe('terrain without base heights', () => {
+  // A second tileset (GIDs 5-6) with no height settings at all
+  const plain = {
+    firstgid: 5, name: 'Default Hex', tilewidth: 16, tileheight: 16, tilecount: 2, columns: 2, image: '',
+    tiles: [tile(0, 'Plains'), tile(1, 'Forest')],
+  };
+  const map = (data: number[], top?: number[]): TmjMap => ({
+    ...square(3, 2, [layer(1, 3, 2, data), ...(top ? [layer(2, 3, 2, top)] : [])]),
+    tilesets: [tileset, plain],
+  });
+
+  it('lists the painted types that left cells without a height, most cells first, and empty cells', () => {
+    const { gaps, emptyCells } = terrainGaps(map([5, 6, 6, 1, 3, 0]));
+    expect(gaps).toEqual([
+      { tileset: 'Default Hex', type: 'Forest', cells: 2 },
+      { tileset: 'Default Hex', type: 'Plains', cells: 1 },
+      { tileset: 'Terrain', type: 'Road', cells: 1 },
+    ]);
+    expect(emptyCells).toBe(1);
+    expect(describeTerrainGaps(gaps, emptyCells)).toBe(
+      'No base height for Forest, Plains (Default Hex); Road (Terrain): 4 cells kept their current height. '
+      + '1 unpainted cell kept its current height.',
+    );
+  });
+
+  it('a road over terrain with a height is not a gap; nothing missing says nothing', () => {
+    expect(terrainGaps(map([1, 2, 4, 1, 2, 4], [3, 3, 0, 0, 0, 0])).gaps).toEqual([]);
+    expect(describeTerrainGaps([], 0)).toBe('');
+  });
+});
+
+describe('built-in tilesets', () => {
+  it('Coarse Detail for Town scale and larger, Fine Detail for Site and smaller, else by shape', () => {
+    expect(COARSE_DETAIL_TILESET.name).toBe('Coarse Detail');
+    expect(FINE_DETAIL_TILESET.name).toBe('Fine Detail');
+    expect(builtinTilesetFor('town', 'orthogonal')).toBe(COARSE_DETAIL_TILESET);
+    expect(builtinTilesetFor('world', 'orthogonal')).toBe(COARSE_DETAIL_TILESET);
+    expect(builtinTilesetFor('site', 'hexagonal')).toBe(FINE_DETAIL_TILESET);
+    expect(builtinTilesetFor(undefined, 'hexagonal')).toBe(COARSE_DETAIL_TILESET);
+    expect(builtinTilesetFor('custom', 'orthogonal')).toBe(FINE_DETAIL_TILESET);
   });
 });

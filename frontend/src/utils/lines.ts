@@ -16,9 +16,12 @@ export interface Pt { x: number; y: number }
 
 export const WIDTHS_PROPERTY = 'widths';
 
-/** Whether an object is a line (a polyline with at least two points). */
+/** Polylines of this type are contour lines (elevation, see utils/contours.ts), not roads or rivers. */
+export const CONTOUR_TYPE = 'contour';
+
+/** Whether an object is a line: a polyline with at least two points that isn't a contour. */
 export function isLine(o: TmjObject): boolean {
-  return Array.isArray(o.polyline) && o.polyline.length >= 2;
+  return Array.isArray(o.polyline) && o.polyline.length >= 2 && o.type !== CONTOUR_TYPE;
 }
 
 /** A line's points in map pixels. */

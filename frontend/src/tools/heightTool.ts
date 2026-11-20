@@ -5,6 +5,7 @@
  *
  * In Spot mode it places spot heights instead: a click on an existing spot selects
  * it for editing, a click elsewhere adds one at the target height (and selects it).
+ * In Contour mode it draws and edits contour lines (see contourMode.ts).
  */
 
 import type { Tool, MapPoint } from './baseTool';
@@ -12,6 +13,7 @@ import { cellDistance } from '../utils/heightBrush';
 import { heightAt } from '../utils/heightGrid';
 import { readSpots, spotNear, DEFAULT_REACH_CELLS } from '../utils/spotHeights';
 import { useViewStore } from '../store/viewStore';
+import { contourPress, contourDrag, contourRelease, contourCancel } from './contourMode';
 
 /** Last position a dab was applied in the current stroke. */
 let _lastDab: MapPoint | null = null;
@@ -25,6 +27,7 @@ export const heightTool: Tool = {
 
   onPress(_col, _row, store, pos) {
     if (!pos || !store.heights || !store.mapData) return;
+    if (store.heightBrush.mode === 'contour') { contourPress(store, pos); return; }
     if (store.heightBrush.mode === 'spot') {
       const hit = spotNear(readSpots(store.mapData), pos.x, pos.y, SPOT_PICK_RADIUS_PX / store.zoom);
       const id = hit ? hit.id
@@ -37,6 +40,7 @@ export const heightTool: Tool = {
   },
 
   onDrag(_col, _row, store, pos) {
+    if (pos && store.heightBrush.mode === 'contour') { contourDrag(pos); return; }
     if (!pos || !_lastDab || !store.mapData) return;
     // Space dabs by a fraction of the radius so stroke strength doesn't depend
     // on how many pointer events the browser sends
@@ -46,7 +50,13 @@ export const heightTool: Tool = {
     store.applyHeightDab(pos.x, pos.y);
   },
 
+  onCancel(store) {
+    contourCancel();
+    if (_lastDab) { _lastDab = null; store.commitHeightStroke(); }
+  },
+
   onRelease(store) {
+    if (contourRelease(store)) return;
     if (!_lastDab) return;
     _lastDab = null;
     store.commitHeightStroke();
@@ -55,7 +65,8 @@ export const heightTool: Tool = {
   onRightPress(_col, _row, store, pos) {
     if (!pos || !store.mapData || !store.heights) return;
     const targetCm = Math.round(heightAt(store.mapData, store.heights, pos.x, pos.y));
-    // Spot mode keeps placing spots; painting modes switch to Set with the picked height
-    store.setHeightBrush(store.heightBrush.mode === 'spot' ? { targetCm } : { mode: 'set', targetCm });
+    // Spot and Contour modes take the height for new marks; painting modes switch to Set with it
+    const mode = store.heightBrush.mode;
+    store.setHeightBrush(mode === 'spot' ? { targetCm } : mode === 'contour' ? { contourCm: targetCm } : { mode: 'set', targetCm });
   },
 };

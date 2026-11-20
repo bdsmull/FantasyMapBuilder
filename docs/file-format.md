@@ -41,7 +41,9 @@ small and readable.
 | Tile | `heightBase`, `heightRelief` | float | Terrain height settings in meters ([Elevation](elevation.md#heights-from-terrain)) |
 | Object (point, type `spot height`) | `height` | float | Known ground height in meters |
 | Object (point, type `spot height`) | `reach` | float | How far it pulls the surface, in cells (default 10) |
-| Object (polyline) | type | — | Line class ID, e.g. `major-road`, `river` ([Roads & Rivers](roads-rivers.md)) |
+| Object (polyline or polygon, type `contour`) | `height` | float | Contour height in meters ([Elevation](elevation.md#contour-lines)) |
+| Object (polyline or polygon, type `contour`) | `reach` | float | How far it pulls the surface, in cells (default 10) |
+| Object (polyline) | type | — | Line class ID, e.g. `major-road`, `river` ([Roads & Rivers](roads-rivers.md)); `contour` is a contour line instead |
 | Object (polyline) | `widths` | string | Width in meters per point, comma-separated; blank = class width (e.g. `",,25,40"`) |
 | Object (polyline) | `refines` | string | `<map>#<object id>` of the line this one refines |
 

@@ -13,10 +13,11 @@ Heights can come from several sources, which combine on one surface:
 | [Heights from terrain](#heights-from-terrain) | A first surface from the terrain you've painted |
 | [Generate](#generate) | Natural-looking bumps on top |
 | [Spot heights](#spot-heights) | Known heights at points, such as a summit or a ford |
+| [Contour lines](#contour-lines) | Lines of known height, e.g. traced from a topographic map |
 | [Child maps](#across-maps) | More detailed maps refine their parent |
 
-Hand-painted heights are **protected**: terrain fills, generation and spot-height fitting
-leave them alone. The brush's **Release** mode removes that protection.
+Hand-painted heights are **protected**: terrain fills, generation and fitting to spots and
+contours leave them alone. The brush's **Release** mode removes that protection.
 
 ---
 
@@ -68,10 +69,11 @@ Select the **Height** tool (`5`). Its settings appear in the Elevation section:
 | Smooth | Even out bumps toward the neighbours |
 | Release | Remove protection from hand-set heights, without changing them |
 | Spot | Place spot heights instead of painting (see below) |
+| Contour | Draw contour lines instead of painting (see below) |
 
 **Radius** is in cells. Each press-drag-release stroke is one undo step. Right-click picks the
-height under the pointer as the Set target, but only on maps outside a world set: inside one,
-right-click opens the map menu.
+height under the pointer as the Set target (in Spot and Contour modes, as the height for new
+ones), but only on maps outside a world set: inside one, right-click opens the map menu.
 
 Heights are stored at cell **corners** on square maps and at hex **centres** on hex maps, and
 are smooth in between.
@@ -131,15 +133,53 @@ Spot heights are known heights at points, such as a summit, a ford or a well.
 1. Height tool → **Spot** mode.
 2. Set the **height** and **reach** (in cells) for new spots, then click the map to place one.
    Click a spot to select it and edit its name, height and reach, or delete it.
-3. Click **Fit to spot heights** in the Elevation section.
-
-Fitting **bends the current surface** so it passes exactly through every spot, keeping its
-shape (terrain, generated detail, painting). Each spot's pull fades to nothing at its reach;
-spots stay exact where reaches overlap. Hand-set heights are kept; if they stop a spot being
-met, the panel shows the remaining difference. One undo step.
+3. Click **Fit to spots & contours** in the Elevation section (see
+   [Fitting](#fitting-to-spots-and-contours)).
 
 Spots are Tiled point objects (type `spot height`) in a **Spot heights** layer, so Tiled and
 game exports can read them. They're drawn with their name and height.
+
+---
+
+## Contour lines
+
+Contour lines are lines of known height: trace them from a topographic map, or sketch the shape
+of a hill or a valley side.
+
+1. Height tool → **Contour** mode.
+2. Set the **height** and **reach** (in cells) for new contours. The **−** / **+** buttons step
+   the height by one contour interval of the map's scale, handy when tracing one line after
+   another.
+3. Click the map to add points; **double-click** or **Enter** finishes the line. Click the
+   **first point** again (it's drawn larger) to close a loop around a hilltop or a hollow.
+   **Backspace** removes the last point; **Esc** cancels.
+4. Click **Fit to spots & contours** in the Elevation section.
+
+Click a contour to select it: drag its points, drag a segment's midpoint to add a point, and
+**Delete** removes the selected point (or the whole contour when no point is selected). The
+panel edits its name, height and reach, and whether it's a **closed loop**. Every change is one
+undo step.
+
+Contours are drawn as thin brown lines labelled with their height. They're Tiled objects of
+type `contour` (a polyline, or a polygon when closed) in a **Contours** layer. They aren't roads
+or rivers: the Line tool and the Roads & rivers toggle ignore them.
+
+---
+
+## Fitting to spots and contours
+
+**Fit to spots & contours** **bends the current surface** so it passes through every spot
+height and follows every contour, keeping its shape (terrain, generated detail, painting). The
+bend is the smoothest one that fits, and it fades to nothing at each mark's **reach**:
+
+- Between contours closer than twice their reach, the ground rises smoothly from one to the
+  next. Set the reach to at least half the spacing of your contours.
+- Beyond the outermost contours it eases back into the existing ground within the reach.
+- Spots are met to the centimeter; contours to within a few centimeters where they curve tightly.
+
+Hand-set heights are kept. If they stop the surface meeting a mark, or contours cross or crowd
+each other, the panel shows the largest remaining difference. One undo step. On a large map
+with long contours it can take a second or two.
 
 ---
 

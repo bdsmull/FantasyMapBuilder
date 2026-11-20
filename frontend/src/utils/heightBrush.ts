@@ -12,8 +12,11 @@ import type { HeightPatch, CellRect } from './heightGrid';
 import { hexNeighbours } from './heightGrid';
 import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 
-/** 'spot' places and selects spot heights instead of painting (see utils/spotHeights.ts). */
-export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot';
+/**
+ * 'spot' places and selects spot heights, 'contour' draws and edits contour lines,
+ * instead of painting (see utils/spotHeights.ts and utils/contours.ts).
+ */
+export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot' | 'contour';
 
 export interface HeightBrush {
   mode: HeightBrushMode;
@@ -25,6 +28,10 @@ export interface HeightBrush {
   targetCm: number;
   /** Reach of new spot heights, in cells (default DEFAULT_REACH_CELLS). */
   spotReachCells?: number;
+  /** Height of new contour lines, in cm (default: the Set target). */
+  contourCm?: number;
+  /** Reach of new contour lines, in cells (default DEFAULT_REACH_CELLS). */
+  contourReachCells?: number;
 }
 
 export const DEFAULT_HEIGHT_BRUSH: HeightBrush = { mode: 'raise', radius: 2, strengthCm: 100, targetCm: 0 };
@@ -112,7 +119,7 @@ export function applyDab(
   brush: HeightBrush,
   beforeChange: (index: number) => void,
 ): CellRect | null {
-  if (brush.mode === 'spot') return null; // spot mode doesn't paint
+  if (brush.mode === 'spot' || brush.mode === 'contour') return null; // these modes don't paint
   const radius = Math.max(0.5, brush.radius);
   const samples = samplesInBrush(map, patch, x, y, radius);
   const snapshot = brush.mode === 'smooth' ? patch.cm.slice() : patch.cm;

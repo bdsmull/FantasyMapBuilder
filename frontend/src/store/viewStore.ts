@@ -33,6 +33,12 @@ export interface ViewStore {
   /** Object ID of the spot height being edited in the Height tool's Spot mode. */
   selectedSpotId: number | null;
   setSelectedSpotId: (id: number | null) => void;
+  /**
+   * Height tool, Contour mode: the selected contour (its point is `selectedPoint`). The
+   * contour being drawn and a point being dragged use `draftLine` and `dragPoints`.
+   */
+  selectedContourId: number | null;
+  selectContour: (id: number | null, point?: number | null) => void;
   /** Line tool: the selected line and point (index), the line being drawn, and the class for new lines. */
   selectedLineId: number | null;
   selectedPoint: number | null;
@@ -71,6 +77,8 @@ export const useViewStore = create<ViewStore>((set) => ({
   setInspected: (pos) => set({ inspected: pos }),
   selectedSpotId: null,
   setSelectedSpotId: (id) => set({ selectedSpotId: id }),
+  selectedContourId: null,
+  selectContour: (id, point = null) => set({ selectedContourId: id, selectedPoint: id === null ? null : point }),
   selectedLineId: null,
   selectedPoint: null,
   selectLine: (id, point = null) => set({ selectedLineId: id, selectedPoint: id === null ? null : point }),

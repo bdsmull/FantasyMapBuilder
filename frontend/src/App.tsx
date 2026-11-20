@@ -21,6 +21,7 @@ import { useWorldSetStore } from './store/worldSetStore';
 import { useViewStore } from './store/viewStore';
 import { lineToolKey } from './tools/lineTool';
 import { contourKey } from './tools/contourMode';
+import { waterKey } from './tools/waterMode';
 import { LineClassesDialog } from './components/dialogs/LineClassesDialog';
 
 type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | 'mapProperties' | null;
@@ -92,6 +93,7 @@ export const App: React.FC = () => {
       const state = useMapStore.getState();
       if (state.selectedTool === 'line' && lineToolKey(e.key, state)) { e.preventDefault(); return; }
       if (state.selectedTool === 'height' && state.heightBrush.mode === 'contour' && contourKey(e.key, state)) { e.preventDefault(); return; }
+      if (state.selectedTool === 'height' && state.heightBrush.mode === 'water' && waterKey(e.key, state)) { e.preventDefault(); return; }
       if (e.key === '6') { setTool('line'); return; }
       if (e.key === 'i' || e.key === 'I') { setTool('inspect'); return; }
       if (e.key === 'p' || e.key === 'P') { setShowPalette(!useViewStore.getState().showPalette); return; }

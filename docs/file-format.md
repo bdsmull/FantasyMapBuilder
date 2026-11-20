@@ -35,6 +35,7 @@ small and readable.
 | Map | `units` | string | `metric` or `imperial`; absent = the world set's default |
 | Map | `metersPerUnit` | float | Custom cell size in meters, used only when `scale` isn't a preset |
 | Map | `heights` | file | `../heights/<map>.tif` ([elevation](#elevation-files)) |
+| Map | `sea` | bool | `false` turns off the automatic sea below 0 m ([Elevation](elevation.md#lakes-and-seas)); absent = on |
 | Tileset | `mapeditor.swatch` | bool | The tileset's image is a generated color swatch; the real data is each tile's color |
 | Tile | `color_r`, `color_g`, `color_b` | int | Display color (color-only tilesets) |
 | Tile | `category` | string | `TERRAIN`, `WALL`, `OBJECT` or `SPECIAL` |
@@ -43,6 +44,7 @@ small and readable.
 | Object (point, type `spot height`) | `reach` | float | How far it pulls the surface, in cells (default 10) |
 | Object (polyline or polygon, type `contour`) | `height` | float | Contour height in meters ([Elevation](elevation.md#contour-lines)) |
 | Object (polyline or polygon, type `contour`) | `reach` | float | How far it pulls the surface, in cells (default 10) |
+| Object (point, type `water`) | `height` | float | A lake's or sea's surface height in meters ([Elevation](elevation.md#lakes-and-seas)) |
 | Object (polyline) | type | — | Line class ID, e.g. `major-road`, `river` ([Roads & Rivers](roads-rivers.md)); `contour` is a contour line instead |
 | Object (polyline) | `widths` | string | Width in meters per point, comma-separated; blank = class width (e.g. `",,25,40"`) |
 | Object (polyline) | `refines` | string | `<map>#<object id>` of the line this one refines |

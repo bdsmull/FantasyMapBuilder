@@ -12,16 +12,24 @@ import { hasTerrainHeights, heightsFromTerrain } from '../utils/terrainHeights';
 import { readSpots, spotTargets } from '../utils/spotHeights';
 import { readContours, contourTargets } from '../utils/contours';
 import { fitHeights } from '../utils/surfaceFit';
+import { seaEnabled } from '../utils/water';
+import { carveRivers, waterLines } from '../utils/carve';
+import { defaultStreamSamples } from '../utils/flow';
+import { readLines } from '../utils/lines';
+import { resolveLineClasses } from '../data/lineClasses';
+import { resolveMetersPerUnit } from '../data/mapScales';
 
 /**
  * Elevation section of the Layers panel: add or remove the map's elevation and
  * control how the overlay is shown. Heights are saved with the map (Ctrl+S).
  */
 export const ElevationPanel: React.FC = () => {
-  const { mapData, mapName, mapWorldSet, heights, elevationView, addElevation, removeElevation, setElevationView, selectedTool } = useMapStore();
+  const { mapData, mapName, mapWorldSet, heights, elevationView, addElevation, removeElevation, setElevationView, selectedTool, setSea } = useMapStore();
   const surface = useWorldSurfaceStore();
   const childNames = surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children.map((c) => c.node.name) : [];
   const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
+  const activeWorldSet = useWorldSetStore((s) => s.activeWorldSet);
+  const activeWorldSetName = useWorldSetStore((s) => s.activeWorldSetName);
   const [adding, setAdding] = useState(false);
   const [startHeight, setStartHeight] = useState('0');
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -157,6 +165,41 @@ export const ElevationPanel: React.FC = () => {
           </label>
         </div>
       )}
+      <div style={{ padding: '2px 8px', fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: '2px 10px' }}>
+        <label title="Show lakes and the sea, shaded by depth">
+          <input type="checkbox" checked={elevationView.water} onChange={(e) => setElevationView({ water: e.target.checked })} /> Water
+        </label>
+        <label title="Ground below 0 m that reaches the map's edge is sea. Saved with the map.">
+          <input type="checkbox" checked={seaEnabled(mapData)} onChange={(e) => setSea(e.target.checked)} /> Sea below 0 {unitLabel}
+        </label>
+        <label title="Show where rain would run (streams) and pool (hollows), worked out from the heights. Drawn rivers count as channels.">
+          <input type="checkbox" checked={elevationView.flow} onChange={(e) => setElevationView({ flow: e.target.checked })} /> Flow
+        </label>
+      </div>
+      {elevationView.flow && (() => {
+        const auto = defaultStreamSamples(heights.cols, heights.rows);
+        const value = elevationView.streamSamples ?? auto;
+        // Slider in log steps: right shows more (smaller) streams
+        const max = Math.log2(Math.max(64, heights.cols * heights.rows / 8));
+        return (
+          <div style={{ padding: '0 8px 2px', fontSize: 12 }}>
+            <label title={`A stream shows where at least ${value.toLocaleString('en-US')} cells drain through`}>
+              Streams: fewer{' '}
+              <input
+                type="range" min={1} max={max} step={0.25} value={max + 1 - Math.log2(value)}
+                onChange={(e) => setElevationView({ streamSamples: Math.round(2 ** (max + 1 - Number(e.target.value))) })}
+                style={{ width: 80, verticalAlign: 'middle' }}
+              />{' '}
+              more
+            </label>
+            {elevationView.streamSamples !== null && (
+              <button className="btn-secondary" style={{ fontSize: 10, marginLeft: 4, padding: '0 4px' }} onClick={() => setElevationView({ streamSamples: null })}>
+                Reset
+              </button>
+            )}
+          </div>
+        );
+      })()}
       {parentFit && (() => {
         const shift = rebaseShiftRange(mapData, heights, parentFit.fit, tilt);
         const fmt = (cm: number) => formatHeight(Math.round(Math.abs(cm)), units);
@@ -246,6 +289,32 @@ export const ElevationPanel: React.FC = () => {
               }}
             >
               {fitting ? 'Fitting…' : <>Fit to spots &amp; contours ({n})</>}
+            </button>
+          );
+        })()}
+        {' '}
+        {(() => {
+          const classes = resolveLineClasses(mapWorldSet === activeWorldSetName ? activeWorldSet?.lineClasses : undefined);
+          const rivers = waterLines(readLines(mapData), classes);
+          return (
+            <button
+              className="btn-secondary"
+              style={{ fontSize: 11 }}
+              disabled={rivers.length === 0}
+              title={rivers.length
+                ? 'Lower the ground along each drawn river, stream, brook and canal into a channel that falls all the way downstream (depth from its width). Hand-set heights are kept. Undoable.'
+                : 'No rivers drawn yet: draw them with the Line tool (River, Stream, Brook or Canal)'}
+              onClick={() => {
+                const { mapData: map, heights: patch } = useMapStore.getState();
+                if (!map || !patch) return;
+                const result = carveRivers(map, patch, rivers, classes, resolveMetersPerUnit(map, worldSetUnits) ?? null);
+                if (result.changed > 0) replaceHeights(result.cm);
+                setTerrainNote(result.changed > 0
+                  ? `Carved ${rivers.length} river${rivers.length === 1 ? '' : 's'}: lowered ${result.changed.toLocaleString('en-US')} heights.`
+                  : 'The rivers are already carved in.');
+              }}
+            >
+              Carve rivers ({rivers.length})
             </button>
           );
         })()}

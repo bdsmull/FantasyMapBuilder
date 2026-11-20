@@ -30,6 +30,9 @@ export interface ViewStore {
   /** Map-pixel point shown in the inspector, or null when it's closed. */
   inspected: MapPoint | null;
   setInspected: (pos: MapPoint | null) => void;
+  /** Object ID of the water body being edited in the Height tool's Water mode. */
+  selectedWaterId: number | null;
+  setSelectedWaterId: (id: number | null) => void;
   /** Object ID of the spot height being edited in the Height tool's Spot mode. */
   selectedSpotId: number | null;
   setSelectedSpotId: (id: number | null) => void;
@@ -75,6 +78,8 @@ export const useViewStore = create<ViewStore>((set) => ({
   },
   inspected: null,
   setInspected: (pos) => set({ inspected: pos }),
+  selectedWaterId: null,
+  setSelectedWaterId: (id) => set({ selectedWaterId: id }),
   selectedSpotId: null,
   setSelectedSpotId: (id) => set({ selectedSpotId: id }),
   selectedContourId: null,

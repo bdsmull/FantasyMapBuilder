@@ -47,8 +47,8 @@ parent and child maps. See [Roads & Rivers](roads-rivers.md#showing-lines).
 [bottom]
 ```
 
-The editor creates **Spot heights**, **Contours** and **Roads and rivers** object layers when
-you first add one of those.
+The editor creates **Spot heights**, **Contours**, **Water** and **Roads and rivers** object
+layers when you first add one of those.
 
 ---
 

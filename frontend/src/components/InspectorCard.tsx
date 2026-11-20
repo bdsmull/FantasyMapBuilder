@@ -9,6 +9,8 @@ import { formatHeight, heightAt } from '../utils/heightGrid';
 import { surfaceAt, pixelToCell } from '../utils/worldSurface';
 import { inspectAt } from '../utils/inspect';
 import type { ChildRect } from '../utils/worldSetUtils';
+import { waterAt } from '../utils/water';
+import { useWaterView } from './useWaterView';
 
 /** Screen pixels around a point object that count as clicking it. */
 const _PICK_RADIUS_PX = 10;
@@ -39,6 +41,7 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
   const { mapData, mapName, mapWorldSet, heights, zoom, elevationView } = useMapStore();
   const defaultUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
   const surface = useWorldSurfaceStore();
+  const waterView = useWaterView();
   if (!mapData || !inspected) return null;
 
   const info = inspectAt(mapData, inspected.x, inspected.y, _PICK_RADIUS_PX / zoom);
@@ -88,6 +91,17 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
           {elevation.handSet && <span style={{ color: '#888' }}> · hand-set</span>}
         </div>
       )}
+
+      {heights && waterView.water && info && (() => {
+        const w = waterAt(mapData, heights, waterView.water, waterView.bodies, inspected.x, inspected.y);
+        return w && (
+          <div style={_section}>
+            <div style={_label}>Water</div>
+            {w.name} · {formatHeight(w.depthCm, units)} deep
+            <span style={{ color: '#888' }}> · surface {formatHeight(w.surfaceCm, units)}</span>
+          </div>
+        );
+      })()}
 
       {info && (
         <div style={_section}>

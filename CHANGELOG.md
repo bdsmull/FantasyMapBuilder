@@ -12,7 +12,18 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
-- **Contour lines** (issue #8 phase 3d)
+- **Water** (issue #8 phase 4)
+  - Height tool → **Water** mode: a lake is a surface height placed in a basin and fills the
+    connected ground below it. Warnings when it's dry or spills over the map's edge. Stored as
+    Tiled points of type `water` in a **Water** layer.
+  - **Automatic sea**: ground below 0 m reaching the map's edge; **Sea below 0 m** turns it off per
+    map (map property `sea`).
+  - **Flow** view: streams where rain would run (following drawn rivers) and hollows where it
+    would pool, with a **Streams** detail slider.
+  - **Carve rivers**: cuts drawn water lines into the heights, with a bed that never rises
+    downstream.
+  - The Inspect tool shows the water at a point, with its depth.
+- **Contour lines** (#34, issue #8 phase 3d)
   - Height tool → **Contour** mode: draw lines of known height (open, or closed loops around
     hills and hollows) and edit their points, name, height and reach; − / + step the height by
     one contour interval. Stored as Tiled polylines or polygons of type `contour` in a
@@ -77,6 +88,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 - The frontend's `package.json`, lockfile and `tsconfig` are committed; a blanket `*.json`
   ignore rule had kept them out of git, so a fresh clone couldn't build (#27).
 - Disabled secondary buttons now look disabled (#25).
+- The Layers panel scrolls as a whole, with its header pinned, so tall tool controls (such
+  as the Height tool's Water mode) no longer push the rest of the panel out of reach.
 
 ---
 

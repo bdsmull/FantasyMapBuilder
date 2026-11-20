@@ -20,6 +20,7 @@ import type { HeightBrush } from '../utils/heightBrush';
 import { DEFAULT_HEIGHT_BRUSH, applyDab } from '../utils/heightBrush';
 import { SPOT_LAYER, SPOT_TYPE, isSpot, spotProperties } from '../utils/spotHeights';
 import { isLine, toPolyline, writeWidths } from '../utils/lines';
+import { WATER_LAYER, WATER_TYPE, isWaterBody, waterProperties, withSea } from '../utils/water';
 import { CONTOUR_LAYER, CONTOUR_TYPE, isContour, contourPoints, contourShape, minContourPoints } from '../utils/contours';
 import type { Pt } from '../utils/lines';
 
@@ -42,6 +43,12 @@ export interface ElevationView {
   hillshade: boolean;
   /** Show child maps' heights inside their footprints (the assembled surface). */
   showChildren: boolean;
+  /** Show lakes and the sea. */
+  water: boolean;
+  /** Show where rain would run (streams) and pool (hollows). */
+  flow: boolean;
+  /** A stream shows where at least this many height samples drain through (null: a default for the map size). */
+  streamSamples: number | null;
 }
 import { MAP_SCALE_BY_ID } from '../data/mapScales';
 
@@ -146,6 +153,14 @@ export interface MapStore {
   addSpotHeight: (x: number, y: number, cm: number, reachCells: number) => number | null;
   updateSpotHeight: (id: number, changes: { name?: string; cm?: number; reachCells?: number }) => void;
   deleteSpotHeight: (id: number) => void;
+
+  // ---- Water bodies (each change is one undo step) ----
+  /** Add a water body (lake, sea) at map pixel (x, y) to the "Water" layer (created if needed); returns its object ID. */
+  addWaterBody: (x: number, y: number, cm: number) => number | null;
+  updateWaterBody: (id: number, changes: { name?: string; cm?: number; x?: number; y?: number }) => void;
+  deleteWaterBody: (id: number) => void;
+  /** Turn the automatic sea (ground below 0 m connected to the map's edge) on or off for this map. */
+  setSea: (on: boolean) => void;
 
   // ---- Contour lines (each change is one undo step) ----
   /** Add a contour (map-pixel points) to the "Contours" layer (created if needed); returns its object ID. */
@@ -332,7 +347,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
   pendingTiles: [],
   heights: null,
   heightsDirty: false,
-  elevationView: { visible: true, opacity: 0.6, hillshade: true, showChildren: true },
+  elevationView: { visible: true, opacity: 0.6, hillshade: true, showChildren: true, water: true, flow: false, streamSamples: null },
   heightBrush: DEFAULT_HEIGHT_BRUSH,
   heightsRev: 0,
   pendingHeights: new Map(),
@@ -537,6 +552,61 @@ export const useMapStore = create<MapStore>((set, get) => ({
       return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
     });
     if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  addWaterBody: (x, y, cm) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return null;
+    const id = mapData.nextobjectid;
+    const body: TmjObject = {
+      id, name: '', type: WATER_TYPE, x, y, width: 0, height: 0, visible: true, point: true, properties: waterProperties([], cm),
+    };
+    const top = _topObjectLayer(mapData, WATER_LAYER, '#3d7fd1');
+    const layers = updateObjectLayer(top.layers, top.index, (objects) => [...objects, body]);
+    _commitLayers(set, get, layers, activeLayerIndex, top.nextlayerid);
+    set((state) => ({ mapData: state.mapData && { ...state.mapData, nextobjectid: id + 1 } }));
+    return id;
+  },
+
+  updateWaterBody: (id, changes) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isWaterBody(o))) return layer;
+      found = true;
+      return {
+        ...layer,
+        objects: layer.objects.map((o) => {
+          if (o.id !== id) return o;
+          const height = Number(o.properties?.find((p) => p.name === 'height')?.value);
+          return {
+            ...o, name: changes.name ?? o.name, x: changes.x ?? o.x, y: changes.y ?? o.y,
+            properties: waterProperties(o.properties, changes.cm ?? Math.round(height * 100)),
+          };
+        }),
+      };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  deleteWaterBody: (id) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isWaterBody(o))) return layer;
+      found = true;
+      return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  setSea: (on) => {
+    const { mapData } = get();
+    if (!mapData) return;
+    const properties = withSea(mapData.properties, on);
+    set({ mapData: { ...mapData, ...(properties.length ? { properties } : { properties: undefined }) }, isDirty: true });
   },
 
   addContour: (points, closed, cm, reachCells) => {

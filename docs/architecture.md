@@ -63,10 +63,10 @@ FantasyMapBuilder/
 │   │   ├── viewStore.ts         # Palette, inspector, selections, Roads & rivers toggle
 │   │   └── cursorStore.ts       # Pointer position (for the status bar)
 │   ├── canvas/                  # tileRenderer, hexRenderer, hexGeometry, elevationOverlay,
-│   │                            # lineRenderer, footprintOverlay, canvasUtils
+│   │                            # waterOverlay, lineRenderer, footprintOverlay, canvasUtils
 │   ├── tools/                   # inspect, paint, erase, fill, point, height, line
 │   ├── utils/                   # heightGrid, heightBrush, terrainHeights, heightGeneration,
-│   │                            # spotHeights, contours, surfaceFit, elevationFit,
+│   │                            # spotHeights, contours, surfaceFit, water, flow, carve, elevationFit,
 │   │                            # worldSurface, worldSetUtils,
 │   │                            # lines, crossScaleLines, inspect, importPlan, navigation, …
 │   ├── components/              # MapCanvas, panels, dialogs, data-loading hooks

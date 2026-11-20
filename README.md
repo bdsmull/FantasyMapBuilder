@@ -24,6 +24,8 @@ works from other devices on the same network, such as an iPad.
 - **Elevation** — a height surface per map: paint it, build it from terrain types, generate
   natural detail, fit it to known spot heights and traced contour lines, and see child maps'
   heights on their parents
+- **Water** — lakes and seas that fill their basins, an automatic sea below 0 m, streams and
+  hollows worked out from the heights, and drawn rivers carved into the ground
 - **Roads and rivers** — drawn as lines with real-world widths; lines show across map scales
   and can be copied down to a more detailed map and refined there
 - **Inspect tool** — click anywhere to see terrain, elevation, objects and child maps
@@ -108,7 +110,7 @@ The data folder is not committed to git.
 ```bash
 pip install -r requirements-dev.txt
 pytest                         # Python: models, TMJ I/O and API (253 tests)
-cd frontend && npm test        # Frontend: Vitest (361 tests)
+cd frontend && npm test        # Frontend: Vitest (373 tests)
 ```
 
 ---

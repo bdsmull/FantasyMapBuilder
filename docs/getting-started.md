@@ -129,7 +129,7 @@ You can also upload a `.tmj` file from your device.
 | **Erase** | `2` | Clear tiles |
 | **Fill** | `3` | Flood-fill a connected area of the same tile |
 | **Point** | `4` | Place a point object; right-click removes the nearest (on maps outside a world set; inside one, right-click opens the map menu) |
-| **Height** | `5` | Paint elevation, or place spot heights and draw contour lines (needs elevation on the map; see [Elevation](elevation.md)) |
+| **Height** | `5` | Paint elevation, place spot heights, draw contour lines, or place lakes and seas (needs elevation on the map; see [Elevation](elevation.md)) |
 | **Line** | `6` | Draw and edit roads and rivers (see [Roads & Rivers](roads-rivers.md)) |
 
 ### Navigating the map
@@ -144,7 +144,7 @@ You can also upload a `.tmj` file from your device.
 ### Undo and redo
 
 `Ctrl+Z` and `Ctrl+Y` (or the toolbar). Every edit is undoable: tiles, objects, layer changes,
-heights, spot heights, contours and lines.
+heights, spot heights, contours, water and lines.
 
 ---
 

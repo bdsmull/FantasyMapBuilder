@@ -5,6 +5,7 @@ import type { HeightBrushMode } from '../utils/heightBrush';
 import { formatHeight, parseHeightToCm } from '../utils/heightGrid';
 import { SpotHeightControls } from './SpotHeightControls';
 import { ContourControls } from './ContourControls';
+import { WaterControls } from './WaterControls';
 
 const _MODES: { mode: HeightBrushMode; label: string; hint: string }[] = [
   { mode: 'raise', label: 'Raise', hint: 'Raise the ground, strongest at the centre' },
@@ -14,6 +15,7 @@ const _MODES: { mode: HeightBrushMode; label: string; hint: string }[] = [
   { mode: 'release', label: 'Release', hint: 'Unprotect hand-set heights without changing them' },
   { mode: 'spot', label: 'Spot', hint: 'Place and edit spot heights (known heights at points)' },
   { mode: 'contour', label: 'Contour', hint: 'Draw and edit contour lines (lines of known height)' },
+  { mode: 'water', label: 'Water', hint: 'Place lakes and seas (a surface height that fills the basin)' },
 ];
 
 /** A height typed in the map's units, applied when it parses. */
@@ -60,7 +62,8 @@ export const HeightBrushControls: React.FC<{ units: UnitSystem }> = ({ units }) 
         ))}
       </div>
       {heightBrush.mode === 'spot' ? <SpotHeightControls units={units} />
-        : heightBrush.mode === 'contour' ? <ContourControls units={units} /> : (<>
+        : heightBrush.mode === 'contour' ? <ContourControls units={units} />
+        : heightBrush.mode === 'water' ? <WaterControls units={units} /> : (<>
       <label style={{ display: 'block', marginBottom: 4 }} title="Brush radius in cells">
         Radius{' '}
         <input

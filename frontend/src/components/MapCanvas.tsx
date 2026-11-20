@@ -35,6 +35,7 @@ import { useViewStore } from '../store/viewStore';
 import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
 import { readSpots } from '../utils/spotHeights';
+import { readContours, contourPath } from '../utils/contours';
 import { formatHeight } from '../utils/heightGrid';
 import { hexTopLeft, hexPolygon } from '../canvas/hexGeometry';
 import { renderFootprintOverlay, footprintAtPoint } from '../canvas/footprintOverlay';
@@ -91,7 +92,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const surfaceOverrides = surface.key === surfaceKey(store.mapWorldSet, store.mapName) ? surface.overrides : null;
   const inspected = useViewStore((s) => s.inspected);
   const selectedSpotId = useViewStore((s) => s.selectedSpotId);
-  const { selectedLineId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
+  const { selectedLineId, selectedContourId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
   // Roads and rivers from ancestor and descendant maps (when they belong to this map)
   const cross = useCrossScaleStore();
   const refinementChecks = useRefinementChecks();
@@ -109,6 +110,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const v = useViewStore.getState();
     v.selectLine(null); v.setDraftLine(null); v.setDragPoints(null); v.setSelectedGhost(null);
   }, [store.mapName, store.mapWorldSet, store.selectedTool === 'line']);
+  // Contour selection and drafts belong to the open map and the Height tool's Contour mode
+  const contourMode = store.selectedTool === 'height' && store.heightBrush.mode === 'contour';
+  useEffect(() => {
+    const v = useViewStore.getState();
+    v.selectContour(null);
+    if (!contourMode && v.draftLine && store.selectedTool !== 'line') v.setDraftLine(null);
+    v.setDragPoints(null);
+  }, [store.mapName, store.mapWorldSet, contourMode]); // eslint-disable-line react-hooks/exhaustive-deps
   // Choosing the Line tool shows roads and rivers, so you never edit lines you can't see
   useEffect(() => {
     if (store.selectedTool === 'line') useViewStore.getState().setShowLines(true);
@@ -237,8 +246,45 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       renderedFootprintsRef.current = [];
     }
 
+    // Contour lines (in visible layers): a thin brown line with its height
+    const shownLayers = new Set(map.layers.map((l, i) => (l.visible ? i : -1)));
+    const contours = readContours(map).filter((c) => shownLayers.has(c.layerIndex));
+    if (contours.length) {
+      const units = resolveUnits(map, defaultUnits);
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      ctx.lineJoin = 'round';
+      ctx.font = "600 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const c of contours) {
+        const path = contourPath(c);
+        ctx.beginPath();
+        path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.stroke();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = c.id === selectedContourId ? '#ffd400' : '#5b3716';
+        ctx.stroke();
+        // The height label halfway along the line
+        const lens = path.slice(1).map((p, i) => Math.hypot(p.x - path[i].x, p.y - path[i].y));
+        let left = lens.reduce((a, b) => a + b, 0) / 2, k = 0;
+        while (k < lens.length - 1 && left > lens[k]) left -= lens[k++];
+        const t = lens[k] ? left / lens[k] : 0;
+        const lx = (path[k].x + (path[k + 1].x - path[k].x) * t) * view.zoom, ly = (path[k].y + (path[k + 1].y - path[k].y) * t) * view.zoom;
+        const label = `${c.name ? c.name + ' ' : ''}${formatHeight(c.cm, units)}`;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeText(label, lx, ly);
+        ctx.fillStyle = c.id === selectedContourId ? '#ffd400' : '#f3e2c7';
+        ctx.fillText(label, lx, ly);
+      }
+      ctx.restore();
+    }
+
     // Spot heights: a triangle and the height, on top of everything
-    const spotLayers = new Set(map.layers.map((l, i) => (l.visible ? i : -1)));
+    const spotLayers = shownLayers;
     const spots = readSpots(map).filter((s) => spotLayers.has(s.layerIndex));
     if (spots.length) {
       const units = resolveUnits(map, defaultUnits);
@@ -308,7 +354,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.restore();
     }
 
-    if (draftLine || selectedLineId !== null) {
+    if (draftLine || selectedLineId !== null || selectedContourId !== null) {
       ctx.save();
       ctx.translate(view.pan.x, view.pan.y);
       const z = view.zoom;
@@ -328,11 +374,16 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * z, p.y * z) : ctx.lineTo(p.x * z, p.y * z)));
         ctx.stroke();
         ctx.setLineDash([]);
-        draftLine.forEach((p) => handle(p, '#ffd400', 3));
+        // In Contour mode a bigger first point shows where to click to close the loop
+        draftLine.forEach((p, i) => handle(p, '#ffd400', i === 0 && contourMode && draftLine.length >= 3 ? 5 : 3));
       } else {
-        const line = readLines(map).find((l) => l.id === selectedLineId);
-        if (line) {
-          const pts = dragPoints ?? linePoints(line.object);
+        // The selected line, or contour (a closed one gets its closing segment's handle too)
+        const line = selectedLineId !== null ? readLines(map).find((l) => l.id === selectedLineId) : undefined;
+        const contour = selectedContourId !== null ? readContours(map).find((c) => c.id === selectedContourId) : undefined;
+        const editPts = line ? linePoints(line.object) : contour?.points;
+        if (editPts) {
+          const own = dragPoints ?? editPts;
+          const pts = contour ? contourPath({ points: own, closed: contour.closed }) : own;
           ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
           ctx.lineWidth = 1.5;
           ctx.setLineDash([4, 3]);
@@ -347,7 +398,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
             ctx.fillStyle = 'rgba(255,255,255,0.6)';
             ctx.fill();
           }
-          pts.forEach((p, i) => handle(p, i === selectedPoint ? '#ffd400' : '#fff'));
+          own.forEach((p, i) => handle(p, i === selectedPoint ? '#ffd400' : '#fff'));
         }
       }
       ctx.restore();
@@ -376,7 +427,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedLineId, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

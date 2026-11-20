@@ -117,12 +117,14 @@ export function hexNeighbours(map: TmjMap, col: number, row: number): { col: num
     .sort((a, b) => Math.atan2(a.y - c.y, a.x - c.x) - Math.atan2(b.y - c.y, b.x - c.x));
 }
 
-/** Height (cm) at a hex-map pixel: interpolated in the triangle of the hex centre and two neighbours. */
-function hexHeightAt(map: TmjMap, p: HeightPatch, x: number, y: number): number {
+/**
+ * The hex samples a hex-map pixel's height is read from, with their weights: the
+ * triangle of the hex centre and two neighbours that holds the point.
+ */
+export function hexHeightWeights(map: TmjMap, x: number, y: number): { col: number; row: number; w: number }[] {
   const layout = hexLayout(map);
   const { col, row } = pixelToHex(layout, x, y, map.width, map.height);
   const c = hexCenter(layout, col, row);
-  const hc = _sample(p, col, row);
   const ns = hexNeighbours(map, col, row);
   for (let i = 0; i < ns.length; i++) {
     const a = ns[i];
@@ -134,10 +136,17 @@ function hexHeightAt(map: TmjMap, p: HeightPatch, x: number, y: number): number 
     const w2 = ((b.y - c.y) * (x - b.x) + (c.x - b.x) * (y - b.y)) / det;
     const w3 = 1 - w1 - w2;
     if (w1 >= -1e-9 && w2 >= -1e-9 && w3 >= -1e-9) {
-      return w1 * hc + w2 * _sample(p, a.col, a.row) + w3 * _sample(p, b.col, b.row);
+      return [{ col, row, w: w1 }, { col: a.col, row: a.row, w: w2 }, { col: b.col, row: b.row, w: w3 }];
     }
   }
-  return hc; // map edge: no surrounding triangle
+  return [{ col, row, w: 1 }]; // map edge: no surrounding triangle
+}
+
+/** Height (cm) at a hex-map pixel: interpolated in the triangle of the hex centre and two neighbours. */
+function hexHeightAt(map: TmjMap, p: HeightPatch, x: number, y: number): number {
+  let h = 0;
+  for (const s of hexHeightWeights(map, x, y)) h += s.w * _sample(p, s.col, s.row);
+  return h;
 }
 
 /** Height (cm, fractional) at a map pixel position. */

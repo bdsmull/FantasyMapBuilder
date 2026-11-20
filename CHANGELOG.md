@@ -12,7 +12,15 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
-- **Mismatch flags for refined roads and rivers** (issue #6)
+- **Contour lines** (issue #8 phase 3d)
+  - Height tool → **Contour** mode: draw lines of known height (open, or closed loops around
+    hills and hollows) and edit their points, name, height and reach; − / + step the height by
+    one contour interval. Stored as Tiled polylines or polygons of type `contour` in a
+    **Contours** layer.
+  - **Fit to spots & contours** (was *Fit to spot heights*) bends the surface through spot
+    heights and along contours together; between nearby contours the ground rises smoothly
+    from one to the next.
+- **Mismatch flags for refined roads and rivers** (#33, issue #6)
   - A copy refined on a child map is checked against its original at the child's edge: its ends
     should meet the original's crossings (within two child cells).
   - Flagged with rings on the map, a message and **Snap ends to the original** in the Line panel,
@@ -62,6 +70,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   one row per line (#14).
 - Hex geometry matches Tiled's exactly everywhere (#15).
 - Footprint outlines keep a constant on-screen width at every zoom (#32).
+- Spot heights are fitted with the same smoothest-bend method as contours (issue #8 phase 3d):
+  still exact at each spot and fading out at its reach, with a slightly smoother shape.
 
 ### Fixed
 - The frontend's `package.json`, lockfile and `tsconfig` are committed; a blanket `*.json`

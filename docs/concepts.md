@@ -49,7 +49,8 @@ editor gives some objects special meaning:
 | Object | Meaning |
 |---|---|
 | Point of type `spot height` | A known ground height ([Elevation](elevation.md#spot-heights)) |
-| Polyline | A road or river ([Roads & Rivers](roads-rivers.md)) |
+| Polyline or polygon of type `contour` | A line of known ground height ([Elevation](elevation.md#contour-lines)) |
+| Other polylines | A road or river ([Roads & Rivers](roads-rivers.md)) |
 
 See [Objects](objects.md).
 
@@ -58,7 +59,8 @@ See [Objects](objects.md).
 ## Elevation
 
 A map can have a **height surface** (absolute, to the centimeter), stored alongside the map. It
-can be painted, built from terrain, generated, and pinned with spot heights, and it is shared
+can be painted, built from terrain, generated, and fitted to spot heights and contour lines,
+and it is shared
 across a world set's maps. See [Elevation](elevation.md).
 
 ---

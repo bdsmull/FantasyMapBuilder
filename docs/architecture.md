@@ -66,7 +66,8 @@ FantasyMapBuilder/
 │   │                            # lineRenderer, footprintOverlay, canvasUtils
 │   ├── tools/                   # inspect, paint, erase, fill, point, height, line
 │   ├── utils/                   # heightGrid, heightBrush, terrainHeights, heightGeneration,
-│   │                            # spotHeights, elevationFit, worldSurface, worldSetUtils,
+│   │                            # spotHeights, contours, surfaceFit, elevationFit,
+│   │                            # worldSurface, worldSetUtils,
 │   │                            # lines, crossScaleLines, inspect, importPlan, navigation, …
 │   ├── components/              # MapCanvas, panels, dialogs, data-loading hooks
 │   └── __tests__/               # Vitest

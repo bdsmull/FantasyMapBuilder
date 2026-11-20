@@ -22,7 +22,8 @@ works from other devices on the same network, such as an iPad.
 - **Tilesets** — built-in color tilesets or your own PNG sprite sheets, shared by every map in a
   world set as Tiled external tilesets
 - **Elevation** — a height surface per map: paint it, build it from terrain types, generate
-  natural detail, pin known spot heights, and see child maps' heights on their parents
+  natural detail, fit it to known spot heights and traced contour lines, and see child maps'
+  heights on their parents
 - **Roads and rivers** — drawn as lines with real-world widths; lines show across map scales
   and can be copied down to a more detailed map and refined there
 - **Inspect tool** — click anywhere to see terrain, elevation, objects and child maps
@@ -107,7 +108,7 @@ The data folder is not committed to git.
 ```bash
 pip install -r requirements-dev.txt
 pytest                         # Python: models, TMJ I/O and API (253 tests)
-cd frontend && npm test        # Frontend: Vitest (350 tests)
+cd frontend && npm test        # Frontend: Vitest (361 tests)
 ```
 
 ---

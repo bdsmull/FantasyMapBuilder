@@ -29,6 +29,7 @@ name; the color follows the object's type.
 | Place a point | **Point** tool (`4`): click the map. Right-click removes the nearest point, on maps outside a world set; inside one, right-click opens the map menu |
 | See an object's details | **Inspect** tool (`I`): click it to see its name, type, shape, layer and custom properties |
 | Spot heights | **Height** tool → Spot mode ([Elevation](elevation.md#spot-heights)) |
+| Contour lines | **Height** tool → Contour mode ([Elevation](elevation.md#contour-lines)) |
 | Roads and rivers | **Line** tool (`6`) ([Roads & Rivers](roads-rivers.md)) |
 | Snap a child map to a place | Right-click the point on the parent → **Move &lt;child&gt; to &lt;point&gt;** ([World Sets](world-sets.md#exact-placement)) |
 
@@ -42,6 +43,7 @@ Tiled and the editor shows them.
 | Object | Type / properties | Meaning |
 |---|---|---|
 | Spot height | point, type `spot height`; `height` (m), `reach` (cells) | A known ground height |
+| Contour | polyline or polygon (closed), type `contour`; `height` (m), `reach` (cells) | A line of known ground height |
 | Road or river | polyline, type = class ID (e.g. `major-road`); optional `widths`, `refines` | A line with real-world width |
 
 All other objects are kept exactly as they are. See

@@ -9,7 +9,9 @@ import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { useEdgeFits } from './useEdgeFits';
 import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
 import { hasTerrainHeights, heightsFromTerrain } from '../utils/terrainHeights';
-import { readSpots, fitToSpots } from '../utils/spotHeights';
+import { readSpots, spotTargets } from '../utils/spotHeights';
+import { readContours, contourTargets } from '../utils/contours';
+import { fitHeights } from '../utils/surfaceFit';
 
 /**
  * Elevation section of the Layers panel: add or remove the map's elevation and
@@ -29,6 +31,7 @@ export const ElevationPanel: React.FC = () => {
   const [terrainNote, setTerrainNote] = useState('');
   const [addNote, setAddNote] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [fitting, setFitting] = useState(false);
   useEffect(() => { setTerrainNote(''); setAddNote(''); }, [mapName, heights]);
 
   if (!mapData) return null;
@@ -211,28 +214,38 @@ export const ElevationPanel: React.FC = () => {
         </button>{' '}
         {(() => {
           const spots = readSpots(mapData);
+          const contours = readContours(mapData);
+          const n = spots.length + contours.length;
+          const plural = (k: number, word: string) => `${k} ${word}${k === 1 ? '' : 's'}`;
+          const what = [spots.length ? plural(spots.length, 'spot height') : '', contours.length ? plural(contours.length, 'contour') : '']
+            .filter(Boolean).join(' and ');
           return (
             <button
               className="btn-secondary"
               style={{ fontSize: 11 }}
-              disabled={spots.length === 0}
-              title={spots.length
-                ? 'Bend the surface so it passes through every spot height, keeping its shape. Hand-set heights are kept. Undoable.'
-                : 'No spot heights yet: add them with the Height tool in Spot mode'}
+              disabled={n === 0 || fitting}
+              title={n
+                ? 'Bend the surface so it passes through every spot height and follows every contour, keeping its shape. Hand-set heights are kept. Undoable.'
+                : 'No spot heights or contours yet: add them with the Height tool in Spot or Contour mode'}
               onClick={() => {
-                const { mapData: map, heights: patch } = useMapStore.getState();
-                if (!map || !patch) return;
-                const result = fitToSpots(map, patch, spots);
-                if (result.changed > 0) replaceHeights(result.cm);
-                const miss = result.maxMissCm >= 50
-                  ? ` Largest remaining difference ${formatHeight(result.maxMissCm, units)} (hand-set heights hold the surface there).`
-                  : '';
-                setTerrainNote(result.changed > 0
-                  ? `Fitted to ${spots.length} spot height${spots.length === 1 ? '' : 's'}.${miss}`
-                  : `The surface already passes through the spot heights.${miss}`);
+                // Let the button show "Fitting…" before the work (a second or two on a large map)
+                setFitting(true);
+                setTimeout(() => {
+                  setFitting(false);
+                  const { mapData: map, heights: patch } = useMapStore.getState();
+                  if (!map || !patch) return;
+                  const result = fitHeights(map, patch, [...spotTargets(spots), ...contourTargets(map, contours)]);
+                  if (result.changed > 0) replaceHeights(result.cm);
+                  const miss = result.maxMissCm >= 50
+                    ? ` Largest remaining difference ${formatHeight(result.maxMissCm, units)} (hand-set heights, or contours that cross or crowd each other).`
+                    : '';
+                  setTerrainNote(result.changed > 0
+                    ? `Fitted to ${what}.${miss}`
+                    : `The surface already matches the ${what}.${miss}`);
+                }, 30);
               }}
             >
-              Fit to spot heights ({spots.length})
+              {fitting ? 'Fitting…' : <>Fit to spots &amp; contours ({n})</>}
             </button>
           );
         })()}

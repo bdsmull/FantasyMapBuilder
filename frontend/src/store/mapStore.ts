@@ -20,6 +20,7 @@ import type { HeightBrush } from '../utils/heightBrush';
 import { DEFAULT_HEIGHT_BRUSH, applyDab } from '../utils/heightBrush';
 import { SPOT_LAYER, SPOT_TYPE, isSpot, spotProperties } from '../utils/spotHeights';
 import { isLine, toPolyline, writeWidths } from '../utils/lines';
+import { CONTOUR_LAYER, CONTOUR_TYPE, isContour, contourPoints, contourShape, minContourPoints } from '../utils/contours';
 import type { Pt } from '../utils/lines';
 
 /** Object layer new lines go into when the active layer isn't an object layer. */
@@ -145,6 +146,12 @@ export interface MapStore {
   addSpotHeight: (x: number, y: number, cm: number, reachCells: number) => number | null;
   updateSpotHeight: (id: number, changes: { name?: string; cm?: number; reachCells?: number }) => void;
   deleteSpotHeight: (id: number) => void;
+
+  // ---- Contour lines (each change is one undo step) ----
+  /** Add a contour (map-pixel points) to the "Contours" layer (created if needed); returns its object ID. */
+  addContour: (points: Pt[], closed: boolean, cm: number, reachCells: number) => number | null;
+  updateContour: (id: number, changes: { name?: string; cm?: number; reachCells?: number; points?: Pt[]; closed?: boolean }) => void;
+  deleteContour: (id: number) => void;
 
   // ---- Lines: roads and rivers (each change is one undo step) ----
   /**
@@ -272,6 +279,20 @@ function _uniqueLayerName(layers: TmjLayer[], base: string): string {
 type StoreSet = (partial: Partial<MapStore> | ((state: MapStore) => Partial<MapStore>)) => void;
 
 /** Apply a layer structure change as one undo step. */
+/** The map's layers with a named object layer on top (added if missing), and that layer's index. */
+function _topObjectLayer(mapData: TmjMap, name: string, color: string): { layers: TmjLayer[]; index: number; nextlayerid: number } {
+  const index = mapData.layers.findIndex((l) => isObjectLayer(l) && l.name === name);
+  if (index >= 0) return { layers: mapData.layers, index, nextlayerid: mapData.nextlayerid };
+  return {
+    layers: [...mapData.layers, {
+      type: 'objectgroup', id: mapData.nextlayerid, name, visible: true, opacity: 1, offsetx: 0, offsety: 0,
+      color, draworder: 'topdown', objects: [],
+    }],
+    index: mapData.layers.length,
+    nextlayerid: mapData.nextlayerid + 1,
+  };
+}
+
 function _commitLayers(set: StoreSet, get: () => MapStore, layers: TmjLayer[], active: number, nextlayerid: number): void {
   const { mapData, activeLayerIndex, past } = get();
   if (!mapData) return;
@@ -469,19 +490,10 @@ export const useMapStore = create<MapStore>((set, get) => ({
       id, name: '', type: SPOT_TYPE, x, y, width: 0, height: 0, visible: true, point: true,
       properties: spotProperties([], cm, reachCells),
     };
-    let index = mapData.layers.findIndex((l) => isObjectLayer(l) && l.name === SPOT_LAYER);
-    let layers = mapData.layers;
-    let nextlayerid = mapData.nextlayerid;
-    if (index < 0) {
-      // On top, so spots are drawn over everything
-      layers = [...layers, {
-        type: 'objectgroup', id: nextlayerid, name: SPOT_LAYER, visible: true, opacity: 1, offsetx: 0, offsety: 0,
-        color: '#ffd400', draworder: 'topdown', objects: [],
-      }];
-      index = layers.length - 1;
-      nextlayerid += 1;
-    }
-    layers = updateObjectLayer(layers, index, (objects) => [...objects, spot]);
+    // On top, so spots are drawn over everything
+    const top = _topObjectLayer(mapData, SPOT_LAYER, '#ffd400');
+    const { nextlayerid } = top;
+    const layers = updateObjectLayer(top.layers, top.index, (objects) => [...objects, spot]);
     _commitLayers(set, get, layers, activeLayerIndex, nextlayerid);
     set((state) => ({ mapData: state.mapData && { ...state.mapData, nextobjectid: id + 1 } }));
     return id;
@@ -521,6 +533,63 @@ export const useMapStore = create<MapStore>((set, get) => ({
     let found = false;
     const layers = mapData.layers.map((layer) => {
       if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isSpot(o))) return layer;
+      found = true;
+      return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  addContour: (points, closed, cm, reachCells) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData || points.length < minContourPoints(closed)) return null;
+    const id = mapData.nextobjectid;
+    const contour: TmjObject = {
+      id, name: '', type: CONTOUR_TYPE, width: 0, height: 0, visible: true, ...contourShape(points, closed),
+      properties: spotProperties([], cm, reachCells),
+    };
+    const top = _topObjectLayer(mapData, CONTOUR_LAYER, '#8a5a2b');
+    const layers = updateObjectLayer(top.layers, top.index, (objects) => [...objects, contour]);
+    _commitLayers(set, get, layers, activeLayerIndex, top.nextlayerid);
+    set((state) => ({ mapData: state.mapData && { ...state.mapData, nextobjectid: id + 1 } }));
+    return id;
+  },
+
+  updateContour: (id, changes) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isContour(o))) return layer;
+      return {
+        ...layer,
+        objects: layer.objects.map((o) => {
+          if (o.id !== id) return o;
+          const closed = changes.closed ?? !!o.polygon;
+          const points = changes.points ?? contourPoints(o);
+          if (points.length < minContourPoints(closed)) return o; // too few points for that shape
+          found = true;
+          const height = o.properties?.find((p) => p.name === 'height')?.value;
+          const reach = o.properties?.find((p) => p.name === 'reach')?.value;
+          const next: TmjObject = {
+            ...o,
+            name: changes.name ?? o.name,
+            properties: spotProperties(o.properties, changes.cm ?? Math.round(Number(height) * 100), changes.reachCells ?? Number(reach ?? 10)),
+          };
+          delete next.polyline;
+          delete next.polygon;
+          return { ...next, ...contourShape(points, closed) };
+        }),
+      };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  deleteContour: (id) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isContour(o))) return layer;
       found = true;
       return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
     });

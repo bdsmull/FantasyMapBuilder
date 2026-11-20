@@ -5,7 +5,7 @@ import type { UnitSystem } from '../data/mapScales';
 import { formatHeight, parseHeightToCm } from '../utils/heightGrid';
 import { readSpots, DEFAULT_REACH_CELLS, MIN_REACH_CELLS } from '../utils/spotHeights';
 
-const _parseReach = (text: string): number | null => {
+export const parseReach = (text: string): number | null => {
   const v = Number(text.replace(/,/g, '').trim());
   return text.trim() !== '' && Number.isFinite(v) && v >= MIN_REACH_CELLS ? v : null;
 };
@@ -15,7 +15,7 @@ const _parseReach = (text: string): number | null => {
  * you type (for settings); with `commit="blur"` only on Enter or leaving the field,
  * so editing an object is one undo step rather than one per keystroke.
  */
-function ValueField<T>({ value, format, parse, onChange, commit, title, width = 70 }: {
+export function ValueField<T>({ value, format, parse, onChange, commit, title, width = 70 }: {
   value: T; format: (v: T) => string; parse: (text: string) => T | null;
   onChange: (v: T) => void; commit: 'change' | 'blur'; title: string; width?: number;
 }) {
@@ -63,7 +63,7 @@ export const SpotHeightControls: React.FC<{ units: UnitSystem }> = ({ units }) =
       </label>
       <label style={{ display: 'block', marginBottom: 6 }}>
         reach (cells){' '}
-        <ValueField value={heightBrush.spotReachCells ?? DEFAULT_REACH_CELLS} format={String} parse={_parseReach} commit="change" width={50}
+        <ValueField value={heightBrush.spotReachCells ?? DEFAULT_REACH_CELLS} format={String} parse={parseReach} commit="change" width={50}
           title="How far new spots pull the surface when fitting, in cells" onChange={(c) => setHeightBrush({ spotReachCells: c })} />
       </label>
 
@@ -82,7 +82,7 @@ export const SpotHeightControls: React.FC<{ units: UnitSystem }> = ({ units }) =
           </label>
           <label style={{ display: 'block', marginBottom: 4 }}>
             Reach (cells){' '}
-            <ValueField value={selected.reachCells} format={String} parse={_parseReach} commit="blur" width={50}
+            <ValueField value={selected.reachCells} format={String} parse={parseReach} commit="blur" width={50}
               title="How far this spot pulls the surface (Enter to apply)" onChange={(c) => updateSpotHeight(selected.id, { reachCells: c })} />
           </label>
           <button className="btn-danger" style={{ fontSize: 11 }} onClick={() => { deleteSpotHeight(selected.id); setSelected(null); }}>
@@ -93,7 +93,7 @@ export const SpotHeightControls: React.FC<{ units: UnitSystem }> = ({ units }) =
         <div style={{ color: '#888' }}>{spots.length} spot height{spots.length === 1 ? '' : 's'} on this map.</div>
       )}
       <div style={{ color: '#888', marginTop: 4 }}>
-        Spots change nothing until you use "Fit to spot heights" above.
+        Spots change nothing until you use "Fit to spots &amp; contours" above.
       </div>
     </div>
   );

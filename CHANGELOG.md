@@ -72,8 +72,15 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 - Footprint outlines keep a constant on-screen width at every zoom (#32).
 - Spot heights are fitted with the same smoothest-bend method as contours (issue #8 phase 3d):
   still exact at each spot and fading out at its reach, with a slightly smoother shape.
+- The built-in tilesets are named by level of detail instead of map shape: **Coarse Detail**
+  (was *Default Hex*; landscape types) and **Fine Detail** (was *Default Tile*; ground, floors,
+  walls, objects). New maps get the one that suits their scale; the tileset dialog offers both.
+  Existing world sets keep their tilesets.
 
 ### Fixed
+- **Heights from terrain** (and **Add from terrain**) now warn which painted terrain types have
+  no base height, in which tileset, and how many cells kept their height, instead of silently
+  leaving them at the starting height.
 - The frontend's `package.json`, lockfile and `tsconfig` are committed; a blanket `*.json`
   ignore rule had kept them out of git, so a fresh clone couldn't build (#27).
 - Disabled secondary buttons now look disabled (#25).

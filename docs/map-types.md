@@ -88,7 +88,7 @@ tile_map = TileMap.create_new(
 ```
 
 `create_new` adds a `Ground` tile layer, an `Objects` object layer and the built-in
-placeholder tileset.
+placeholder tileset (Fine Detail for `TileMap`, Coarse Detail for `HexMap`).
 
 ### `HexMap`
 

@@ -99,7 +99,11 @@ the terrain under it. Hand-set heights are kept; places with no terrain settings
 height. One undo step.
 
 The settings are stored in the world set's shared tileset, so a terrain type means the same on
-every map. If nothing happens, the panel explains why, e.g. no base heights set yet.
+every map. If nothing happens, the panel explains why, e.g. no base heights set yet. If some
+painted types have no base height, the panel warns which ones (and in which tileset) and how
+many cells kept their height, e.g. *No base height for Plains, Forest (Coarse Detail): 3,456
+cells kept their current height*. A map often uses several tilesets; each needs its own
+settings.
 
 ---
 

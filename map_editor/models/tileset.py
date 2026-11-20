@@ -209,18 +209,18 @@ class Tileset:
 # ---------------------------------------------------------------------------
 
 def make_default_tile_tileset(output_dir: Optional[Path] = None) -> Tileset:
-    """Return the default tile-grid placeholder tileset."""
+    """Return the "Fine Detail" placeholder tileset (ground, floors, walls, objects)."""
     return Tileset.make_placeholder(
-        name="Default Tile",
+        name="Fine Detail",
         tile_defs=_PLACEHOLDER_TILES,
         output_dir=output_dir,
     )
 
 
 def make_default_hex_tileset(output_dir: Optional[Path] = None) -> Tileset:
-    """Return the default hex-grid placeholder tileset."""
+    """Return the "Coarse Detail" placeholder tileset (landscape types), drawn as hexes."""
     return Tileset.make_placeholder(
-        name="Default Hex",
+        name="Coarse Detail",
         tile_defs=_PLACEHOLDER_HEX_TILES,
         output_dir=output_dir,
         hex_shaped=True,

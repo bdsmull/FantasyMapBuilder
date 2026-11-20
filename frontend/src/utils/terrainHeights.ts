@@ -10,7 +10,8 @@
  * "Heights from terrain" sets each height sample from the terrain around it, then
  * smooths across boundaries so different types meet in slopes, not cliffs. Hand-set
  * (masked) samples are kept and hold the surface around them in place; samples with
- * no terrain settings nearby keep their current height.
+ * no terrain settings nearby keep their current height (terrainGaps lists the painted
+ * types responsible, so the panel can say so).
  */
 
 import type { TmjMap, TmjTileEntry, TmjProperty } from '../types/tmj';
@@ -188,6 +189,66 @@ export function heightsFromTerrain(map: TmjMap, patch: HeightPatch): { cm: Int32
   }
   if (changed > 0) smoothSamples(map, cols, rows, out, free);
   return { cm: out, changed };
+}
+
+/** Painted terrain with no base height: a tile type, its tileset, and the cells it leaves without one. */
+export interface TerrainGap {
+  tileset: string;
+  type: string;
+  cells: number;
+}
+
+/**
+ * What "Heights from terrain" can't set: for each cell where no tile layer gives a base
+ * height, the topmost painted tile there (by type, most cells first), and how many cells
+ * have no tile at all. Those places keep their current height.
+ */
+export function terrainGaps(map: TmjMap): { gaps: TerrainGap[]; emptyCells: number } {
+  const cells = cellTerrain(map);
+  const layers = map.layers.filter(isTileLayer);
+  const sets = [...map.tilesets].sort((a, b) => b.firstgid - a.firstgid);
+  const byKey = new Map<string, TerrainGap>();
+  let emptyCells = 0;
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i]) continue;
+    let gid = 0;
+    for (let l = layers.length - 1; l >= 0 && !gid; l--) gid = (layers[l].data[i] ?? 0) & _GID_MASK;
+    if (!gid) { emptyCells++; continue; }
+    const ts = sets.find((s) => s.firstgid <= gid);
+    const localId = ts ? gid - ts.firstgid : gid;
+    const type = ts?.tiles?.find((t) => t.id === localId)?.type || `Tile ${localId + 1}`;
+    const tileset = ts?.name ?? '?';
+    const key = `${tileset}\u0000${type}`;
+    const gap = byKey.get(key);
+    if (gap) gap.cells++;
+    else byKey.set(key, { tileset, type, cells: 1 });
+  }
+  return { gaps: [...byKey.values()].sort((a, b) => b.cells - a.cells), emptyCells };
+}
+
+/** Most terrain types named in a gap note; the rest are counted. */
+const _MAX_NAMED_GAPS = 6;
+
+/**
+ * A note on what heights from terrain left alone, e.g. 'No base height for Plains, Forest
+ * (Default Regional): 3,456 cells kept their current height.' Empty when nothing was missed.
+ */
+export function describeTerrainGaps(gaps: TerrainGap[], emptyCells: number): string {
+  const n = (k: number) => k.toLocaleString('en-US');
+  const kept = (k: number, what: string) => `${n(k)} ${what}${k === 1 ? ' kept its' : 's kept their'} current height.`;
+  const parts: string[] = [];
+  if (gaps.length) {
+    const named = gaps.slice(0, _MAX_NAMED_GAPS);
+    // Group the named types by tileset: "Plains, Forest (Default Regional)"
+    const bySet = new Map<string, string[]>();
+    for (const g of named) bySet.set(g.tileset, [...(bySet.get(g.tileset) ?? []), g.type]);
+    const list = [...bySet].map(([ts, types]) => `${types.join(', ')} (${ts})`).join('; ');
+    const more = gaps.length > named.length ? ` and ${gaps.length - named.length} more type${gaps.length - named.length === 1 ? '' : 's'}` : '';
+    const cells = gaps.reduce((s, g) => s + g.cells, 0);
+    parts.push(`No base height for ${list}${more}: ${kept(cells, 'cell')}`);
+  }
+  if (emptyCells) parts.push(kept(emptyCells, 'unpainted cell'));
+  return parts.join(' ');
 }
 
 // ---------------------------------------------------------------------------

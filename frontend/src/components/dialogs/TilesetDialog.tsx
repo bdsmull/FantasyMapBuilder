@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMapStore } from '../../store/mapStore';
 import type { TmjTileset, TmjTileEntry } from '../../types/tmj';
 import { isTileLayer } from '../../types/tmj';
-import { DEFAULT_TILE_TILESET, DEFAULT_HEX_TILESET } from '../../data/defaultTilesets';
+import { BUILTIN_TILESETS, builtinTilesetFor } from '../../data/defaultTilesets';
 import { uploadTilesetImage } from '../../api/client';
 import { useWorldSetStore } from '../../store/worldSetStore';
 import { resolveUnits } from '../../data/mapScales';
@@ -20,9 +20,7 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
 
   if (!mapData) return null;
 
-  const handleLoadBuiltin = () => {
-    const isHex = mapData.orientation === 'hexagonal';
-    const template = isHex ? DEFAULT_HEX_TILESET : DEFAULT_TILE_TILESET;
+  const handleLoadBuiltin = (template: TmjTileset) => {
     const alreadyLoaded = mapData.tilesets.some((ts) => ts.name === template.name);
     if (alreadyLoaded) {
       setError(`"${template.name}" is already loaded.`);
@@ -169,9 +167,19 @@ export const TilesetDialog: React.FC<Props> = ({ onClose }) => {
         })()}
 
         <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn-secondary" onClick={handleLoadBuiltin}>
-            Load Built-in Default
-          </button>
+          {/* The built-in that suits this map's scale first */}
+          {[...BUILTIN_TILESETS].sort((a) => (a === builtinTilesetFor(mapData.scale, mapData.orientation) ? -1 : 1)).map((t) => (
+            <button
+              key={t.name}
+              className="btn-secondary"
+              onClick={() => handleLoadBuiltin(t)}
+              title={t.name === 'Coarse Detail'
+                ? 'Landscape types (plains, forest, hills, mountains, ocean…) for Town scale and larger'
+                : 'Ground, floors, walls and objects (grass, stone floor, tree, door…) for Site scale and smaller'}
+            >
+              Add {t.name}
+            </button>
+          ))}
           <label className="btn-secondary">
             Add from PNG…
             <input type="file" accept="image/*" onChange={handleAdd} style={{ display: 'none' }} />

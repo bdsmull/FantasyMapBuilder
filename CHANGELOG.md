@@ -88,6 +88,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 - The frontend's `package.json`, lockfile and `tsconfig` are committed; a blanket `*.json`
   ignore rule had kept them out of git, so a fresh clone couldn't build (#27).
 - Disabled secondary buttons now look disabled (#25).
+- The Layers panel scrolls as a whole, with its header pinned, so tall tool controls (such
+  as the Height tool's Water mode) no longer push the rest of the panel out of reach.
 
 ---
 

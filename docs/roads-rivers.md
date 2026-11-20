@@ -107,6 +107,11 @@ The links show both ways:
 
 If the original is edited later, the copy keeps its own shape.
 
+!!! note "Rivers and the ground"
+    On a map with elevation, **Carve rivers** cuts the drawn rivers, streams, brooks and canals
+    into the heights, and the **Flow** view treats them as channels
+    (see [Elevation → Water](elevation.md#carving-rivers)).
+
 ### When a copy no longer meets its original
 
 A refined copy can take its own course inside its map, but where it leaves the map it should

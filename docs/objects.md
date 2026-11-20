@@ -30,6 +30,7 @@ name; the color follows the object's type.
 | See an object's details | **Inspect** tool (`I`): click it to see its name, type, shape, layer and custom properties |
 | Spot heights | **Height** tool → Spot mode ([Elevation](elevation.md#spot-heights)) |
 | Contour lines | **Height** tool → Contour mode ([Elevation](elevation.md#contour-lines)) |
+| Lakes and seas | **Height** tool → Water mode ([Elevation](elevation.md#lakes-and-seas)) |
 | Roads and rivers | **Line** tool (`6`) ([Roads & Rivers](roads-rivers.md)) |
 | Snap a child map to a place | Right-click the point on the parent → **Move &lt;child&gt; to &lt;point&gt;** ([World Sets](world-sets.md#exact-placement)) |
 
@@ -44,6 +45,7 @@ Tiled and the editor shows them.
 |---|---|---|
 | Spot height | point, type `spot height`; `height` (m), `reach` (cells) | A known ground height |
 | Contour | polyline or polygon (closed), type `contour`; `height` (m), `reach` (cells) | A line of known ground height |
+| Water | point, type `water`; `height` (m) | A lake or sea: water fills the basin around it up to this surface |
 | Road or river | polyline, type = class ID (e.g. `major-road`); optional `widths`, `refines` | A line with real-world width |
 
 All other objects are kept exactly as they are. See

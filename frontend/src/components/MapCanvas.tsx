@@ -36,6 +36,8 @@ import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
 import { readSpots } from '../utils/spotHeights';
 import { readContours, contourPath } from '../utils/contours';
+import { renderWaterOverlay } from '../canvas/waterOverlay';
+import { useWaterView } from './useWaterView';
 import { formatHeight } from '../utils/heightGrid';
 import { hexTopLeft, hexPolygon } from '../canvas/hexGeometry';
 import { renderFootprintOverlay, footprintAtPoint } from '../canvas/footprintOverlay';
@@ -92,6 +94,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const surfaceOverrides = surface.key === surfaceKey(store.mapWorldSet, store.mapName) ? surface.overrides : null;
   const inspected = useViewStore((s) => s.inspected);
   const selectedSpotId = useViewStore((s) => s.selectedSpotId);
+  const selectedWaterId = useViewStore((s) => s.selectedWaterId);
+  // Lakes, the sea, and (when shown) streams and hollows
+  const waterView = useWaterView();
   const { selectedLineId, selectedContourId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
   // Roads and rivers from ancestor and descendant maps (when they belong to this map)
   const cross = useCrossScaleStore();
@@ -118,6 +123,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     if (!contourMode && v.draftLine && store.selectedTool !== 'line') v.setDraftLine(null);
     v.setDragPoints(null);
   }, [store.mapName, store.mapWorldSet, contourMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A water body selection belongs to the open map and the Height tool's Water mode
+  const waterMode = store.selectedTool === 'height' && store.heightBrush.mode === 'water';
+  useEffect(() => { useViewStore.getState().setSelectedWaterId(null); }, [store.mapName, store.mapWorldSet, waterMode]);
   // Choosing the Line tool shows roads and rivers, so you never edit lines you can't see
   useEffect(() => {
     if (store.selectedTool === 'line') useViewStore.getState().setShowLines(true);
@@ -221,6 +229,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
             intervalCm: bandIntervalCm(map.scale, resolveUnits(map, defaultUnits)),
           });
         }
+        // Water over the ground, under roads and rivers (from the map's own heights)
+        if (heights && waterView.water && (elevationView.water || elevationView.flow)) {
+          renderWaterOverlay(c, map, heights, waterView.water, waterView.flow, view.zoom, view.pan, {
+            water: elevationView.water, flow: elevationView.flow, streamSamples: waterView.streamSamples,
+          });
+        }
         drawLines(c);
       },
     };
@@ -280,6 +294,41 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         ctx.fillStyle = c.id === selectedContourId ? '#ffd400' : '#f3e2c7';
         ctx.fillText(label, lx, ly);
       }
+      ctx.restore();
+    }
+
+    // Water bodies: a blue disc with the name and surface height
+    const waterBodies = waterView.bodies.filter((b) => shownLayers.has(b.layerIndex));
+    if (waterBodies.length) {
+      const units = resolveUnits(map, defaultUnits);
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.textBaseline = 'middle';
+      waterBodies.forEach((b) => {
+        const sel = b.id === selectedWaterId;
+        const at = sel && waterMode && dragPoints ? dragPoints[0] : b;
+        const x = at.x * view.zoom, y = at.y * view.zoom;
+        const fill = waterView.water?.fills[waterView.bodies.indexOf(b)];
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = sel ? '#ffd400' : fill?.dry ? '#9aa4ad' : '#3d7fd1';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.fill(); ctx.stroke();
+        // A small wave across the disc
+        ctx.beginPath();
+        ctx.moveTo(x - 4, y); ctx.quadraticCurveTo(x - 2, y - 2.5, x, y); ctx.quadraticCurveTo(x + 2, y + 2.5, x + 4, y);
+        ctx.strokeStyle = sel ? '#000' : '#fff';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        const label = `${b.name ? b.name + ' ' : ''}${formatHeight(b.cm, units)}${fill?.dry ? ' (dry)' : ''}`;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeText(label, x + 9, y);
+        ctx.fillStyle = sel ? '#ffd400' : '#cfe6ff';
+        ctx.fillText(label, x + 9, y);
+      });
       ctx.restore();
     }
 
@@ -382,7 +431,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         const contour = selectedContourId !== null ? readContours(map).find((c) => c.id === selectedContourId) : undefined;
         const editPts = line ? linePoints(line.object) : contour?.points;
         if (editPts) {
-          const own = dragPoints ?? editPts;
+          const own = (!waterMode && dragPoints) || editPts;
           const pts = contour ? contourPath({ points: own, closed: contour.closed }) : own;
           ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
           ctx.lineWidth = 1.5;
@@ -427,7 +476,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, waterMode, waterView, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

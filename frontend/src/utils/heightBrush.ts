@@ -14,9 +14,13 @@ import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 
 /**
  * 'spot' places and selects spot heights, 'contour' draws and edits contour lines,
- * instead of painting (see utils/spotHeights.ts and utils/contours.ts).
+ * 'water' places lakes and seas, instead of painting (see utils/spotHeights.ts,
+ * utils/contours.ts and utils/water.ts).
  */
-export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot' | 'contour';
+export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot' | 'contour' | 'water';
+
+/** Modes that place or edit marks instead of painting heights. */
+export const MARK_MODES: HeightBrushMode[] = ['spot', 'contour', 'water'];
 
 export interface HeightBrush {
   mode: HeightBrushMode;
@@ -32,6 +36,8 @@ export interface HeightBrush {
   contourCm?: number;
   /** Reach of new contour lines, in cells (default DEFAULT_REACH_CELLS). */
   contourReachCells?: number;
+  /** Surface height of new water bodies, in cm (default: the Set target). */
+  waterCm?: number;
 }
 
 export const DEFAULT_HEIGHT_BRUSH: HeightBrush = { mode: 'raise', radius: 2, strengthCm: 100, targetCm: 0 };
@@ -119,7 +125,7 @@ export function applyDab(
   brush: HeightBrush,
   beforeChange: (index: number) => void,
 ): CellRect | null {
-  if (brush.mode === 'spot' || brush.mode === 'contour') return null; // these modes don't paint
+  if (MARK_MODES.includes(brush.mode)) return null; // these modes don't paint
   const radius = Math.max(0.5, brush.radius);
   const samples = samplesInBrush(map, patch, x, y, radius);
   const snapshot = brush.mode === 'smooth' ? patch.cm.slice() : patch.cm;

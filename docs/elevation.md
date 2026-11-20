@@ -3,7 +3,7 @@
 Each map can have a **height surface**: absolute ground height (sea level = 0) everywhere on
 the map, from the sea floor to mountain tops, to the centimeter. It's shown as colored
 contour bands with hillshading, read out under the cursor, and connected across the maps of a
-world set.
+world set. [Water](#water) (lakes, the sea, and where rain would run) follows from it.
 
 Heights can come from several sources, which combine on one surface:
 
@@ -41,6 +41,9 @@ In the **Elevation** section of the left panel, click **Add elevation…**, then
 | Opacity | How strongly the overlay covers the tiles |
 | Hillshade | Shade slopes as if lit from the north-west |
 | Show child maps | Show child maps' heights inside their footprints (see [Across maps](#across-maps)) |
+| Water | Show lakes and the sea, shaded by depth (see [Water](#water)) |
+| Sea below 0 m | The automatic sea for this map (saved with the map) |
+| Flow | Show streams where rain would run and hollows where it would pool; **Streams** sets how many |
 
 **Colors.** Maps that span more than 500 m of height, or go below sea level, use absolute
 colors (blues below sea level; greens, tans, browns, greys and white with height). Flatter maps
@@ -70,10 +73,11 @@ Select the **Height** tool (`5`). Its settings appear in the Elevation section:
 | Release | Remove protection from hand-set heights, without changing them |
 | Spot | Place spot heights instead of painting (see below) |
 | Contour | Draw contour lines instead of painting (see below) |
+| Water | Place lakes and seas instead of painting (see [Water](#water)) |
 
 **Radius** is in cells. Each press-drag-release stroke is one undo step. Right-click picks the
-height under the pointer as the Set target (in Spot and Contour modes, as the height for new
-ones), but only on maps outside a world set: inside one, right-click opens the map menu.
+height under the pointer as the Set target (in Spot, Contour and Water modes, as the height for
+new ones), but only on maps outside a world set: inside one, right-click opens the map menu.
 
 Heights are stored at cell **corners** on square maps and at hex **centres** on hex maps, and
 are smooth in between.
@@ -184,6 +188,61 @@ bend is the smoothest one that fits, and it fades to nothing at each mark's **re
 Hand-set heights are kept. If they stop the surface meeting a mark, or contours cross or crowd
 each other, the panel shows the largest remaining difference. One undo step. On a large map
 with long contours it can take a second or two.
+
+---
+
+## Water
+
+### Lakes and seas
+
+A lake is a **surface height** placed in a basin: the water fills every place connected to that
+point whose ground is lower, the way a real lake fills its basin, so its shore follows the
+ground.
+
+1. Height tool → **Water** mode.
+2. Set the **surface** height for new water (right-click picks the height under the pointer).
+3. Click in the basin.
+
+Click a lake's marker to select it: edit its name and surface, drag it to another basin, or
+delete it (**Delete**). The panel shows how much it covers and how deep it gets, and warns when:
+
+- it's **dry**: the ground at the marker is above the surface (its marker turns grey);
+- it **reaches the map's edge**: on this map's ground it would spill beyond the map, usually
+  because the surface is above the lowest point of the basin's rim.
+
+**The sea** needs no marker: ground below 0 m that connects to the map's edge is sea. An inland
+basin below sea level stays dry unless you place water in it. **Sea below 0 m** in the Elevation
+section turns the automatic sea off for a map (for an inland map whose edge dips below 0 m).
+
+Water is shaded by depth, light when shallow and dark when deep. The **Inspect** tool shows the
+water at a point: which lake (or the sea), how deep, and its surface. Water is worked out from
+each map's own heights (child maps' heights shown on a parent don't change it).
+
+Lakes are Tiled point objects of type `water` with a `height` (the surface, in meters) in a
+**Water** layer; the sea switch is the map's `sea` property.
+
+### Where rain would run
+
+Tick **Flow** to see streams and hollows worked out from the heights:
+
+- **Streams** show where enough ground drains through a place, getting wider downstream. The
+  **Streams** slider shows fewer (only the big ones) or more.
+- **Hollows** (pale blue) are places with no way out, where water would pool.
+
+Flow runs into lakes and the sea and off the map's edge, and follows drawn rivers as channels.
+It's a view only: nothing is stored and the heights don't change.
+
+### Carving rivers
+
+**Carve rivers** cuts each drawn river, stream, brook and canal (see
+[Roads & Rivers](roads-rivers.md)) into the heights, so the ground and the drawn rivers agree:
+
+- the bed is a tenth of the river's width below the ground along it (between 0.3 m and 5 m), and
+  it never rises downstream (from the river's higher end to its lower one);
+- heights within half the river's width of it, and at least the nearest ones on a coarse map,
+  are lowered to the bed. Nothing is raised.
+
+Hand-set heights are kept; one undo step. Roads are not carved.
 
 ---
 

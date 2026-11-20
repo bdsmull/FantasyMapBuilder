@@ -149,8 +149,12 @@ body {
 .panel-empty { padding: 12px 10px; color: #666; font-size: 12px; }
 
 /* Layer panel */
-.layer-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-.layer-list { list-style: none; flex: 1; overflow-y: auto; }
+/* The whole panel scrolls (layers, roads & rivers, elevation and tool controls), so tall
+   tool controls never push anything out of reach; the header stays pinned. */
+.layer-panel { display: flex; flex-direction: column; flex: 1; overflow-y: auto; }
+.layer-panel > * { flex-shrink: 0; }
+.layer-panel > .panel-header { position: sticky; top: 0; z-index: 1; background: #1e1e1e; }
+.layer-list { list-style: none; }
 .layer-item {
   display: flex;
   align-items: center;

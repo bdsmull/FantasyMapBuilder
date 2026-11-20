@@ -232,6 +232,20 @@ Tick **Flow** to see streams and hollows worked out from the heights:
 Flow runs into lakes and the sea and off the map's edge, and follows drawn rivers as channels.
 It's a view only: nothing is stored and the heights don't change.
 
+### Turning a stream into a river
+
+With **Flow** shown, Water mode has a **Convert to River** button. Press it, then click on a
+stream (the one under the pointer is highlighted first; Esc cancels). It becomes a drawn river
+line:
+
+- from where the stream begins (following its main branch, the one with the most water) down to
+  where it ends: a lake or the sea, the map's edge, or a river already drawn (it ends exactly on
+  that river);
+- its type comes from the land draining into it: a **brook** under 10 km², a **stream** under
+  100 km², otherwise a **river** (a stream on maps without a scale; with a world set's own
+  waterways, the narrowest, middle or widest);
+- one undo step. It's an ordinary river from then on: edit, retype or carve it like one you drew.
+
 ### Carving rivers
 
 **Carve rivers** cuts each drawn river, stream, brook and canal (see

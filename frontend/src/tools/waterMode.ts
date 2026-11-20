@@ -52,9 +52,10 @@ export function waterRelease(store: MapStore): boolean {
   return drag !== null;
 }
 
-/** Keyboard for Water mode: Esc deselects, Delete removes the selected body. Returns true when used. */
+/** Keyboard for Water mode: Esc stops Convert to River or deselects, Delete removes the selected body. Returns true when used. */
 export function waterKey(key: string, store: MapStore): boolean {
   const view = _view();
+  if (view.convertingStream && key === 'Escape') { view.setConvertingStream(false); return true; }
   if (view.selectedWaterId === null) return false;
   if (key === 'Escape') { view.setSelectedWaterId(null); return true; }
   if (key !== 'Delete' && key !== 'Backspace') return false;

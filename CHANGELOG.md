@@ -22,6 +22,9 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
     would pool, with a **Streams** detail slider.
   - **Carve rivers**: cuts drawn water lines into the heights, with a bed that never rises
     downstream.
+  - **Convert to River** (issue #39): click a Flow stream to make it a drawn river, from where it
+    begins to where it ends (a lake or the sea, the map's edge, or a drawn river), typed as a
+    brook, stream or river by the land draining into it.
   - The Inspect tool shows the water at a point, with its depth.
 - **Contour lines** (#34, issue #8 phase 3d)
   - Height tool → **Contour** mode: draw lines of known height (open, or closed loops around

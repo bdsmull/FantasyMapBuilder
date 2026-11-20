@@ -110,7 +110,9 @@ If the original is edited later, the copy keeps its own shape.
 !!! note "Rivers and the ground"
     On a map with elevation, **Carve rivers** cuts the drawn rivers, streams, brooks and canals
     into the heights, and the **Flow** view treats them as channels
-    (see [Elevation → Water](elevation.md#carving-rivers)).
+    (see [Elevation → Water](elevation.md#carving-rivers)). **Convert to River** turns a stream
+    from the Flow view into a drawn river
+    (see [Turning a stream into a river](elevation.md#turning-a-stream-into-a-river)).
 
 ### When a copy no longer meets its original
 

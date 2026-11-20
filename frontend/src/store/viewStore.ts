@@ -33,6 +33,12 @@ export interface ViewStore {
   /** Object ID of the water body being edited in the Height tool's Water mode. */
   selectedWaterId: number | null;
   setSelectedWaterId: (id: number | null) => void;
+  /** Water mode, "Convert to River": the next click on a Flow stream makes it a drawn river. */
+  convertingStream: boolean;
+  setConvertingStream: (on: boolean) => void;
+  /** What the last Convert to River click did (shown in the Water panel), '' for nothing. */
+  streamNote: string;
+  setStreamNote: (note: string) => void;
   /** Object ID of the spot height being edited in the Height tool's Spot mode. */
   selectedSpotId: number | null;
   setSelectedSpotId: (id: number | null) => void;
@@ -80,6 +86,10 @@ export const useViewStore = create<ViewStore>((set) => ({
   setInspected: (pos) => set({ inspected: pos }),
   selectedWaterId: null,
   setSelectedWaterId: (id) => set({ selectedWaterId: id }),
+  convertingStream: false,
+  setConvertingStream: (on) => set({ convertingStream: on }),
+  streamNote: '',
+  setStreamNote: (note) => set({ streamNote: note }),
   selectedSpotId: null,
   setSelectedSpotId: (id) => set({ selectedSpotId: id }),
   selectedContourId: null,

@@ -31,6 +31,8 @@ import { useRefinementChecks } from './useRefinementChecks';
 
 /** Opacity of roads and rivers from other maps. */
 const _GHOST_ALPHA = 0.5;
+/** Screen pixels around a Flow stream that count as clicking it (Convert to River). */
+const _STREAM_PICK_RADIUS_PX = 10;
 import { useViewStore } from '../store/viewStore';
 import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
@@ -38,6 +40,10 @@ import { readSpots } from '../utils/spotHeights';
 import { readContours, contourPath } from '../utils/contours';
 import { renderWaterOverlay } from '../canvas/waterOverlay';
 import { useWaterView } from './useWaterView';
+import { formatArea } from './WaterControls';
+import { streamPicker } from '../utils/streamTrace';
+import type { StreamRiver } from '../utils/streamTrace';
+import { waterLines } from '../utils/carve';
 import { formatHeight } from '../utils/heightGrid';
 import { hexTopLeft, hexPolygon } from '../canvas/hexGeometry';
 import { renderFootprintOverlay, footprintAtPoint } from '../canvas/footprintOverlay';
@@ -126,6 +132,34 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   // A water body selection belongs to the open map and the Height tool's Water mode
   const waterMode = store.selectedTool === 'height' && store.heightBrush.mode === 'water';
   useEffect(() => { useViewStore.getState().setSelectedWaterId(null); }, [store.mapName, store.mapWorldSet, waterMode]);
+  // Convert to River: only in Water mode with the Flow view on; ends with the map
+  const convertingStream = useViewStore((s) => s.convertingStream);
+  const flowShown = store.elevationView.flow;
+  useEffect(() => {
+    if (convertingStream && !(waterMode && flowShown)) useViewStore.getState().setConvertingStream(false);
+  }, [convertingStream, waterMode, flowShown]);
+  useEffect(() => {
+    const v = useViewStore.getState();
+    v.setConvertingStream(false);
+    v.setStreamNote('');
+  }, [store.mapName, store.mapWorldSet]);
+  const converting = convertingStream && waterMode && !!waterView.flow;
+  const worldLineClasses = store.mapWorldSet === activeWorldSetName ? worldSetStore.activeWorldSet?.lineClasses : undefined;
+  const streams = useMemo(() => {
+    const map = useMapStore.getState().mapData, h = useMapStore.getState().heights;
+    if (!converting || !map || !h || !waterView.flow) return null;
+    const classes = resolveLineClasses(worldLineClasses);
+    return streamPicker(map, h.cols, h.rows, waterView.flow, waterView.water, waterView.streamSamples,
+      waterLines(readLines(map), classes), classes, resolveMetersPerUnit(map, defaultUnits) ?? null);
+  }, [converting, waterView.flow, waterView.water, waterView.streamSamples, store.mapData?.layers, worldLineClasses, defaultUnits]); // eslint-disable-line react-hooks/exhaustive-deps
+  const streamsRef = useRef(streams);
+  streamsRef.current = streams;
+  // The stream under the pointer, highlighted before you click
+  const streamHoverPos = useCursorStore((s) => (converting ? s.mapPos : null));
+  const hoverRiver: StreamRiver | null = useMemo(
+    () => (streams && streamHoverPos ? streams.at(streamHoverPos.x, streamHoverPos.y, _STREAM_PICK_RADIUS_PX / store.zoom) : null),
+    [streams, streamHoverPos, store.zoom],
+  );
   // Choosing the Line tool shows roads and rivers, so you never edit lines you can't see
   useEffect(() => {
     if (store.selectedTool === 'line') useViewStore.getState().setShowLines(true);
@@ -294,6 +328,24 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         ctx.fillStyle = c.id === selectedContourId ? '#ffd400' : '#f3e2c7';
         ctx.fillText(label, lx, ly);
       }
+      ctx.restore();
+    }
+
+    // Convert to River: the stream that a click would convert, from source to end
+    if (hoverRiver) {
+      const cls = classForType(hoverRiver.classId, lineClasses).cls;
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      hoverRiver.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = cls.color;
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -476,7 +528,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, waterMode, waterView, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.
@@ -650,6 +702,13 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const tile = pointerToTile(e.nativeEvent);
     if (!tile) return;
 
+    // Convert to River: a click on a Flow stream makes it a drawn river. Before footprints,
+    // so streams inside child maps can be picked too.
+    if (streamsRef.current && e.button === 0) {
+      convertStreamAt(pointerToMap(e.nativeEvent));
+      return;
+    }
+
     // Footprint interception — runs before tool dispatch. The Inspect tool inspects
     // footprints instead (its card has an Open button for each child map), and the Line
     // tool draws across them (roads and rivers run into child maps).
@@ -757,6 +816,25 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const tool = TOOLS[store.selectedTool];
     tool.onPress(tile.col, tile.row, store, pointerToMap(e.nativeEvent));
   }, [store, touchedFootprint, hoveredFootprint]);
+
+  /** Convert to River at a map point: add the stream there as a drawn river (one undo step). */
+  function convertStreamAt(pos: { x: number; y: number }): void {
+    const v = useViewStore.getState();
+    const map = store.mapData;
+    const river = streamsRef.current?.at(pos.x, pos.y, _STREAM_PICK_RADIUS_PX / store.zoom) ?? null;
+    if (!map || !river) {
+      v.setStreamNote('No stream there to convert. Click on one of the blue Flow streams (not one already drawn as a river).');
+      return;
+    }
+    if (store.addLine(river.points, river.classId) === null) return;
+    const classes = resolveLineClasses(store.mapWorldSet === activeWorldSetName ? worldSetStore.activeWorldSet?.lineClasses : undefined);
+    const name = classForType(river.classId, classes).cls.name;
+    const units = resolveUnits(map, defaultUnits);
+    const drains = river.catchmentM2 !== null ? `${formatArea(river.catchmentM2, units)} drains into it` : `${river.catchmentSamples.toLocaleString('en-US')} cells drain into it`;
+    const ends = river.end === 'water' ? 'down into the water' : river.end === 'river' ? 'to where it joins a drawn river' : "to the map's edge";
+    v.setConvertingStream(false);
+    v.setStreamNote(`Added a ${name.toLowerCase()} from where it begins ${ends}; ${drains}. Change its type or shape with the Line tool.`);
+  }
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointers.current.set(e.pointerId, e.nativeEvent);

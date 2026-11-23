@@ -52,6 +52,9 @@ export interface ViewStore {
   /** Object ID of the spot height being edited in the Height tool's Spot mode. */
   selectedSpotId: number | null;
   setSelectedSpotId: (id: number | null) => void;
+  /** Object ID of the point selected with the Points tool. */
+  selectedObjectId: number | null;
+  setSelectedObjectId: (id: number | null) => void;
   /**
    * Height tool, Contour mode: the selected contour (its point is `selectedPoint`). The
    * contour being drawn and a point being dragged use `draftLine` and `dragPoints`.
@@ -74,8 +77,8 @@ export interface ViewStore {
   selectedGhost: string | null;
   setSelectedGhost: (key: string | null) => void;
   /**
-   * The "Roads & rivers" toggle: show this map's lines (whatever their layer's
-   * visibility) and those of its ancestor and descendant maps. Remembered in this browser.
+   * The "Roads & rivers" toggle: show this map's lines (those on shown layers) and those
+   * of its ancestor and descendant maps. Remembered in this browser.
    */
   showLines: boolean;
   setShowLines: (show: boolean) => void;
@@ -107,6 +110,8 @@ export const useViewStore = create<ViewStore>((set) => ({
   setStreamNote: (note) => set({ streamNote: note }),
   selectedSpotId: null,
   setSelectedSpotId: (id) => set({ selectedSpotId: id }),
+  selectedObjectId: null,
+  setSelectedObjectId: (id) => set({ selectedObjectId: id }),
   selectedContourId: null,
   selectContour: (id, point = null) => set({ selectedContourId: id, selectedPoint: id === null ? null : point }),
   selectedLineId: null,

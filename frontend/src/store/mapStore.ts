@@ -66,7 +66,7 @@ export interface TileChange {
 
 type UndoStep =
   | { type: 'tiles'; changes: TileChange[] }
-  | { type: 'object-add'; layerIndex: number; objectId: number }
+  | { type: 'object-add'; layerIndex: number; object: TmjObject }
   | { type: 'object-remove'; layerIndex: number; object: TmjObject }
   /**
    * Height edit: per-sample changes, or (re-base) every sample's height before and
@@ -899,9 +899,10 @@ export const useMapStore = create<MapStore>((set, get) => ({
       obj,
     ]);
     set({
-      mapData: { ...mapData, layers: newLayers },
+      // Keep the map's ID counter ahead of every object in it
+      mapData: { ...mapData, layers: newLayers, nextobjectid: Math.max(mapData.nextobjectid, obj.id + 1) },
       isDirty: true,
-      past: [...past, { type: 'object-add', layerIndex, objectId: obj.id }],
+      past: [...past, { type: 'object-add', layerIndex, object: obj }],
       future: [],
     });
   },
@@ -943,7 +944,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
       }
     } else if (step.type === 'object-add') {
       newLayers = updateObjectLayer(newLayers, step.layerIndex, (objects) =>
-        objects.filter((o) => o.id !== step.objectId),
+        objects.filter((o) => o.id !== step.object.id),
       );
     } else if (step.type === 'object-remove') {
       newLayers = updateObjectLayer(newLayers, step.layerIndex, (objects) => [
@@ -981,7 +982,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
         });
       }
     } else if (step.type === 'object-add') {
-      // We can't fully redo object-add without storing the object — skip for now
+      newLayers = updateObjectLayer(newLayers, step.layerIndex, (objects) => [...objects, step.object]);
     } else if (step.type === 'object-remove') {
       newLayers = updateObjectLayer(newLayers, step.layerIndex, (objects) =>
         objects.filter((o) => o.id !== step.object.id),

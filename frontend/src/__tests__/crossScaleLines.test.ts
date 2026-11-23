@@ -4,7 +4,7 @@ import {
   mapExtent, lineKey, refinesOf, REFINES_PROPERTY,
 } from '../utils/crossScaleLines';
 import type { MapSource, RelatedMap } from '../utils/crossScaleLines';
-import { linePoints, readLines } from '../utils/lines';
+import { linePoints, readLines, shownLines } from '../utils/lines';
 import { useMapStore } from '../store/mapStore';
 import { useViewStore } from '../store/viewStore';
 import { useCrossScaleStore } from '../store/crossScaleStore';
@@ -179,17 +179,20 @@ describe('selecting a line from another map', () => {
 // Keep TmjMap referenced for type checking of the helpers above
 export type _Unused = TmjMap;
 
-describe('the Roads & rivers toggle governs lines, not their layers', () => {
+describe("a layer's visibility wins; the Roads & rivers toggle filters on top (#38)", () => {
   const hiddenLayerMap = (): TmjMap => {
     const m = square('h', 100, [line(1, [{ x: 0, y: 10 }, { x: 100, y: 10 }]), line(2, [{ x: 0, y: 30 }, { x: 100, y: 30 }], { visible: false })]).map;
     m.layers[1].visible = false;
     return m;
   };
 
-  it('lines on a hidden layer are still read; a line hidden by itself is left out when asked', () => {
+  it('lines on a hidden layer are still read, but not shown; a line hidden by itself is never shown', () => {
     const m = hiddenLayerMap();
     expect(readLines(m).map((l) => l.id)).toEqual([1, 2]);
     expect(readLines(m, true).map((l) => l.id)).toEqual([1]);
+    expect(shownLines(m)).toEqual([]);
+    m.layers[1].visible = true;
+    expect(shownLines(m).map((l) => l.id)).toEqual([1]);
   });
 
   it("other maps' lines on hidden layers still show as ghosts", () => {
@@ -212,6 +215,11 @@ describe('the Roads & rivers toggle governs lines, not their layers', () => {
     useViewStore.getState().setShowLines(true);
     lineTool.onPress(0, 0, s(), { x: 50, y: 10 });
     lineTool.onRelease(s());
-    expect(useViewStore.getState().selectedLineId).toBe(1); // on a hidden layer, but shown
+    expect(useViewStore.getState().selectedLineId).toBeNull(); // its layer is hidden
+    useViewStore.getState().setDraftLine(null);
+    s().setLayerVisible(1, true);
+    lineTool.onPress(0, 0, s(), { x: 50, y: 10 });
+    lineTool.onRelease(s());
+    expect(useViewStore.getState().selectedLineId).toBe(1);
   });
 });

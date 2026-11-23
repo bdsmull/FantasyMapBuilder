@@ -17,7 +17,7 @@ import type { MapStore } from '../store/mapStore';
 import { useViewStore } from '../store/viewStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import {
-  readLines, lineAt, linePoints, pointAt, midpointAt, readWidths, insertPoint, removePoint, nearestOnLine,
+  readLines, shownLines, lineAt, linePoints, pointAt, midpointAt, readWidths, insertPoint, removePoint, nearestOnLine,
 } from '../utils/lines';
 import type { LineRef } from '../utils/lines';
 import { resolveLineClasses, classForType } from '../data/lineClasses';
@@ -39,11 +39,11 @@ export function mapLineClasses(store: Pick<MapStore, 'mapWorldSet'>): LineClass[
 const _isKind = (type: string, kind: LineKind | undefined, classes: LineClass[]) =>
   kind === undefined || classForType(type, classes).cls.kind === kind;
 
-/** The open map's lines of `kind` (all kinds when undefined). */
+/** The open map's lines of `kind` (all kinds when undefined); with `shownOnly`, only those drawn (see `shownLines`). */
 export function linesOfKind(store: MapStore, kind: LineKind | undefined, shownOnly = false): LineRef[] {
   if (!store.mapData) return [];
   const classes = mapLineClasses(store);
-  return readLines(store.mapData, shownOnly).filter((l) => _isKind(l.object.type, kind, classes));
+  return (shownOnly ? shownLines(store.mapData) : readLines(store.mapData)).filter((l) => _isKind(l.object.type, kind, classes));
 }
 
 /** The visible line from another map under (x, y), or null: "<map>#<id>". Only lines of `kind`, when given. */

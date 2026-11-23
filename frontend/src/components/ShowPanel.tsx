@@ -7,7 +7,7 @@ import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { resolveUnits } from '../data/mapScales';
 import { formatHeight, hasHeightsProperty, patchRange } from '../utils/heightGrid';
 import { defaultStreamSamples } from '../utils/flow';
-import { readLines } from '../utils/lines';
+import { shownLines } from '../utils/lines';
 
 /** The Flow view's stream detail: fewer (only big streams) to more. */
 export const StreamSlider: React.FC = () => {
@@ -51,7 +51,7 @@ export const ShowPanel: React.FC = () => {
   if (!mapData) return null;
   const childNames = surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children.map((c) => c.node.name) : [];
   const units = resolveUnits(mapData, worldSetUnits);
-  const own = readLines(mapData, true).length;
+  const own = shownLines(mapData).length;
   const other = cross.key === surfaceKey(mapWorldSet, mapName) ? cross.ghosts.length : 0;
   const range = heights ? patchRange(heights) : null;
 
@@ -60,7 +60,7 @@ export const ShowPanel: React.FC = () => {
       <label
         className="layer-item roads-rivers-row"
         style={{ cursor: 'default' }}
-        title="This map's roads and rivers (whatever layer they're on, even a hidden one) and faded ones from parent and child maps"
+        title="This map's roads and rivers on shown layers, and faded ones from parent and child maps"
       >
         <input type="checkbox" checked={showLines} onChange={(e) => setShowLines(e.target.checked)} aria-label="Show roads and rivers" />
         <span className="layer-icon">〰</span>

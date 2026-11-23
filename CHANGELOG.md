@@ -52,7 +52,7 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
     it (`refines`); the most detailed version wins inside its map's area. "Refined on…" and
     "Refines…" links with Open buttons.
   - A fixed **Roads & rivers** row in every map's Layers panel (and **View → Roads & Rivers**)
-    shows or hides all lines, whatever their layer's visibility.
+    shows or hides all lines (since #38, only those on shown layers).
 - **Roads and rivers** (#30, issue #6)
   - Tiled polylines with a class (Highway, Major road, Minor road, Path, Trail, River, Stream,
     Brook, Canal) and optional per-point widths in meters.
@@ -89,6 +89,12 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   (roads & rivers, elevation, water, flow). The **right panel** is now the active tool's settings
   (the tile palette moves into Terrain's); **View → Tool Panel** / `P` hides it. Panel sections
   collapse, and the editor remembers which.
+- While the Terrain tool is in use, lakes and the sea are drawn translucent, so tiles painted
+  under water show (#38).
+- **Points** tool: click a point to select it, then **Delete** (panel button or key) removes it,
+  inside a world set too (#38).
+- A hidden layer hides its roads and rivers; the **Roads & rivers** toggle then shows or hides
+  the rest (#38).
 - Scale, units and custom cell size are stored as Tiled custom properties; tile data is written
   one row per line (#14).
 - Hex geometry matches Tiled's exactly everywhere (#15).
@@ -101,6 +107,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   Existing world sets keep their tilesets.
 
 ### Fixed
+- New point objects take their IDs from the map's `nextobjectid`, so they no longer clash with
+  other objects after a reload; redo restores an added point (#38).
 - **Heights from terrain** (and **Add from terrain**) now warn which painted terrain types have
   no base height, in which tileset, and how many cells kept their height, instead of silently
   leaving them at the starting height.

@@ -69,12 +69,12 @@ them, so roads can run into towns.
 The **Roads & rivers** row in the left panel's **Show** section (also **View → Roads & Rivers**)
 shows or hides all lines:
 
-- **On** — every line on the map, whatever layer it's on (even a hidden one), plus faded lines
-  from parent and child maps
+- **On** — the lines on this map's shown layers, plus faded lines from parent and child maps
 - **Off** — no lines
 
-Object layers' own checkboxes then only affect their other objects. A single line hidden in
-Tiled (`visible: false` on the object) stays hidden. Choosing Roads, or Water → Rivers, turns the
+A layer's own checkbox wins: hiding a layer hides its roads and rivers too, whatever the row
+says, and they can't be picked until it's shown again. A single line hidden in Tiled
+(`visible: false` on the object) stays hidden. Choosing Roads, or Water → Rivers, turns the
 row on.
 The count beside it shows lines on this map and from other maps.
 

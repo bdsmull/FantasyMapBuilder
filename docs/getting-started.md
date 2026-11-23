@@ -136,7 +136,7 @@ Tools are grouped by subject; each one only changes its own kind of thing.
 | **Height** | `2` | Add the map's elevation, then paint it, place spot heights or draw contour lines (see [Elevation](elevation.md)) |
 | **Water** | `3` | **Lakes & sea** (needs elevation) and **Rivers**: draw rivers, streams, brooks and canals, turn the Flow view's streams into rivers, carve them in (see [Water](elevation.md#water)) |
 | **Roads** | `4` | Draw and edit roads, paths and trails (see [Roads & Rivers](roads-rivers.md)) |
-| **Points** | `5` | Place a point object; right-click removes the nearest (on maps outside a world set; inside one, right-click opens the map menu) |
+| **Points** | `5` | Place a point object, or click one to select it; `Delete` removes the selected point |
 
 Erasing belongs to each tool: Terrain erases tiles, and the others delete what you select
 (a spot, a lake, a road …) with **Delete** or the panel's delete button.

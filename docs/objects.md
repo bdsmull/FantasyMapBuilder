@@ -26,7 +26,8 @@ name; the color follows the object's type.
 
 | Task | How |
 |---|---|
-| Place a point | **Points** tool (`5`): click the map. Right-click removes the nearest point, on maps outside a world set; inside one, right-click opens the map menu |
+| Place a point | **Points** tool (`5`): click the map, away from other points. It goes on the active object layer and is selected |
+| Remove a point | **Points** tool: click it to select it (a yellow ring), then **Delete** in the tool panel or the `Delete` key; `Esc` deselects. On maps outside a world set, right-click also removes the nearest point |
 | See an object's details | **Inspect** tool (`I`): click it to see its name, type, shape, layer and custom properties |
 | Spot heights | **Height** tool → Spot mode ([Elevation](elevation.md#spot-heights)) |
 | Contour lines | **Height** tool → Contour mode ([Elevation](elevation.md#contour-lines)) |

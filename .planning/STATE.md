@@ -16,6 +16,11 @@ progress:
 
 # Project State
 
+> **Retired (2026-11-23).** GSD planning is no longer used for this project. This folder is a
+> historical record of the v1.0 World Sets milestone only. Everything after it (PRs #5, #14–#40
+> and later) is tracked in GitHub issues and pull requests; see `CHANGELOG.md` for what shipped.
+> The v1.1 phases below were never started; some were overtaken by later work (e.g. #15 hex geometry).
+
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-30)

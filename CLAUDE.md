@@ -141,24 +141,9 @@ A web-based tile map editor for fantasy RPG worldbuilding, accessible from deskt
 - **LAN-accessible** — server binds to `0.0.0.0:8000`, accessible from iPad/tablet on same WiFi
 <!-- GSD:architecture-end -->
 
-<!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
+## Workflow
 
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
-
-Use these entry points:
-- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd:debug` for investigation and bug fixing
-- `/gsd:execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-<!-- GSD:workflow-end -->
-
-
-
-<!-- GSD:profile-start -->
-## Developer Profile
-
-> Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile.
-> This section is managed by `generate-claude-profile` -- do not edit manually.
-<!-- GSD:profile-end -->
+- Work is tracked in **GitHub issues** (`bdsmull/FantasyMapBuilder`); larger features are split into numbered phases within an issue (e.g. "#8 phase 3d").
+- One branch per change (`feat/…`, `fix/…`), merged to `main` by pull request.
+- Every user-visible change adds an entry under **Unreleased** in `CHANGELOG.md` and updates the relevant page in `docs/`.
+- The GSD planning workflow is retired. `.planning/` is kept only as a historical record of the v1.0 World Sets milestone; don't update it or plan from it.

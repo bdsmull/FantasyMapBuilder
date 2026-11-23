@@ -14,6 +14,7 @@ import { renderTileMap } from '../canvas/tileRenderer';
 import { renderHexMap, clearHexTileCache } from '../canvas/hexRenderer';
 import { hexLayout, pixelToHex } from '../canvas/hexGeometry';
 import { screenToTile } from '../canvas/canvasUtils';
+import { isObjectLayer } from '../types/tmj';
 import type { Tool } from '../tools/baseTool';
 import { terrainTool } from '../tools/terrainTool';
 import { pointTool } from '../tools/pointTool';
@@ -21,7 +22,7 @@ import { heightTool } from '../tools/heightTool';
 import { inspectTool } from '../tools/inspectTool';
 import { roadsTool } from '../tools/lineTool';
 import { waterTool } from '../tools/waterTool';
-import { readLines, linePoints, pixelsPerMeter } from '../utils/lines';
+import { readLines, shownLines, linePoints, pixelsPerMeter } from '../utils/lines';
 import { resolveLineClasses, classForType } from '../data/lineClasses';
 import { drawLine } from '../canvas/lineRenderer';
 import { useCrossScaleStore } from '../store/crossScaleStore';
@@ -32,6 +33,8 @@ import { useRefinementChecks } from './useRefinementChecks';
 const _GHOST_ALPHA = 0.5;
 /** Screen pixels around a Flow stream that count as clicking it (Convert to River). */
 const _STREAM_PICK_RADIUS_PX = 10;
+/** Water's opacity while the Terrain tool is in use: still visible, but the tiles painted under it show. */
+const _WATER_ALPHA_PAINTING = 0.35;
 import { useViewStore } from '../store/viewStore';
 import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
@@ -101,6 +104,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const inspected = useViewStore((s) => s.inspected);
   const selectedSpotId = useViewStore((s) => s.selectedSpotId);
   const selectedWaterId = useViewStore((s) => s.selectedWaterId);
+  const selectedObjectId = useViewStore((s) => s.selectedObjectId);
   // Lakes, the sea, and (when shown) streams and hollows
   const waterView = useWaterView();
   const { selectedLineId, selectedContourId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
@@ -136,6 +140,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   // A water body selection belongs to the open map and the Water tool's Lakes mode
   const waterMode = store.selectedTool === 'water' && viewWaterMode === 'lakes';
   useEffect(() => { useViewStore.getState().setSelectedWaterId(null); }, [store.mapName, store.mapWorldSet, waterMode]);
+  // A selected point belongs to the open map and the Points tool
+  useEffect(() => { useViewStore.getState().setSelectedObjectId(null); }, [store.mapName, store.mapWorldSet, store.selectedTool]);
   // Convert to River: only in the Water tool's Rivers mode with the Flow view on; ends with the map
   const convertingStream = useViewStore((s) => s.convertingStream);
   const flowShown = store.elevationView.flow;
@@ -235,9 +241,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const lineClasses = resolveLineClasses(store.mapWorldSet === activeWorldSetName ? worldSetStore.activeWorldSet?.lineClasses : undefined);
     const ppm = pixelsPerMeter(map, resolveMetersPerUnit(map, defaultUnits));
     const openRect = mapExtent(map);
-    // Roads and rivers, governed by the "Roads & rivers" toggle rather than their layers'
-    // visibility: other maps' lines (faded), then this map's, above the terrain and under
-    // the other objects. A line is hidden where a more detailed map refines it.
+    // Roads and rivers, all shown or hidden by the "Roads & rivers" toggle: other maps' lines
+    // (faded), then this map's on shown layers, above the terrain and under the other
+    // objects. A line is hidden where a more detailed map refines it.
     const drawLines = (c: CanvasRenderingContext2D) => {
       if (!showLines) return;
       for (const g of ghosts) {
@@ -248,7 +254,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
           alpha: _GHOST_ALPHA,
         });
       }
-      for (const { object, layerIndex } of readLines(map, true)) {
+      for (const { object, layerIndex } of shownLines(map)) {
         drawLine(c, object, view.zoom, classForType(object.type, lineClasses).cls, ppm, {
           exclude: related.length ? hiddenAreas(lineKey(store.mapName, object.id), refIndex, store.mapName, openRect, related) : undefined,
           alpha: map.layers[layerIndex].opacity,
@@ -271,6 +277,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         if (heights && waterView.water && (elevationView.water || elevationView.flow)) {
           renderWaterOverlay(c, map, heights, waterView.water, waterView.flow, view.zoom, view.pan, {
             water: elevationView.water, flow: elevationView.flow, streamSamples: waterView.streamSamples,
+            opacity: store.selectedTool === 'terrain' ? _WATER_ALPHA_PAINTING : 1,
           });
         }
         drawLines(c);
@@ -351,6 +358,26 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.strokeStyle = cls.color;
       ctx.stroke();
       ctx.restore();
+    }
+
+    // Points tool: a ring around the selected point
+    if (store.selectedTool === 'point' && selectedObjectId !== null) {
+      for (const layer of map.layers) {
+        const o = isObjectLayer(layer) && layer.visible ? layer.objects.find((x) => x.id === selectedObjectId) : undefined;
+        if (!o) continue;
+        const x = o.x * view.zoom + view.pan.x, y = o.y * view.zoom + view.pan.y;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, 9, 0, Math.PI * 2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffd400';
+        ctx.stroke();
+        ctx.restore();
+        break;
+      }
     }
 
     // Water bodies: a blue disc with the name and surface height
@@ -532,7 +559,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, selectedObjectId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.selectedTool, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

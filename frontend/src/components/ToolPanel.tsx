@@ -8,6 +8,7 @@ import { TilePalette } from './TilePalette';
 import { HeightPanel } from './HeightPanel';
 import { WaterPanel } from './WaterPanel';
 import { LineControls } from './LineControls';
+import { deletePoint } from '../tools/pointTool';
 
 export const TOOL_TITLES: Record<ToolName, string> = {
   inspect: 'Inspect',
@@ -50,19 +51,44 @@ const TerrainPanel: React.FC = () => {
   );
 };
 
-/** Points: where they go and how to remove them. */
+/** Points: the selected point (with Delete), where new ones go and how to remove them. */
 const PointPanel: React.FC = () => {
   const { mapData, activeLayerIndex } = useMapStore();
+  const selectedId = useViewStore((s) => s.selectedObjectId);
+  const setSelectedId = useViewStore((s) => s.setSelectedObjectId);
   const layer = mapData?.layers[activeLayerIndex];
+  let selected: { name: string; layer: string } | null = null;
+  if (mapData && selectedId !== null) {
+    for (const l of mapData.layers) {
+      const o = isObjectLayer(l) ? l.objects.find((x) => x.id === selectedId) : undefined;
+      if (o) { selected = { name: o.name || `Point ${o.id}`, layer: l.name }; break; }
+    }
+  }
   return (
-    <div style={_note}>
-      Click to place a point on the active object layer. Right-click removes the nearest one (on maps outside a world set; inside one, right-click opens the map menu).
-      {layer && !isObjectLayer(layer) && (
-        <div style={{ color: '#fbbf24', marginTop: 4 }}>
-          The active layer "{layer.name}" is a tile layer; pick an object layer (left panel), or add one with + Objects.
+    <>
+      {selected && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', fontSize: 12 }}>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`On the "${selected.layer}" layer`}>
+            <strong>{selected.name}</strong> <span style={{ color: '#888' }}>· {selected.layer}</span>
+          </span>
+          <button
+            className="btn-danger"
+            title="Delete this point (Delete)"
+            onClick={() => { deletePoint(useMapStore.getState(), selectedId!); setSelectedId(null); }}
+          >
+            Delete
+          </button>
         </div>
       )}
-    </div>
+      <div style={_note}>
+        Click a point to select it; Delete removes it. Click elsewhere to place a point on the active object layer.
+        {layer && !isObjectLayer(layer) && (
+          <div style={{ color: '#fbbf24', marginTop: 4 }}>
+            The active layer "{layer.name}" is a tile layer; pick an object layer (left panel), or add one with + Objects, to place new points.
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

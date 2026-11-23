@@ -22,6 +22,7 @@ import { useViewStore } from './store/viewStore';
 import { lineToolKey } from './tools/lineTool';
 import { contourKey } from './tools/contourMode';
 import { waterKey } from './tools/waterMode';
+import { pointKey } from './tools/pointTool';
 import { LineClassesDialog } from './components/dialogs/LineClassesDialog';
 
 type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | 'mapProperties' | null;
@@ -94,6 +95,7 @@ export const App: React.FC = () => {
       const view = useViewStore.getState();
       if (state.selectedTool === 'roads' && lineToolKey(e.key, state, 'road')) { e.preventDefault(); return; }
       if (state.selectedTool === 'height' && state.heightBrush.mode === 'contour' && contourKey(e.key, state)) { e.preventDefault(); return; }
+      if (state.selectedTool === 'point' && pointKey(e.key, state)) { e.preventDefault(); return; }
       if (state.selectedTool === 'water') {
         // Esc stops Convert to River first, in either mode
         const used = view.waterMode === 'rivers'

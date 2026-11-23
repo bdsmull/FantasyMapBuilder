@@ -4,6 +4,7 @@ import { useMapStore } from '../store/mapStore';
 import { navigateToMap, activateWorldSet } from '../utils/navigation';
 import {
   getWarnings,
+  withOpenMap,
   toggleCollapse,
   isNodeCollapsed,
 } from '../utils/hierarchyPanelLogic';
@@ -40,7 +41,7 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
     rootNodes,
     childrenOf,
   } = useWorldSetStore();
-  const { isDirty, mapName: currentMapName } = useMapStore();
+  const { isDirty, mapName: currentMapName, mapData: openMapData, mapWorldSet: openMapWorldSet } = useMapStore();
 
   const [collapseState, setCollapseState] = useState<CollapseState>({});
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -89,6 +90,13 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
       });
     });
   }, [activeWorldSet]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once the open map is saved (or freshly loaded), its fetched copy is out of date: keep
+  // the saved data, so warnings stay right after moving to another map (#2)
+  useEffect(() => {
+    if (isDirty || !openMapData || !currentMapName || openMapWorldSet !== activeWorldSetName) return;
+    setMapDataCache((prev) => (prev[currentMapName] === openMapData ? prev : { ...prev, [currentMapName]: openMapData }));
+  }, [isDirty, openMapData, currentMapName, openMapWorldSet, activeWorldSetName]);
 
   // Dismiss context menu on outside click or Escape (Pitfall: register only when open)
   useEffect(() => {
@@ -192,7 +200,8 @@ export const WorldHierarchyPanel: React.FC<Props> = ({ onOpenWorldSetDialog }) =
   const ctx = {
     elevationMismatch,
     lineMismatch,
-    mapDataCache,
+    // The open map's live data, so a fixed scale clears its warning at once
+    mapDataCache: withOpenMap(mapDataCache, { name: currentMapName, worldSet: openMapWorldSet, data: openMapData }, activeWorldSetName),
     knownMapNames,
     allNodes: activeWorldSet?.nodes ?? [],
     defaultUnits: activeWorldSet?.units,

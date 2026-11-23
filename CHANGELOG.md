@@ -110,6 +110,10 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   Existing world sets keep their tilesets.
 
 ### Fixed
+- The hierarchy panel's warnings follow the open map: fixing a scale in **Map Properties** clears
+  a scale-inversion or missing-scale warning at once, for the map and its children, and it
+  stays cleared after moving to another map; before, it lasted until the world set was
+  reloaded (#2).
 - New point objects take their IDs from the map's `nextobjectid`, so they no longer clash with
   other objects after a reload; redo restores an added point (#38).
 - **Heights from terrain** (and **Add from terrain**) now warn which painted terrain types have

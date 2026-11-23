@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getWarnings,
+  withOpenMap,
   toggleCollapse,
   isNodeCollapsed,
   resolveMetersPerUnit,
@@ -44,6 +45,32 @@ describe('resolveMetersPerUnit', () => {
   });
   it('returns undefined when no scale info', () => {
     expect(resolveMetersPerUnit(mkMap())).toBeUndefined();
+  });
+});
+
+describe('withOpenMap: warnings follow the open map (#2)', () => {
+  const knownMapNames = new Set(['m', 'parent']);
+  const node = mkNode({ mapName: 'm', parentMapName: 'parent', parentAnchor: { col: 0, row: 0 } });
+  const fetched = { m: mkMap({ scale: 'kingdom' }), parent: mkMap({ scale: 'city' }) }; // inverted
+
+  it('the open map\'s live data replaces its fetched copy, so a fixed scale clears the warning', () => {
+    const ctx = (cache: Record<string, TmjMap>): WarningContext => ({ mapDataCache: cache, knownMapNames, allNodes: [] });
+    expect(getWarnings(node, ctx(fetched)).some((w) => w.includes('Scale inversion'))).toBe(true);
+    const fixed = withOpenMap(fetched, { name: 'm', worldSet: 'ws', data: mkMap({ scale: 'room' }) }, 'ws');
+    expect(getWarnings(node, ctx(fixed)).some((w) => w.includes('Scale inversion'))).toBe(false);
+  });
+
+  it("fixing the parent's scale clears its child's warning too", () => {
+    const fixed = withOpenMap(fetched, { name: 'parent', worldSet: 'ws', data: mkMap({ scale: 'continent' }) }, 'ws');
+    expect(getWarnings(node, { mapDataCache: fixed, knownMapNames, allNodes: [] })).toEqual([]);
+  });
+
+  it('leaves the cache alone for a map from another world set, or none', () => {
+    const live = mkMap({ scale: 'room' });
+    expect(withOpenMap(fetched, { name: 'm', worldSet: 'other', data: live }, 'ws')).toBe(fetched);
+    expect(withOpenMap(fetched, { name: null, worldSet: null, data: null }, 'ws')).toBe(fetched);
+    expect(withOpenMap(fetched, { name: 'm', worldSet: 'ws', data: live }, null)).toBe(fetched);
+    expect(withOpenMap(fetched, { name: 'm', worldSet: 'ws', data: fetched.m }, 'ws')).toBe(fetched);
   });
 });
 

@@ -25,6 +25,24 @@ export interface WarningContext {
 
 export { resolveMetersPerUnit };
 
+/** The map open in the editor: its name, world set and current (possibly unsaved) data. */
+export interface OpenMap {
+  name: string | null;
+  worldSet: string | null;
+  data: TmjMap | null;
+}
+
+/**
+ * The map data warnings are worked out from: the fetched copies, with the open map's
+ * live data in place of its copy when it belongs to `worldSetName` (#2). So fixing a
+ * map's scale clears its warning, and its children's, without reloading the world set.
+ */
+export function withOpenMap(cache: Record<string, TmjMap>, open: OpenMap, worldSetName: string | null): Record<string, TmjMap> {
+  if (!open.name || !open.data || !worldSetName || open.worldSet !== worldSetName) return cache;
+  if (cache[open.name] === open.data) return cache;
+  return { ...cache, [open.name]: open.data };
+}
+
 /**
  * Returns warning strings for a single node. Empty array = no badge.
  * MUST return [] when mapDataCache[node.mapName] is undefined (Pitfall 2).

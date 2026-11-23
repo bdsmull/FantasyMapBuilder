@@ -24,6 +24,8 @@ export interface WaterOverlayOptions {
   flow: boolean;
   /** A stream shows where at least this many samples drain through. */
   streamSamples: number;
+  /** Overall opacity, 0–1 (default 1): lowered while painting terrain so tiles show through. */
+  opacity?: number;
 }
 
 const _MAX_RASTER_PIXELS = 4_000_000;
@@ -165,6 +167,7 @@ export function renderWaterOverlay(
   opts: WaterOverlayOptions,
 ): void {
   ctx.save();
+  ctx.globalAlpha *= opts.opacity ?? 1;
   if (map.orientation === 'hexagonal') _hexFills(ctx, map, patch, water, flow, opts, zoom, pan);
   else {
     const raster = _squareRaster(map, patch, water, flow, opts);

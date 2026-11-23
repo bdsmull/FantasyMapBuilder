@@ -167,7 +167,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ onNew, onOpen, onManageTileset
               {showGrid ? '✓ ' : '  '}Show Grid <kbd>G</kbd>
             </li>
             <li onClick={() => { close(); setShowPalette(!showPalette); }}>
-              {showPalette ? '✓ ' : '  '}Tile Palette <kbd>P</kbd>
+              {showPalette ? '✓ ' : '  '}Tool Panel <kbd>P</kbd>
             </li>
             <li onClick={() => { close(); setShowLines(!showLines); }} title="This map's roads and rivers, and faded ones from parent and child maps">
               {showLines ? '✓ ' : '  '}Roads &amp; Rivers

@@ -91,13 +91,16 @@ See [World Sets & Scales](world-sets.md#on-disk) for what's inside a world set f
 |------|----------|
 | **Menu bar** | File, Edit and View menus |
 | **Toolbar** | Tools, undo/redo, zoom, grid |
-| **Left panel** | World set hierarchy, Layers (with the Roads & rivers row), Elevation, and the active tool's settings |
+| **Left panel** | What the map is: the world set hierarchy, **Layers**, and **Show** (what's drawn over the map) |
 | **Canvas** | The map |
-| **Tile palette** | The active tileset (hide it with × or `P`; show it again from View → Tile Palette) |
+| **Tool panel** (right) | The active tool's settings, e.g. the tile palette for Terrain (hide it with × or `P`; show it again from View → Tool Panel, or by choosing the tool again) |
 | **Status bar** | Parent map link, map name (`*` = unsaved), size, scale, elevation under the cursor, zoom |
 
 On narrow screens (an iPad in portrait) the left panel slides in from the **☰** button and the
-palette sits under the map.
+tool panel sits under the map.
+
+Each section of the panels (Layers, Show, the Height tool's Brush and Elevation …) collapses
+from its header; the editor remembers which ones you closed.
 
 ---
 
@@ -124,15 +127,19 @@ You can also upload a `.tmj` file from your device.
 
 ## Tools
 
+Tools are grouped by subject; each one only changes its own kind of thing.
+
 | Tool | Key | What it does |
 |------|-----|--------------|
 | **Inspect** | `I` | Click to see what's at a point (terrain on each layer, elevation, objects and their properties, child maps); drag to pan. Never changes the map |
-| **Paint** | `1` | Paint the selected tile; a whole stroke is one undo step |
-| **Erase** | `2` | Clear tiles |
-| **Fill** | `3` | Flood-fill a connected area of the same tile |
-| **Point** | `4` | Place a point object; right-click removes the nearest (on maps outside a world set; inside one, right-click opens the map menu) |
-| **Height** | `5` | Paint elevation, place spot heights, draw contour lines, or place lakes and seas (needs elevation on the map; see [Elevation](elevation.md)) |
-| **Line** | `6` | Draw and edit roads and rivers (see [Roads & Rivers](roads-rivers.md)) |
+| **Terrain** | `1` | Tiles on the selected tile layer: **Paint** the selected tile (a whole stroke is one undo step), **Fill** a connected area of the same tile, or **Erase**. On desktop, **Shift+click** fills and **dragging with the right button** erases, whatever the mode |
+| **Height** | `2` | Add the map's elevation, then paint it, place spot heights or draw contour lines (see [Elevation](elevation.md)) |
+| **Water** | `3` | **Lakes & sea** (needs elevation) and **Rivers**: draw rivers, streams, brooks and canals, turn the Flow view's streams into rivers, carve them in (see [Water](elevation.md#water)) |
+| **Roads** | `4` | Draw and edit roads, paths and trails (see [Roads & Rivers](roads-rivers.md)) |
+| **Points** | `5` | Place a point object, or click one to select it; `Delete` removes the selected point |
+
+Erasing belongs to each tool: Terrain erases tiles, and the others delete what you select
+(a spot, a lake, a road …) with **Delete** or the panel's delete button.
 
 ### Navigating the map
 
@@ -150,19 +157,24 @@ heights, spot heights, contours, water and lines.
 
 ---
 
-## Layers panel
+## Layers and Show
 
-The **Layers** panel lists the map's layers, top first.
+The **Layers** section lists the map's layers, top first.
 
-- **Select** a layer by clicking it; tools work on the selected layer.
+- **Select** a layer by clicking it; Terrain paints on the selected tile layer, Points places on
+  the selected object layer.
 - **Show / hide** with the checkbox (hidden layers can still be edited).
 - **+ Tile** / **+ Objects** add a layer above the selected one.
 - **↑ / ↓** reorder, **Rename** (or double-click), **Delete** (asks first if the layer has content),
   and the **Opacity** slider.
-- The fixed **Roads & rivers** row shows or hides every road and river on the map, plus those
-  from parent and child maps (see [Roads & Rivers](roads-rivers.md#showing-lines)).
 
-Below the layers is the **Elevation** section (see [Elevation](elevation.md)).
+The **Show** section sets what's drawn over the map, whatever tool you're using; nothing in it
+changes the map:
+
+- **Roads & rivers** — every road and river on the map, plus those from parent and child maps
+  (see [Roads & Rivers](roads-rivers.md#showing-lines))
+- **Elevation** with its opacity, hillshade and child maps; **Water**; **Flow** with its stream
+  detail (see [Elevation](elevation.md#viewing-heights))
 
 ---
 
@@ -197,11 +209,13 @@ Tilesets are shared by every map in the world set. See [Tilesets](tilesets.md).
 |-----|--------|
 | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` | New map / Open / Save |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
-| `I`, `1`–`6` | Tools: Inspect, Paint, Erase, Fill, Point, Height, Line |
+| `I`, `1`–`5` | Tools: Inspect, Terrain, Height, Water, Roads, Points |
+| `Shift`+click | Terrain: fill, in any mode |
+| Right-drag | Terrain: erase, in any mode |
 | `G` | Grid on/off |
-| `P` | Tile palette on/off |
+| `P` | Tool panel on/off |
 | `Esc` | Close a dialog or the inspector; cancel a line being drawn |
-| `Enter` / `Backspace` / `Delete` | Line tool: finish a line / remove its last point / delete the selected point or line |
+| `Enter` / `Backspace` / `Delete` | Roads, and Water → Rivers: finish a line / remove its last point / delete the selected point or line |
 
 ---
 

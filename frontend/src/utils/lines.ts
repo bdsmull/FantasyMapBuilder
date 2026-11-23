@@ -96,9 +96,9 @@ export interface LineRef {
 }
 
 /**
- * All lines on the map, in drawing order (bottom first). Lines show whatever their
- * layer's visibility (the "Roads & rivers" toggle governs them); with `shownOnly`, a
- * line hidden by itself (object `visible: false`) is left out.
+ * All lines on the map, in drawing order (bottom first), whatever their layer's
+ * visibility; with `shownOnly`, a line hidden by itself (object `visible: false`) is
+ * left out. For what the open map draws, see `shownLines`.
  */
 export function readLines(map: TmjMap, shownOnly = false): LineRef[] {
   const out: LineRef[] = [];
@@ -107,6 +107,14 @@ export function readLines(map: TmjMap, shownOnly = false): LineRef[] {
     for (const o of layer.objects) if (isLine(o) && (!shownOnly || o.visible !== false)) out.push({ id: o.id, layerIndex, object: o });
   });
   return out;
+}
+
+/**
+ * The open map's lines as drawn: shown themselves and on a shown layer. A layer's
+ * visibility wins; the "Roads & rivers" toggle then hides or shows all of these at once.
+ */
+export function shownLines(map: TmjMap): LineRef[] {
+  return readLines(map, true).filter((l) => map.layers[l.layerIndex].visible);
 }
 
 /** The topmost line within `radius` map pixels of (x, y), or null. */

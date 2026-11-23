@@ -1,5 +1,8 @@
 # Roadmap: Fantasy RPG Map Editor
 
+> **Retired (2026-11-23).** This roadmap is no longer maintained. v1.1 (phases 8–11) was never
+> started; ongoing work is tracked in GitHub issues and pull requests. See `.planning/STATE.md`.
+
 ## Milestones
 
 - ✅ **v1.0 World Sets** — Phases 1–7 (shipped 2026-05-30)

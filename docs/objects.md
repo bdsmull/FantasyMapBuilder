@@ -26,12 +26,13 @@ name; the color follows the object's type.
 
 | Task | How |
 |---|---|
-| Place a point | **Point** tool (`4`): click the map. Right-click removes the nearest point, on maps outside a world set; inside one, right-click opens the map menu |
+| Place a point | **Points** tool (`5`): click the map, away from other points. It goes on the active object layer and is selected |
+| Remove a point | **Points** tool: click it to select it (a yellow ring), then **Delete** in the tool panel or the `Delete` key; `Esc` deselects. On maps outside a world set, right-click also removes the nearest point |
 | See an object's details | **Inspect** tool (`I`): click it to see its name, type, shape, layer and custom properties |
 | Spot heights | **Height** tool → Spot mode ([Elevation](elevation.md#spot-heights)) |
 | Contour lines | **Height** tool → Contour mode ([Elevation](elevation.md#contour-lines)) |
-| Lakes and seas | **Height** tool → Water mode ([Elevation](elevation.md#lakes-and-seas)) |
-| Roads and rivers | **Line** tool (`6`) ([Roads & Rivers](roads-rivers.md)) |
+| Lakes and seas | **Water** tool → Lakes & sea ([Elevation](elevation.md#lakes-and-seas)) |
+| Roads and rivers | **Roads** tool (`4`), **Water** tool → Rivers ([Roads & Rivers](roads-rivers.md)) |
 | Snap a child map to a place | Right-click the point on the parent → **Move &lt;child&gt; to &lt;point&gt;** ([World Sets](world-sets.md#exact-placement)) |
 
 Other shapes and general property editing aren't built into the editor yet; create them in

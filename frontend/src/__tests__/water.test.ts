@@ -12,7 +12,7 @@ import { readLines } from '../utils/lines';
 import { BUILTIN_LINE_CLASSES } from '../data/lineClasses';
 import { useMapStore } from '../store/mapStore';
 import { useViewStore } from '../store/viewStore';
-import { heightTool } from '../tools/heightTool';
+import { waterTool } from '../tools/waterTool';
 import { waterKey } from '../tools/waterMode';
 import type { TmjMap, TmjObject } from '../types/tmj';
 
@@ -152,28 +152,29 @@ describe('carving rivers', () => {
   });
 });
 
-describe('water in the store and the Height tool', () => {
+describe('water in the store and the Water tool', () => {
   const s = () => useMapStore.getState();
   const v = () => useViewStore.getState();
   beforeEach(() => {
     s().loadMap(square(), 'm', 'ws');
     s().setHeights(createPatch(square(), 0));
     s().setZoom(1);
-    s().setHeightBrush({ mode: 'water', waterCm: 12_000 });
+    s().setHeightBrush({ waterCm: 12_000 });
+    v().setWaterMode('lakes');
     v().setSelectedWaterId(null);
   });
 
   it('a click adds a lake in a Water layer; click and drag moves it; Delete removes it (undoable)', () => {
-    heightTool.onPress(0, 0, s(), { x: 50, y: 50 });
-    heightTool.onRelease(s());
+    waterTool.onPress(0, 0, s(), { x: 50, y: 50 });
+    waterTool.onRelease(s());
     const [b] = readWaterBodies(s().mapData!);
     expect(b).toMatchObject({ x: 50, y: 50, cm: 12_000 });
     expect(s().mapData!.layers[s().mapData!.layers.length - 1].name).toBe(WATER_LAYER);
     expect(v().selectedWaterId).toBe(b.id);
 
-    heightTool.onPress(0, 0, s(), { x: 53, y: 50 });  // on the marker
-    heightTool.onDrag(0, 0, s(), { x: 120, y: 90 });
-    heightTool.onRelease(s());
+    waterTool.onPress(0, 0, s(), { x: 53, y: 50 });  // on the marker
+    waterTool.onDrag(0, 0, s(), { x: 120, y: 90 });
+    waterTool.onRelease(s());
     expect(readWaterBodies(s().mapData!)).toEqual([expect.objectContaining({ id: b.id, x: 120, y: 90 })]);
 
     s().updateWaterBody(b.id, { name: 'Varra', cm: 9_000 });
@@ -195,7 +196,8 @@ describe('water in the store and the Height tool', () => {
 
   it('right-click picks the surface for new water', () => {
     s().heights!.cm[at(s().heights!, 2, 2)] = 777;
-    heightTool.onRightPress!(2, 2, s(), { x: 20, y: 20 });
-    expect(s().heightBrush).toMatchObject({ mode: 'water', waterCm: 777 });
+    const before = s().heightBrush.mode;
+    waterTool.onRightPress!(2, 2, s(), { x: 20, y: 20 });
+    expect(s().heightBrush).toMatchObject({ mode: before, waterCm: 777 });
   });
 });

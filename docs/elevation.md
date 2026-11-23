@@ -23,26 +23,29 @@ contours leave them alone. The brush's **Release** mode removes that protection.
 
 ## Adding elevation
 
-In the **Elevation** section of the left panel, click **Add elevation…**, then:
+Choose the **Height** tool (`2`). On a map without elevation its panel offers **Add elevation…**;
+click it, then:
 
 - **Add** — a flat surface at the starting height, or
 - **Add from terrain** — built from the painted terrain types (see below); places without a
   terrain height get the starting height.
 
-**Remove elevation…** deletes it (when you save). Elevation is saved with the map (`Ctrl+S`).
+**Remove elevation…** (Height tool, Elevation section) deletes it (when you save). Elevation is
+saved with the map (`Ctrl+S`).
 
 ---
 
 ## Viewing heights
+
+The **Show** section of the left panel sets how the elevation is drawn, whatever tool you use:
 
 | Control | Effect |
 |---|---|
 | Elevation checkbox | Show or hide the overlay |
 | Opacity | How strongly the overlay covers the tiles |
 | Hillshade | Shade slopes as if lit from the north-west |
-| Show child maps | Show child maps' heights inside their footprints (see [Across maps](#across-maps)) |
+| Child maps | Show child maps' heights inside their footprints (see [Across maps](#across-maps)) |
 | Water | Show lakes and the sea, shaded by depth (see [Water](#water)) |
-| Sea below 0 m | The automatic sea for this map (saved with the map) |
 | Flow | Show streams where rain would run and hollows where it would pool; **Streams** sets how many |
 
 **Colors.** Maps that span more than 500 m of height, or go below sea level, use absolute
@@ -63,7 +66,7 @@ the cursor is over one. The **Inspect** tool shows it too, with whether it's han
 
 ## Painting heights
 
-Select the **Height** tool (`5`). Its settings appear in the Elevation section:
+Select the **Height** tool (`2`). Its panel (right) has a **Brush** section:
 
 | Mode | Effect |
 |---|---|
@@ -73,11 +76,13 @@ Select the **Height** tool (`5`). Its settings appear in the Elevation section:
 | Release | Remove protection from hand-set heights, without changing them |
 | Spot | Place spot heights instead of painting (see below) |
 | Contour | Draw contour lines instead of painting (see below) |
-| Water | Place lakes and seas instead of painting (see [Water](#water)) |
 
 **Radius** is in cells. Each press-drag-release stroke is one undo step. Right-click picks the
-height under the pointer as the Set target (in Spot, Contour and Water modes, as the height for
-new ones), but only on maps outside a world set: inside one, right-click opens the map menu.
+height under the pointer as the Set target (in Spot and Contour modes, as the height for new
+ones), but only on maps outside a world set: inside one, right-click opens the map menu.
+
+Below the brush, the **Elevation** section builds the surface: fitting it to the parent map,
+**Heights from terrain**, **Generate…**, **Fit to spots & contours**, and **Remove elevation…**.
 
 Heights are stored at cell **corners** on square maps and at hex **centres** on hex maps, and
 are smooth in between.
@@ -94,7 +99,7 @@ Each terrain type in a tileset can have a **base height** (typical ground height
    names (Plains 100 m / 20 m, Hills 400 m / 150 m, Mountains 2,000 m / 800 m,
    Ocean −200 m / 50 m …). Nothing changes until you click **Apply**. Types like *Canyon*
    or *Sunken Land* get no suggestion, because their height depends on their surroundings.
-3. In the Elevation section, click **Heights from terrain**.
+3. In the Height tool's Elevation section, click **Heights from terrain**.
 
 Each height is set from the terrain around it (on square maps, the average of the cells
 meeting at the corner), then smoothed so different types meet in slopes rather than cliffs.
@@ -141,7 +146,7 @@ Spot heights are known heights at points, such as a summit, a ford or a well.
 1. Height tool → **Spot** mode.
 2. Set the **height** and **reach** (in cells) for new spots, then click the map to place one.
    Click a spot to select it and edit its name, height and reach, or delete it.
-3. Click **Fit to spots & contours** in the Elevation section (see
+3. Click **Fit to spots & contours** in the Height tool's Elevation section (see
    [Fitting](#fitting-to-spots-and-contours)).
 
 Spots are Tiled point objects (type `spot height`) in a **Spot heights** layer, so Tiled and
@@ -161,7 +166,7 @@ of a hill or a valley side.
 3. Click the map to add points; **double-click** or **Enter** finishes the line. Click the
    **first point** again (it's drawn larger) to close a loop around a hilltop or a hollow.
    **Backspace** removes the last point; **Esc** cancels.
-4. Click **Fit to spots & contours** in the Elevation section.
+4. Click **Fit to spots & contours** in the Height tool's Elevation section.
 
 Click a contour to select it: drag its points, drag a segment's midpoint to add a point, and
 **Delete** removes the selected point (or the whole contour when no point is selected). The
@@ -170,7 +175,7 @@ undo step.
 
 Contours are drawn as thin brown lines labelled with their height. They're Tiled objects of
 type `contour` (a polyline, or a polygon when closed) in a **Contours** layer. They aren't roads
-or rivers: the Line tool and the Roads & rivers toggle ignore them.
+or rivers: the Roads and Water tools and the Roads & rivers toggle ignore them.
 
 ---
 
@@ -193,13 +198,17 @@ with long contours it can take a second or two.
 
 ## Water
 
+The **Water** tool (`3`) has two modes: **Lakes & sea**, and **Rivers** (drawing rivers, streams,
+brooks and canals; see [Roads & Rivers](roads-rivers.md)). Lakes and the sea need elevation;
+rivers don't.
+
 ### Lakes and seas
 
 A lake is a **surface height** placed in a basin: the water fills every place connected to that
 point whose ground is lower, the way a real lake fills its basin, so its shore follows the
 ground.
 
-1. Height tool → **Water** mode.
+1. Water tool → **Lakes & sea**.
 2. Set the **surface** height for new water (right-click picks the height under the pointer).
 3. Click in the basin.
 
@@ -211,8 +220,8 @@ delete it (**Delete**). The panel shows how much it covers and how deep it gets,
   because the surface is above the lowest point of the basin's rim.
 
 **The sea** needs no marker: ground below 0 m that connects to the map's edge is sea. An inland
-basin below sea level stays dry unless you place water in it. **Sea below 0 m** in the Elevation
-section turns the automatic sea off for a map (for an inland map whose edge dips below 0 m).
+basin below sea level stays dry unless you place water in it. **Sea below 0 m** (Water tool,
+Lakes & sea) turns the automatic sea off for a map (for an inland map whose edge dips below 0 m).
 
 Water is shaded by depth, light when shallow and dark when deep. The **Inspect** tool shows the
 water at a point: which lake (or the sea), how deep, and its surface. Water is worked out from
@@ -223,7 +232,8 @@ Lakes are Tiled point objects of type `water` with a `height` (the surface, in m
 
 ### Where rain would run
 
-Tick **Flow** to see streams and hollows worked out from the heights:
+Tick **Flow** (Show section, or **Show Flow** in the Water tool's Rivers mode) to see streams and
+hollows worked out from the heights:
 
 - **Streams** show where enough ground drains through a place, getting wider downstream. The
   **Streams** slider shows fewer (only the big ones) or more.
@@ -234,7 +244,8 @@ It's a view only: nothing is stored and the heights don't change.
 
 ### Turning a stream into a river
 
-With **Flow** shown, Water mode has a **Convert to River** button. Press it, then click on a
+With **Flow** shown, the Water tool's **Rivers** mode has a **Convert to River** button (under
+**From the elevation**). Press it, then click on a
 stream (the one under the pointer is highlighted first; Esc cancels). It becomes a drawn river
 line:
 
@@ -248,7 +259,7 @@ line:
 
 ### Carving rivers
 
-**Carve rivers** cuts each drawn river, stream, brook and canal (see
+**Carve rivers** (Water tool, Rivers mode) cuts each drawn river, stream, brook and canal (see
 [Roads & Rivers](roads-rivers.md)) into the heights, so the ground and the drawn rivers agree:
 
 - the bed is a tenth of the river's width below the ground along it (between 0.3 m and 5 m), and
@@ -276,7 +287,8 @@ out.
 A child's edges should meet its parent's ground. When they're off by more than one contour band
 of the parent's scale on average, the hierarchy panel shows an **Elevation mismatch** warning.
 
-With the child open, the Elevation section shows **Fit to parent** with how far off it is, and:
+With the child open, the Height tool's Elevation section shows **Fit to parent** with how far
+off it is, and:
 
 - **Re-base** — shift the whole child up or down by the average difference (its shape is kept)
 - **Tilt to match** — also tilt it to follow the slope of the parent around it

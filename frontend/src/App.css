@@ -26,7 +26,7 @@ body {
 
 .editor-body {
   display: grid;
-  grid-template-columns: 180px 1fr 200px;
+  grid-template-columns: 190px 1fr 230px;
   overflow: hidden;
 }
 
@@ -148,12 +148,32 @@ body {
 }
 .panel-empty { padding: 12px 10px; color: #666; font-size: 12px; }
 
-/* Layer panel */
-/* The whole panel scrolls (layers, roads & rivers, elevation and tool controls), so tall
-   tool controls never push anything out of reach; the header stays pinned. */
+/* Collapsible panel sections (#38) */
+.panel-section-header { display: flex; align-items: center; gap: 4px; padding: 3px 6px; }
+.panel-section-toggle {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  padding: 3px 0;
+}
+.panel-section-toggle:hover { color: #ccc; }
+.panel-section-caret { display: inline-block; width: 10px; }
+.panel-section-actions { display: flex; gap: 4px; text-transform: none; letter-spacing: 0; font-weight: normal; }
+.panel-section + .panel-section { border-top: 1px solid #333; }
+
+/* A row of mode buttons at the top of a tool's panel (Paint / Fill / Erase …) */
+.mode-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
+.mode-row .tool-btn { padding: 3px 9px; font-size: 12px; }
+
+/* Layer panel (left): layers, then what's shown. The whole panel scrolls. */
 .layer-panel { display: flex; flex-direction: column; flex: 1; overflow-y: auto; }
 .layer-panel > * { flex-shrink: 0; }
-.layer-panel > .panel-header { position: sticky; top: 0; z-index: 1; background: #1e1e1e; }
 .layer-list { list-style: none; }
 .layer-item {
   display: flex;
@@ -166,14 +186,18 @@ body {
 }
 .layer-item:hover { background: #2a2a2a; }
 .layer-item.active { background: #283a50; }
-.elevation-panel { border-top: 1px solid #333; padding: 6px 4px; }
+.elevation-panel { padding: 6px 4px; }
 .layer-controls { border-top: 1px solid #333; padding: 6px 8px; }
 .layer-btn { padding: 2px 6px; font-size: 11px; }
 .layer-rename { flex: 1; min-width: 0; font-size: 12px; }
 .layer-icon { color: #888; font-size: 11px; }
 .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.editor-body--no-palette { grid-template-columns: 180px 1fr; }
+.editor-body--no-palette { grid-template-columns: 190px 1fr; }
+
+/* Tool panel (right): the active tool's settings; its body scrolls */
+.tool-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.tool-panel-body { flex: 1; overflow-y: auto; }
 
 /* Inspector (Inspect tool) */
 .inspector-card {
@@ -204,8 +228,8 @@ body {
 }
 .inspector-close:hover { color: #fff; }
 
-/* Tile palette */
-.tile-palette { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+/* Tile palette (in the Terrain tool's panel) */
+.tile-palette { display: block; }
 
 /* ============================================================
    Canvas area
@@ -391,14 +415,12 @@ button { cursor: pointer; }
   }
   .panel-toggle-btn { display: flex; }
 
+  /* The tool panel sits under the map */
   .right-panel {
     border-left: none;
     border-top: 1px solid #333;
-    height: 160px;
-    flex-direction: row;
+    height: 38vh;
   }
-
-  .tile-palette { flex-direction: row; }
 }
 
 @media (max-width: 600px) {

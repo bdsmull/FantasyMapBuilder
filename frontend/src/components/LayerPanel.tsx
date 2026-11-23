@@ -2,26 +2,23 @@ import React, { useState } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { isTileLayer } from '../types/tmj';
 import type { TmjLayer } from '../types/tmj';
-import { ElevationPanel } from './ElevationPanel';
-import { LineControls } from './LineControls';
-import { useViewStore } from '../store/viewStore';
-import { useCrossScaleStore } from '../store/crossScaleStore';
-import { surfaceKey } from '../store/worldSurfaceStore';
-import { readLines } from '../utils/lines';
+import { PanelSection } from './PanelSection';
+import { ShowPanel } from './ShowPanel';
 
 /** True if deleting the layer would lose painted tiles or placed objects. */
 function hasContent(layer: TmjLayer): boolean {
   return isTileLayer(layer) ? layer.data.some((gid) => gid !== 0) : layer.objects.length > 0;
 }
 
+/**
+ * The left panel below the world set (#38): what the map is. Its layers, and what's
+ * shown over it (Show). Each section collapses; the whole panel scrolls.
+ */
 export const LayerPanel: React.FC = () => {
   const {
     mapData, activeLayerIndex, setActiveLayer, setLayerVisible, setLayerOpacity,
-    addLayer, renameLayer, deleteLayer, moveLayer, selectedTool, mapName, mapWorldSet,
+    addLayer, renameLayer, deleteLayer, moveLayer,
   } = useMapStore();
-  const showLines = useViewStore((s) => s.showLines);
-  const setShowLines = useViewStore((s) => s.setShowLines);
-  const cross = useCrossScaleStore();
   const [renaming, setRenaming] = useState<{ index: number; name: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
@@ -47,11 +44,14 @@ export const LayerPanel: React.FC = () => {
 
   return (
     <div className="layer-panel">
-      <div className="panel-header" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ flex: 1 }}>Layers</span>
-        <button className="layer-btn" title="Add a tile layer above the active layer" onClick={() => addLayer('tile')}>+ Tile</button>
-        <button className="layer-btn" title="Add an object layer above the active layer" onClick={() => addLayer('object')}>+ Objects</button>
-      </div>
+      <PanelSection
+        id="left.layers"
+        title="Layers"
+        actions={<>
+          <button className="layer-btn" title="Add a tile layer above the active layer" onClick={() => addLayer('tile')}>+ Tile</button>
+          <button className="layer-btn" title="Add an object layer above the active layer" onClick={() => addLayer('object')}>+ Objects</button>
+        </>}
+      >
       <ul className="layer-list">
         {reversed.map((layer, revIdx) => {
           const actualIdx = lastIdx - revIdx;
@@ -152,28 +152,10 @@ export const LayerPanel: React.FC = () => {
         </div>
       )}
 
-      {(() => {
-        const own = readLines(mapData, true).length;
-        const other = cross.key === surfaceKey(mapWorldSet, mapName) ? cross.ghosts.length : 0;
-        return (
-          <div
-            className="layer-item roads-rivers-row"
-            style={{ cursor: 'default', borderTop: '1px solid #333' }}
-            title="This map's roads and rivers (whatever layer they're on, even a hidden one) and faded ones from parent and child maps"
-          >
-            <input type="checkbox" checked={showLines} onChange={(e) => setShowLines(e.target.checked)} aria-label="Show roads and rivers" />
-            <span className="layer-icon">〰</span>
-            <span className="layer-name">
-              Roads &amp; rivers
-              <span style={{ color: '#888', marginLeft: 6, fontSize: 11 }}>
-                {own} here{other ? ` · ${other} from other maps` : ''}
-              </span>
-            </span>
-          </div>
-        );
-      })()}
-      {selectedTool === 'line' && <LineControls />}
-      <ElevationPanel />
+      </PanelSection>
+      <PanelSection id="left.show" title="Show">
+        <ShowPanel />
+      </PanelSection>
     </div>
   );
 };

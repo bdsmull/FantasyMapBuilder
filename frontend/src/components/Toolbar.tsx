@@ -1,6 +1,7 @@
 import React from 'react';
 import { useMapStore } from '../store/mapStore';
 import type { ToolName } from '../store/mapStore';
+import { useViewStore } from '../store/viewStore';
 
 interface ToolButtonProps {
   name: ToolName;
@@ -8,14 +9,14 @@ interface ToolButtonProps {
   shortcut: string;
 }
 
+/** The tools, by subject (#38); each one's settings show in the tool panel (right). */
 const TOOLS: ToolButtonProps[] = [
   { name: 'inspect', label: 'Inspect', shortcut: 'I' },
-  { name: 'paint', label: 'Paint', shortcut: '1' },
-  { name: 'erase', label: 'Erase', shortcut: '2' },
-  { name: 'fill',  label: 'Fill',  shortcut: '3' },
-  { name: 'point', label: 'Point', shortcut: '4' },
-  { name: 'height', label: 'Height', shortcut: '5' },
-  { name: 'line', label: 'Line', shortcut: '6' },
+  { name: 'terrain', label: 'Terrain', shortcut: '1' },
+  { name: 'height', label: 'Height', shortcut: '2' },
+  { name: 'water', label: 'Water', shortcut: '3' },
+  { name: 'roads', label: 'Roads', shortcut: '4' },
+  { name: 'point', label: 'Points', shortcut: '5' },
 ];
 
 interface ToolbarProps {
@@ -24,7 +25,9 @@ interface ToolbarProps {
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ onToggleLeftPanel, showPanelToggle }) => {
-  const { selectedTool, setTool, zoom, setZoom, setPan, showGrid, setShowGrid, mapData, heights, undo, redo, past, future } = useMapStore();
+  const { selectedTool, setTool, zoom, setZoom, setPan, showGrid, setShowGrid, mapData, undo, redo, past, future } = useMapStore();
+  const showToolPanel = useViewStore((s) => s.showPalette);
+  const setShowToolPanel = useViewStore((s) => s.setShowPalette);
 
   const zoomIn = () => setZoom(zoom * 1.2);
   const zoomOut = () => setZoom(zoom / 1.2);
@@ -53,9 +56,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToggleLeftPanel, showPanelTo
           <button
             key={t.name}
             className={`tool-btn${selectedTool === t.name ? ' active' : ''}`}
-            onClick={() => setTool(t.name)}
-            title={t.name === 'height' && !heights ? 'Height (5): add elevation in the Layers panel first' : `${t.label} (${t.shortcut})`}
-            disabled={!mapData || (t.name === 'height' && !heights)}
+            onClick={() => {
+              // Choosing the active tool again brings back a hidden tool panel
+              if (t.name === selectedTool && !showToolPanel) setShowToolPanel(true);
+              setTool(t.name);
+            }}
+            title={`${t.label} (${t.shortcut})`}
+            disabled={!mapData}
           >
             {t.label}
           </button>

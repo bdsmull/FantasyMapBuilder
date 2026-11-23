@@ -53,7 +53,7 @@ beforeEach(() => {
     isDirty: false,
     activeLayerIndex: 0,
     activeGid: 1,
-    selectedTool: 'paint',
+    selectedTool: 'terrain',
     zoom: 1,
     pan: { x: 0, y: 0 },
     showGrid: true,

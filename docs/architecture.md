@@ -60,16 +60,18 @@ FantasyMapBuilder/
 │   │   ├── worldSetStore.ts     # The active world set
 │   │   ├── worldSurfaceStore.ts # Child maps' heights for the open map
 │   │   ├── crossScaleStore.ts   # Related maps and ghost lines for the open map
-│   │   ├── viewStore.ts         # Palette, inspector, selections, Roads & rivers toggle
+│   │   ├── viewStore.ts         # Tool panel, tool modes, inspector, selections, Roads & rivers toggle
 │   │   └── cursorStore.ts       # Pointer position (for the status bar)
 │   ├── canvas/                  # tileRenderer, hexRenderer, hexGeometry, elevationOverlay,
 │   │                            # waterOverlay, lineRenderer, footprintOverlay, canvasUtils
-│   ├── tools/                   # inspect, paint, erase, fill, point, height, line
+│   ├── tools/                   # inspect, terrain (paint / fill / erase), height, water,
+│   │                            # line (roads, rivers), point
 │   ├── utils/                   # heightGrid, heightBrush, terrainHeights, heightGeneration,
 │   │                            # spotHeights, contours, surfaceFit, water, flow, carve, elevationFit,
 │   │                            # worldSurface, worldSetUtils,
 │   │                            # lines, crossScaleLines, inspect, importPlan, navigation, …
-│   ├── components/              # MapCanvas, panels, dialogs, data-loading hooks
+│   ├── components/              # MapCanvas, LayerPanel + ShowPanel (left), ToolPanel (right:
+│   │                            # Terrain, HeightPanel, WaterPanel, LineControls), dialogs, hooks
 │   └── __tests__/               # Vitest
 │
 ├── tests/                       # pytest: models/, io/, api/

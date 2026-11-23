@@ -14,13 +14,13 @@ import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 
 /**
  * 'spot' places and selects spot heights, 'contour' draws and edits contour lines,
- * 'water' places lakes and seas, instead of painting (see utils/spotHeights.ts,
- * utils/contours.ts and utils/water.ts).
+ * instead of painting (see utils/spotHeights.ts and utils/contours.ts). Lakes and seas
+ * have a tool of their own (Water).
  */
-export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot' | 'contour' | 'water';
+export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot' | 'contour';
 
 /** Modes that place or edit marks instead of painting heights. */
-export const MARK_MODES: HeightBrushMode[] = ['spot', 'contour', 'water'];
+export const MARK_MODES: HeightBrushMode[] = ['spot', 'contour'];
 
 export interface HeightBrush {
   mode: HeightBrushMode;
@@ -36,7 +36,7 @@ export interface HeightBrush {
   contourCm?: number;
   /** Reach of new contour lines, in cells (default DEFAULT_REACH_CELLS). */
   contourReachCells?: number;
-  /** Surface height of new water bodies, in cm (default: the Set target). */
+  /** Surface height of new water bodies (Water tool), in cm (default: the Set target). */
   waterCm?: number;
 }
 

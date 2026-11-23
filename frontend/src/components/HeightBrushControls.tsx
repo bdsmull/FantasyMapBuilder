@@ -5,7 +5,6 @@ import type { HeightBrushMode } from '../utils/heightBrush';
 import { formatHeight, parseHeightToCm } from '../utils/heightGrid';
 import { SpotHeightControls } from './SpotHeightControls';
 import { ContourControls } from './ContourControls';
-import { WaterControls } from './WaterControls';
 
 const _MODES: { mode: HeightBrushMode; label: string; hint: string }[] = [
   { mode: 'raise', label: 'Raise', hint: 'Raise the ground, strongest at the centre' },
@@ -15,7 +14,6 @@ const _MODES: { mode: HeightBrushMode; label: string; hint: string }[] = [
   { mode: 'release', label: 'Release', hint: 'Unprotect hand-set heights without changing them' },
   { mode: 'spot', label: 'Spot', hint: 'Place and edit spot heights (known heights at points)' },
   { mode: 'contour', label: 'Contour', hint: 'Draw and edit contour lines (lines of known height)' },
-  { mode: 'water', label: 'Water', hint: 'Place lakes and seas (a surface height that fills the basin)' },
 ];
 
 /** A height typed in the map's units, applied when it parses. */
@@ -41,13 +39,12 @@ const HeightField: React.FC<{ cm: number; units: UnitSystem; onChange: (cm: numb
   );
 };
 
-/** Brush settings for the Height tool, shown in the Elevation section while it's selected. */
+/** Brush settings for the Height tool (its panel's Brush section). */
 export const HeightBrushControls: React.FC<{ units: UnitSystem }> = ({ units }) => {
   const { heightBrush, setHeightBrush } = useMapStore();
   const unit = units === 'imperial' ? 'ft' : 'm';
   return (
-    <div className="height-brush" style={{ padding: '4px 8px', fontSize: 12, borderTop: '1px solid #333' }}>
-      <div style={{ color: '#aaa', marginBottom: 4 }}>Height brush</div>
+    <div className="height-brush" style={{ padding: '4px 8px', fontSize: 12 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
         {_MODES.map((m) => (
           <button
@@ -62,8 +59,7 @@ export const HeightBrushControls: React.FC<{ units: UnitSystem }> = ({ units }) 
         ))}
       </div>
       {heightBrush.mode === 'spot' ? <SpotHeightControls units={units} />
-        : heightBrush.mode === 'contour' ? <ContourControls units={units} />
-        : heightBrush.mode === 'water' ? <WaterControls units={units} /> : (<>
+        : heightBrush.mode === 'contour' ? <ContourControls units={units} /> : (<>
       <label style={{ display: 'block', marginBottom: 4 }} title="Brush radius in cells">
         Radius{' '}
         <input

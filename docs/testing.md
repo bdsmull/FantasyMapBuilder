@@ -19,7 +19,7 @@ pytest
 pytest --cov=map_editor --cov=server --cov-report=term-missing
 ```
 
-**Frontend** (385 Vitest tests):
+**Frontend** (389 Vitest tests):
 
 ```bash
 cd frontend
@@ -52,7 +52,7 @@ npx tsc --noEmit -p . # type check (also part of npm run build)
 
 | Area | Test files |
 |------|------------|
-| Map store and editing | `mapStore`, `layers`, `fillTool`, `tileRenderer` |
+| Map store and editing | `mapStore`, `layers`, `fillTool`, `terrainTool`, `tileRenderer` |
 | Tiled format | `tmjFile`, `tilesetRefs`, `hexGeometry` |
 | World sets | `worldSetStore`, `worldSetUtils`, `hierarchyPanelLogic`, `worldHierarchyPanel`, `worldSetDialog`, `navigation`, `canvasContextMenu`, `placement` |
 | Import / export | `mapset`, `importPlan` |

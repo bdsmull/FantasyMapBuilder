@@ -1,5 +1,5 @@
 /**
- * Water mode of the Height tool (#8 phase 4): place lakes and seas. A click on a water
+ * The Water tool's Lakes mode (#8 phase 4, #38): place lakes and seas. A click on a water
  * body selects it (drag to move it, so it fills another basin); a click elsewhere adds
  * one there with the surface height set in the panel. Each change is one undo step.
  */
@@ -52,7 +52,7 @@ export function waterRelease(store: MapStore): boolean {
   return drag !== null;
 }
 
-/** Keyboard for Water mode: Esc stops Convert to River or deselects, Delete removes the selected body. Returns true when used. */
+/** Keyboard for the Water tool's Lakes mode: Esc stops Convert to River or deselects, Delete removes the selected body. Returns true when used. */
 export function waterKey(key: string, store: MapStore): boolean {
   const view = _view();
   if (view.convertingStream && key === 'Escape') { view.setConvertingStream(false); return true; }

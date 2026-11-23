@@ -199,7 +199,7 @@ describe('the Roads & rivers toggle governs lines, not their layers', () => {
   });
 
   it("the Line tool can't pick lines while they're hidden", async () => {
-    const { lineTool } = await import('../tools/lineTool');
+    const { roadsTool: lineTool } = await import('../tools/lineTool');
     s().loadMap(hiddenLayerMap(), 'h', 'ws');
     s().setZoom(1);
     useViewStore.getState().selectLine(null);

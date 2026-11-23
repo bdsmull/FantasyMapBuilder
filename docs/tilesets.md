@@ -27,8 +27,8 @@ them; the editor draws them from each tile's `color_r` / `color_g` / `color_b` p
 | **Heights…** | Base height and relief for each terrain type (see below) |
 | **Remove** | Removes a tileset no layer uses |
 
-The **tile palette** shows the active tileset; hover a tile to see its name, click to select it
-for Paint and Fill. Hide the palette with its × or `P`.
+The **tile palette**, in the Terrain tool's panel, shows the active tileset; hover a tile to see
+its name, click to select it for painting and filling. Hide the tool panel with its × or `P`.
 
 ---
 

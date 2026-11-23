@@ -1,10 +1,16 @@
 /**
- * Editor view settings that aren't part of the map: whether the tile palette is
- * shown, and the point the Inspect tool last picked.
+ * Editor view settings that aren't part of the map: whether the tool panel is shown,
+ * the tools' modes, selections, and the point the Inspect tool last picked.
  */
 
 import { create } from 'zustand';
 import type { MapPoint } from '../tools/baseTool';
+import type { LineKind } from '../data/lineClasses';
+
+/** What the Terrain tool does with a press: paint the selected tile, flood-fill, or erase. */
+export type TerrainMode = 'paint' | 'fill' | 'erase';
+/** What the Water tool works on: lakes and the sea, or drawn rivers. */
+export type WaterToolMode = 'lakes' | 'rivers';
 
 const _PALETTE_KEY = 'showTilePalette';
 
@@ -24,16 +30,20 @@ function _storedPalette(): boolean {
 }
 
 export interface ViewStore {
-  /** Tile palette visible (remembered in this browser). */
+  /** The tool panel (right) visible (remembered in this browser). */
   showPalette: boolean;
   setShowPalette: (show: boolean) => void;
+  terrainMode: TerrainMode;
+  setTerrainMode: (mode: TerrainMode) => void;
+  waterMode: WaterToolMode;
+  setWaterMode: (mode: WaterToolMode) => void;
   /** Map-pixel point shown in the inspector, or null when it's closed. */
   inspected: MapPoint | null;
   setInspected: (pos: MapPoint | null) => void;
-  /** Object ID of the water body being edited in the Height tool's Water mode. */
+  /** Object ID of the water body being edited in the Water tool's Lakes mode. */
   selectedWaterId: number | null;
   setSelectedWaterId: (id: number | null) => void;
-  /** Water mode, "Convert to River": the next click on a Flow stream makes it a drawn river. */
+  /** Water tool, Rivers mode, "Convert to River": the next click on a Flow stream makes it a drawn river. */
   convertingStream: boolean;
   setConvertingStream: (on: boolean) => void;
   /** What the last Convert to River click did (shown in the Water panel), '' for nothing. */
@@ -48,7 +58,7 @@ export interface ViewStore {
    */
   selectedContourId: number | null;
   selectContour: (id: number | null, point?: number | null) => void;
-  /** Line tool: the selected line and point (index), the line being drawn, and the class for new lines. */
+  /** Line drawing (Roads, Water → Rivers): the selected line and point (index), the line being drawn, and the class for new lines. */
   selectedLineId: number | null;
   selectedPoint: number | null;
   selectLine: (id: number | null, point?: number | null) => void;
@@ -57,9 +67,10 @@ export interface ViewStore {
   /** While a point is dragged: the line's points as they'd be, before the change is committed. */
   dragPoints: MapPoint[] | null;
   setDragPoints: (points: MapPoint[] | null) => void;
-  newLineClass: string;
-  setNewLineClass: (id: string) => void;
-  /** A ghost line (from another map) selected in the Line tool: "<map>#<id>". */
+  /** The class for new lines, per kind: roads (Roads tool) and waterways (Water tool). */
+  newLineClass: Record<LineKind, string>;
+  setNewLineClass: (kind: LineKind, id: string) => void;
+  /** A ghost line (from another map) selected while drawing lines: "<map>#<id>". */
   selectedGhost: string | null;
   setSelectedGhost: (key: string | null) => void;
   /**
@@ -82,6 +93,10 @@ export const useViewStore = create<ViewStore>((set) => ({
     try { if (typeof localStorage !== 'undefined') localStorage.setItem(_PALETTE_KEY, String(show)); } catch { /* not stored */ }
     set({ showPalette: show });
   },
+  terrainMode: 'paint',
+  setTerrainMode: (mode) => set({ terrainMode: mode }),
+  waterMode: 'lakes',
+  setWaterMode: (mode) => set({ waterMode: mode }),
   inspected: null,
   setInspected: (pos) => set({ inspected: pos }),
   selectedWaterId: null,
@@ -101,8 +116,8 @@ export const useViewStore = create<ViewStore>((set) => ({
   setDraftLine: (points) => set({ draftLine: points }),
   dragPoints: null,
   setDragPoints: (points) => set({ dragPoints: points }),
-  newLineClass: 'minor-road',
-  setNewLineClass: (id) => set({ newLineClass: id }),
+  newLineClass: { road: 'minor-road', water: 'river' },
+  setNewLineClass: (kind, id) => set((s) => ({ newLineClass: { ...s.newLineClass, [kind]: id } })),
   selectedGhost: null,
   setSelectedGhost: (key) => set({ selectedGhost: key }),
   showLines: _stored(_LINES_KEY),

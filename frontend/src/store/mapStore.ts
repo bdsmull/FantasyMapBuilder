@@ -91,7 +91,11 @@ export interface LayerSnapshot {
 // Store interface
 // ---------------------------------------------------------------------------
 
-export type ToolName = 'inspect' | 'paint' | 'erase' | 'fill' | 'point' | 'height' | 'line';
+/**
+ * The tools, by subject (#38): Inspect, Terrain (paint / fill / erase tiles), Height
+ * (elevation), Water (lakes, the sea, rivers), Roads, Points.
+ */
+export type ToolName = 'inspect' | 'terrain' | 'height' | 'water' | 'roads' | 'point';
 
 export interface MapStore {
   // ---- Map data ----
@@ -338,7 +342,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
   isDirty: false,
   activeLayerIndex: 0,
   activeGid: 1,
-  selectedTool: 'paint',
+  selectedTool: 'terrain',
   zoom: 1,
   pan: { x: 0, y: 0 },
   showGrid: true,

@@ -10,7 +10,8 @@ import { screenWidths } from '../canvas/lineRenderer';
 import { inspectAt } from '../utils/inspect';
 import { useMapStore, LINE_LAYER } from '../store/mapStore';
 import { useViewStore } from '../store/viewStore';
-import { lineTool, lineToolKey } from '../tools/lineTool';
+import { roadsTool, riversTool, lineToolKey } from '../tools/lineTool';
+import type { Tool } from '../tools/baseTool';
 import type { TmjMap, TmjObject } from '../types/tmj';
 import { isObjectLayer } from '../types/tmj';
 
@@ -142,9 +143,10 @@ describe('Line tool', () => {
     s().setZoom(1);
     v().selectLine(null);
     v().setDraftLine(null);
-    v().setNewLineClass('major-road');
+    v().setNewLineClass('road', 'major-road');
   });
-  const click = (x: number, y: number) => { lineTool.onPress(0, 0, s(), { x, y }); lineTool.onRelease(s()); };
+  const clickWith = (tool: Tool) => (x: number, y: number) => { tool.onPress(0, 0, s(), { x, y }); tool.onRelease(s()); };
+  const click = clickWith(roadsTool);
 
   it('clicks add points; Enter finishes, adds the line and selects it', () => {
     click(10, 10);
@@ -175,6 +177,8 @@ describe('Line tool', () => {
   });
 
   it('select a line, drag a point (one undo step), insert at a midpoint, delete a point then the line', () => {
+    const lineTool = riversTool;
+    const click = clickWith(riversTool);
     const id = s().addLine([{ x: 10, y: 10 }, { x: 110, y: 10 }], 'river')!;
     click(60, 12);                       // on the line: select it
     expect(v().selectedLineId).toBe(id);
@@ -197,7 +201,28 @@ describe('Line tool', () => {
     expect(v().selectedLineId).toBeNull();
   });
 
+  it('Roads only picks roads and Rivers only waterways; each draws its own kind', () => {
+    const river = s().addLine([{ x: 10, y: 10 }, { x: 110, y: 10 }], 'river')!;
+    const road = s().addLine([{ x: 10, y: 100 }, { x: 110, y: 100 }], 'minor-road')!;
+    click(60, 10);                       // Roads, on the river: not picked, starts a road instead
+    expect(v().selectedLineId).toBeNull();
+    expect(v().draftLine).toHaveLength(1);
+    v().setDraftLine(null);
+    click(60, 100);
+    expect(v().selectedLineId).toBe(road);
+    v().selectLine(null);
+    clickWith(riversTool)(60, 10);
+    expect(v().selectedLineId).toBe(river);
+    v().selectLine(null);
+    v().setNewLineClass('water', 'stream');
+    clickWith(riversTool)(10, 200);
+    clickWith(riversTool)(80, 200);
+    lineToolKey('Enter', s(), 'water');
+    expect(readLines(s().mapData!).find((l) => l.id === v().selectedLineId)!.object.type).toBe('stream');
+  });
+
   it('a click away from any line deselects, the next one starts a line', () => {
+    const click = clickWith(riversTool);
     s().addLine([{ x: 10, y: 10 }, { x: 110, y: 10 }], 'river');
     click(60, 10);
     click(60, 150);

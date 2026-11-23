@@ -33,9 +33,15 @@ set it.
 
 ---
 
-## Drawing and editing (Line tool)
+## Drawing and editing
 
-Select the **Line** tool (`6`). Its panel shows the class for new lines and the selected line.
+Roads and rivers each have their own tool:
+
+- **Roads** (`4`) draws and edits roads, paths and trails;
+- **Water** (`3`) → **Rivers** draws and edits rivers, streams, brooks and canals.
+
+Each only picks and draws its own kind (by the line's class), so a road crossing a river is easy
+to select. The tool's panel shows the class for new lines and the selected line.
 
 **Drawing**
 
@@ -53,22 +59,23 @@ New lines go into the selected layer if it's an object layer, otherwise into a
 - The panel edits the **name**, **class**, and the selected point's **width** (blank = the
   class width). Per-point widths let a river widen downstream or a road narrow into a lane.
 
-Every change is one undo step. The Line tool draws across child map footprints instead of
-opening them, so roads can run into towns.
+Every change is one undo step. Both tools draw across child map footprints instead of opening
+them, so roads can run into towns.
 
 ---
 
 ## Showing lines
 
-The fixed **Roads & rivers** row in the Layers panel (also **View → Roads & Rivers**) shows or
-hides all lines:
+The **Roads & rivers** row in the left panel's **Show** section (also **View → Roads & Rivers**)
+shows or hides all lines:
 
 - **On** — every line on the map, whatever layer it's on (even a hidden one), plus faded lines
   from parent and child maps
 - **Off** — no lines
 
 Object layers' own checkboxes then only affect their other objects. A single line hidden in
-Tiled (`visible: false` on the object) stays hidden. Choosing the Line tool turns the row on.
+Tiled (`visible: false` on the object) stays hidden. Choosing Roads, or Water → Rivers, turns the
+row on.
 The count beside it shows lines on this map and from other maps.
 
 ---
@@ -83,7 +90,8 @@ a faded, read-only **ghost** line:
 
 ### Copying a line down and refining it
 
-On a child map, click a ghost line from a parent (or further up) with the Line tool. The panel
+On a child map, click a ghost line from a parent (or further up) with Roads (or Water → Rivers
+for a river). The panel
 shows where it comes from, with:
 
 - **Copy to this map** — copies the part inside this map, keeping its name, class and widths,

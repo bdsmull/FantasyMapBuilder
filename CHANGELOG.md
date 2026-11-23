@@ -80,6 +80,15 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   and an imperial size; world-set default units with a per-map override; squares or hexes at any level.
 
 ### Changed
+- **Tools by subject** (issue #38): Inspect, **Terrain** (`1`; Paint / Fill / Erase modes, with
+  Shift+click to fill and right-drag to erase), **Height** (`2`), **Water** (`3`; Lakes & sea, and
+  Rivers), **Roads** (`4`), **Points** (`5`). They replace Paint, Erase, Fill, Point and Line,
+  and Water leaves the Height tool. Roads and Rivers each pick and draw only their own kind of
+  line. Height and Water work on maps without elevation (Height offers to add it).
+- The **left panel** shows what the map is: the hierarchy, **Layers**, and a new **Show** section
+  (roads & rivers, elevation, water, flow). The **right panel** is now the active tool's settings
+  (the tile palette moves into Terrain's); **View → Tool Panel** / `P` hides it. Panel sections
+  collapse, and the editor remembers which.
 - Scale, units and custom cell size are stored as Tiled custom properties; tile data is written
   one row per line (#14).
 - Hex geometry matches Tiled's exactly everywhere (#15).

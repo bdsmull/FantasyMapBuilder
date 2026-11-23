@@ -15,13 +15,12 @@ import { renderHexMap, clearHexTileCache } from '../canvas/hexRenderer';
 import { hexLayout, pixelToHex } from '../canvas/hexGeometry';
 import { screenToTile } from '../canvas/canvasUtils';
 import type { Tool } from '../tools/baseTool';
-import { paintTool } from '../tools/paintTool';
-import { eraseTool } from '../tools/eraseTool';
-import { fillTool } from '../tools/fillTool';
+import { terrainTool } from '../tools/terrainTool';
 import { pointTool } from '../tools/pointTool';
 import { heightTool } from '../tools/heightTool';
 import { inspectTool } from '../tools/inspectTool';
-import { lineTool } from '../tools/lineTool';
+import { roadsTool } from '../tools/lineTool';
+import { waterTool } from '../tools/waterTool';
 import { readLines, linePoints, pixelsPerMeter } from '../utils/lines';
 import { resolveLineClasses, classForType } from '../data/lineClasses';
 import { drawLine } from '../canvas/lineRenderer';
@@ -64,12 +63,11 @@ import type { OpenWorldSetDialogArgs } from './WorldHierarchyPanel';
 
 const TOOLS: Record<string, Tool> = {
   inspect: inspectTool,
-  line: lineTool,
-  paint: paintTool,
-  erase: eraseTool,
-  fill: fillTool,
-  point: pointTool,
+  terrain: terrainTool,
   height: heightTool,
+  water: waterTool,
+  roads: roadsTool,
+  point: pointTool,
 };
 
 const MIN_ZOOM = 0.1;
@@ -88,6 +86,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const isPanning = useRef(false);
   const lastPanPoint = useRef<{ x: number; y: number } | null>(null);
   const isDrawing = useRef(false);
+  /** Terrain tool: a right press waiting to become an erase drag or a menu (see onPointerDown). */
+  const rightGesture = useRef<{ tile: { col: number; row: number }; pos: { x: number; y: number }; openMenu: () => void } | null>(null);
 
   // World set store and current map name
   const worldSetStore = useWorldSetStore();
@@ -116,34 +116,38 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   );
   // Rubber band for the line being drawn: follow the pointer only while drawing
   const cursorPos = useCursorStore((s) => (draftLine ? s.mapPos : null));
-  // Line selection and drafts belong to the open map and the Line tool
+  // Line drawing: the Roads tool, and the Water tool's Rivers mode
+  const viewWaterMode = useViewStore((s) => s.waterMode);
+  const riversMode = store.selectedTool === 'water' && viewWaterMode === 'rivers';
+  const lineDrawing = store.selectedTool === 'roads' || riversMode;
+  // Line selection and drafts belong to the open map and the tool drawing them
   useEffect(() => {
     const v = useViewStore.getState();
     v.selectLine(null); v.setDraftLine(null); v.setDragPoints(null); v.setSelectedGhost(null);
-  }, [store.mapName, store.mapWorldSet, store.selectedTool === 'line']);
+  }, [store.mapName, store.mapWorldSet, store.selectedTool, riversMode]);
   // Contour selection and drafts belong to the open map and the Height tool's Contour mode
   const contourMode = store.selectedTool === 'height' && store.heightBrush.mode === 'contour';
   useEffect(() => {
     const v = useViewStore.getState();
     v.selectContour(null);
-    if (!contourMode && v.draftLine && store.selectedTool !== 'line') v.setDraftLine(null);
+    if (!contourMode && v.draftLine && !lineDrawing) v.setDraftLine(null);
     v.setDragPoints(null);
   }, [store.mapName, store.mapWorldSet, contourMode]); // eslint-disable-line react-hooks/exhaustive-deps
-  // A water body selection belongs to the open map and the Height tool's Water mode
-  const waterMode = store.selectedTool === 'height' && store.heightBrush.mode === 'water';
+  // A water body selection belongs to the open map and the Water tool's Lakes mode
+  const waterMode = store.selectedTool === 'water' && viewWaterMode === 'lakes';
   useEffect(() => { useViewStore.getState().setSelectedWaterId(null); }, [store.mapName, store.mapWorldSet, waterMode]);
-  // Convert to River: only in Water mode with the Flow view on; ends with the map
+  // Convert to River: only in the Water tool's Rivers mode with the Flow view on; ends with the map
   const convertingStream = useViewStore((s) => s.convertingStream);
   const flowShown = store.elevationView.flow;
   useEffect(() => {
-    if (convertingStream && !(waterMode && flowShown)) useViewStore.getState().setConvertingStream(false);
-  }, [convertingStream, waterMode, flowShown]);
+    if (convertingStream && !(riversMode && flowShown)) useViewStore.getState().setConvertingStream(false);
+  }, [convertingStream, riversMode, flowShown]);
   useEffect(() => {
     const v = useViewStore.getState();
     v.setConvertingStream(false);
     v.setStreamNote('');
   }, [store.mapName, store.mapWorldSet]);
-  const converting = convertingStream && waterMode && !!waterView.flow;
+  const converting = convertingStream && riversMode && !!waterView.flow;
   const worldLineClasses = store.mapWorldSet === activeWorldSetName ? worldSetStore.activeWorldSet?.lineClasses : undefined;
   const streams = useMemo(() => {
     const map = useMapStore.getState().mapData, h = useMapStore.getState().heights;
@@ -160,10 +164,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     () => (streams && streamHoverPos ? streams.at(streamHoverPos.x, streamHoverPos.y, _STREAM_PICK_RADIUS_PX / store.zoom) : null),
     [streams, streamHoverPos, store.zoom],
   );
-  // Choosing the Line tool shows roads and rivers, so you never edit lines you can't see
+  // Drawing lines shows roads and rivers, so you never edit lines you can't see
   useEffect(() => {
-    if (store.selectedTool === 'line') useViewStore.getState().setShowLines(true);
-  }, [store.selectedTool]);
+    if (lineDrawing) useViewStore.getState().setShowLines(true);
+  }, [lineDrawing]);
   // A panel asked to open a map: guard unsaved changes like a footprint click does
   useEffect(() => {
     if (!openMapRequest) return;
@@ -440,7 +444,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       }
     }
 
-    // Line tool: the line being drawn, and the selected line's handles
+    // Line drawing (Roads, Water → Rivers): the line being drawn, and the selected line's handles
     // A selected line from another map: outline it
     const ghost = selectedGhost ? ghosts.find((g) => g.key === selectedGhost) : undefined;
     if (ghost?.placed.polyline) {
@@ -710,9 +714,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     }
 
     // Footprint interception — runs before tool dispatch. The Inspect tool inspects
-    // footprints instead (its card has an Open button for each child map), and the Line
-    // tool draws across them (roads and rivers run into child maps).
-    if (store.mapData && store.selectedTool !== 'inspect' && store.selectedTool !== 'line'
+    // footprints instead (its card has an Open button for each child map), and line
+    // drawing goes across them (roads and rivers run into child maps).
+    const drawingLines = store.selectedTool === 'roads'
+      || (store.selectedTool === 'water' && useViewStore.getState().waterMode === 'rivers');
+    if (store.mapData && store.selectedTool !== 'inspect' && !drawingLines
       && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
       const canvasPt = getCanvasPoint(e.nativeEvent);
       const hits = footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);
@@ -773,12 +779,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         !!worldSetStore.activeWorldSetName &&
         !!worldSetStore.activeWorldSet?.nodes.find((n) => n.mapName === mapName);
 
+      // The world set's menu for this point (none outside a world set)
+      let openMenu: (() => void) | null = null;
       if (isCurrentMapInWorldSet && store.mapData && tile) {
         const canvasPt = getCanvasPoint(e.nativeEvent);
         const hits = footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);
-        // Dismiss picker first to avoid z-index conflict
-        setPickerPos(null);
-        setPickerCandidates([]);
         // Snap to a point object near the pointer, so a child can be put exactly on its marker
         const at = pointerToMap(e.nativeEvent);
         const snapRadius = 12 / store.zoom;
@@ -793,7 +798,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
             }
           }
         }
-        setCanvasCtxMenu({
+        const menu = {
           x: e.clientX,
           y: e.clientY,
           col: tile.col,
@@ -802,19 +807,31 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
           mapX: snap?.x ?? at.x,
           mapY: snap?.y ?? at.y,
           snapName: snap?.name,
-        });
-        return; // gate passed — do NOT dispatch to tool
+        };
+        openMenu = () => {
+          // Dismiss picker first to avoid z-index conflict
+          setPickerPos(null);
+          setPickerCandidates([]);
+          setCanvasCtxMenu(menu);
+        };
       }
 
-      // Gate failed — existing behavior
       const tool = TOOLS[store.selectedTool];
-      tool.onRightPress?.(tile.col, tile.row, store, pointerToMap(e.nativeEvent));
+      const pos = pointerToMap(e.nativeEvent);
+      // Terrain: dragging with the right button erases; a right-click that doesn't move
+      // still opens the world set's menu (decided once the pointer moves or lifts)
+      if (store.selectedTool === 'terrain' && openMenu) {
+        rightGesture.current = { tile, pos, openMenu };
+        return;
+      }
+      if (openMenu) { openMenu(); return; } // do NOT dispatch to tool
+      if (tool.onRightPress?.(tile.col, tile.row, store, pos)) isDrawing.current = true;
       return;
     }
 
     isDrawing.current = true;
     const tool = TOOLS[store.selectedTool];
-    tool.onPress(tile.col, tile.row, store, pointerToMap(e.nativeEvent));
+    tool.onPress(tile.col, tile.row, store, pointerToMap(e.nativeEvent), { shift: e.shiftKey });
   }, [store, touchedFootprint, hoveredFootprint]);
 
   /** Convert to River at a map point: add the stream there as a drawn river (one undo step). */
@@ -833,7 +850,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const drains = river.catchmentM2 !== null ? `${formatArea(river.catchmentM2, units)} drains into it` : `${river.catchmentSamples.toLocaleString('en-US')} cells drain into it`;
     const ends = river.end === 'water' ? 'down into the water' : river.end === 'river' ? 'to where it joins a drawn river' : "to the map's edge";
     v.setConvertingStream(false);
-    v.setStreamNote(`Added a ${name.toLowerCase()} from where it begins ${ends}; ${drains}. Change its type or shape with the Line tool.`);
+    v.setStreamNote(`Added a ${name.toLowerCase()} from where it begins ${ends}; ${drains}. Select it to change its type or shape.`);
   }
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -882,6 +899,16 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       }
     }
 
+    // Terrain, right button: moving off the first cell turns a right-click into erasing
+    const pending = rightGesture.current;
+    if (pending) {
+      const t = pointerToTile(e.nativeEvent);
+      if (t && (t.col !== pending.tile.col || t.row !== pending.tile.row)) {
+        rightGesture.current = null;
+        if (TOOLS[store.selectedTool].onRightPress?.(pending.tile.col, pending.tile.row, store, pending.pos)) isDrawing.current = true;
+      }
+    }
+
     if (!isDrawing.current) return;
     const tile = pointerToTile(e.nativeEvent);
     if (!tile) return;
@@ -892,6 +919,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointers.current.delete(e.pointerId);
     lastPinchDistance.current = null;
+
+    // A right-click that didn't move (Terrain tool): the world set's menu after all
+    if (rightGesture.current) {
+      const gesture = rightGesture.current;
+      rightGesture.current = null;
+      gesture.openMenu();
+      return;
+    }
 
     if (isPanning.current) {
       isPanning.current = false;

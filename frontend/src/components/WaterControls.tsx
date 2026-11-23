@@ -21,18 +21,14 @@ export function formatArea(m2: number, units: UnitSystem): string {
 }
 
 /**
- * Water mode of the Height tool: the surface height for new lakes and seas, and
- * editing of the selected one (each edit is one undo step).
+ * The Water tool's Lakes mode: the surface height for new lakes and seas, and editing
+ * of the selected one (each edit is one undo step).
  */
 export const WaterControls: React.FC<{ units: UnitSystem }> = ({ units }) => {
   const store = useMapStore();
   const { mapData, setHeightBrush, updateWaterBody, deleteWaterBody } = store;
   const selectedId = useViewStore((s) => s.selectedWaterId);
   const setSelected = useViewStore((s) => s.setSelectedWaterId);
-  const converting = useViewStore((s) => s.convertingStream);
-  const setConverting = useViewStore((s) => s.setConvertingStream);
-  const streamNote = useViewStore((s) => s.streamNote);
-  const setStreamNote = useViewStore((s) => s.setStreamNote);
   const defaultUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
   const { bodies, water } = useWaterView();
   if (!mapData) return null;
@@ -56,26 +52,6 @@ export const WaterControls: React.FC<{ units: UnitSystem }> = ({ units }) => {
         <ValueField value={newWaterCm(store)} format={heightText} parse={parseHeight} commit="change"
           title="Surface height for new lakes and seas" onChange={(v) => setHeightBrush({ waterCm: v })} />
       </label>
-
-      <div style={{ marginBottom: 6 }}>
-        {store.elevationView.flow ? (
-          <>
-            <button className={converting ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: 11 }}
-              title="Turn a stream from the Flow view into a drawn river: click this, then click the stream"
-              onClick={() => { setConverting(!converting); setStreamNote(''); }}>
-              {converting ? 'Cancel' : 'Convert to River'}
-            </button>
-            {converting && (
-              <div style={{ color: '#888', marginTop: 4 }}>
-                Click on a blue Flow stream: it becomes a river from where it begins to where it ends (highlighted as you point). Esc cancels.
-              </div>
-            )}
-          </>
-        ) : (
-          <div style={{ color: '#888' }}>Show Flow (above) to convert its streams into rivers.</div>
-        )}
-        {streamNote && <div style={{ color: '#aaa', marginTop: 4 }}>{streamNote}</div>}
-      </div>
 
       {selected ? (
         <div style={{ borderTop: '1px solid #333', paddingTop: 4 }}>

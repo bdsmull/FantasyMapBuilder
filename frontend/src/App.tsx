@@ -5,7 +5,7 @@ import { LayerPanel } from './components/LayerPanel';
 import { useHeightsLoader } from './components/useHeightsLoader';
 import { useWorldSurface } from './components/useWorldSurface';
 import { useCrossScaleLines } from './components/useCrossScaleLines';
-import { TilePalette } from './components/TilePalette';
+import { ToolPanel } from './components/ToolPanel';
 import { Toolbar } from './components/Toolbar';
 import { MenuBar } from './components/MenuBar';
 import { StatusBar } from './components/StatusBar';
@@ -89,19 +89,25 @@ export const App: React.FC = () => {
     }
 
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      // The Line tool's keys (Enter, Esc, Backspace, Delete) come first while it's active
+      // The active tool's keys (Enter, Esc, Backspace, Delete) come first
       const state = useMapStore.getState();
-      if (state.selectedTool === 'line' && lineToolKey(e.key, state)) { e.preventDefault(); return; }
+      const view = useViewStore.getState();
+      if (state.selectedTool === 'roads' && lineToolKey(e.key, state, 'road')) { e.preventDefault(); return; }
       if (state.selectedTool === 'height' && state.heightBrush.mode === 'contour' && contourKey(e.key, state)) { e.preventDefault(); return; }
-      if (state.selectedTool === 'height' && state.heightBrush.mode === 'water' && waterKey(e.key, state)) { e.preventDefault(); return; }
-      if (e.key === '6') { setTool('line'); return; }
+      if (state.selectedTool === 'water') {
+        // Esc stops Convert to River first, in either mode
+        const used = view.waterMode === 'rivers'
+          ? (view.convertingStream && e.key === 'Escape' ? (view.setConvertingStream(false), true) : lineToolKey(e.key, state, 'water'))
+          : waterKey(e.key, state);
+        if (used) { e.preventDefault(); return; }
+      }
       if (e.key === 'i' || e.key === 'I') { setTool('inspect'); return; }
-      if (e.key === 'p' || e.key === 'P') { setShowPalette(!useViewStore.getState().showPalette); return; }
-      if (e.key === '1') { setTool('paint'); return; }
-      if (e.key === '2') { setTool('erase'); return; }
-      if (e.key === '3') { setTool('fill'); return; }
-      if (e.key === '4') { setTool('point'); return; }
-      if (e.key === '5') { if (useMapStore.getState().heights) setTool('height'); return; }
+      if (e.key === 'p' || e.key === 'P') { setShowPalette(!view.showPalette); return; }
+      if (e.key === '1') { setTool('terrain'); return; }
+      if (e.key === '2') { setTool('height'); return; }
+      if (e.key === '3') { setTool('water'); return; }
+      if (e.key === '4') { setTool('roads'); return; }
+      if (e.key === '5') { setTool('point'); return; }
       if (e.key === 'g' || e.key === 'G') { setShowGrid(!showGrid); return; }
       if (e.key === 'Escape') { setActiveDialog(null); useViewStore.getState().setInspected(null); return; }
     }
@@ -171,7 +177,7 @@ export const App: React.FC = () => {
         </main>
         {showPalette && (
           <aside className="right-panel">
-            <TilePalette />
+            <ToolPanel />
           </aside>
         )}
       </div>

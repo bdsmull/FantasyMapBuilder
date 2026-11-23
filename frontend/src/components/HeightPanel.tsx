@@ -2,34 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { resolveUnits } from '../data/mapScales';
-import { createPatch, formatHeight, hasHeightsProperty, parseHeightToCm, patchRange } from '../utils/heightGrid';
+import { createPatch, formatHeight, hasHeightsProperty, parseHeightToCm } from '../utils/heightGrid';
 import { HeightBrushControls } from './HeightBrushControls';
 import { GenerateControls } from './GenerateControls';
-import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { useEdgeFits } from './useEdgeFits';
 import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
 import { hasTerrainHeights, heightsFromTerrain, terrainGaps, describeTerrainGaps } from '../utils/terrainHeights';
 import { readSpots, spotTargets } from '../utils/spotHeights';
 import { readContours, contourTargets } from '../utils/contours';
 import { fitHeights } from '../utils/surfaceFit';
-import { seaEnabled } from '../utils/water';
-import { carveRivers, waterLines } from '../utils/carve';
-import { defaultStreamSamples } from '../utils/flow';
-import { readLines } from '../utils/lines';
-import { resolveLineClasses } from '../data/lineClasses';
-import { resolveMetersPerUnit } from '../data/mapScales';
+import { PanelSection } from './PanelSection';
 
 /**
- * Elevation section of the Layers panel: add or remove the map's elevation and
- * control how the overlay is shown. Heights are saved with the map (Ctrl+S).
+ * The Height tool's panel (#38): add or remove the map's elevation, build it (from
+ * terrain, generated detail, spot heights and contours, fitting it to the parent map),
+ * and the height brush. Heights are saved with the map (Ctrl+S). How the elevation is
+ * shown is in the left panel's Show section.
  */
-export const ElevationPanel: React.FC = () => {
-  const { mapData, mapName, mapWorldSet, heights, elevationView, addElevation, removeElevation, setElevationView, selectedTool, setSea } = useMapStore();
-  const surface = useWorldSurfaceStore();
-  const childNames = surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children.map((c) => c.node.name) : [];
+export const HeightPanel: React.FC = () => {
+  const { mapData, mapName, heights, addElevation, removeElevation } = useMapStore();
   const worldSetUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
-  const activeWorldSet = useWorldSetStore((s) => s.activeWorldSet);
-  const activeWorldSetName = useWorldSetStore((s) => s.activeWorldSetName);
   const [adding, setAdding] = useState(false);
   const [startHeight, setStartHeight] = useState('0');
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -96,6 +88,9 @@ export const ElevationPanel: React.FC = () => {
     }
     return (
       <div className="elevation-panel">
+        <div style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>
+          This map has no elevation yet. Add a height surface to shape the ground, and for lakes, the sea and flow.
+        </div>
         {!adding ? (
           <button className="btn-secondary" onClick={() => setAdding(true)} title="Give this map a height surface">
             Add elevation…
@@ -130,94 +125,13 @@ export const ElevationPanel: React.FC = () => {
     );
   }
 
-  const range = patchRange(heights);
   return (
+    <>
+    <PanelSection id="height.brush" title="Brush">
+      <HeightBrushControls units={units} />
+    </PanelSection>
+    <PanelSection id="height.elevation" title="Elevation">
     <div className="elevation-panel">
-      <div className="layer-item" style={{ cursor: 'default' }}>
-        <input
-          type="checkbox"
-          checked={elevationView.visible}
-          onChange={(e) => setElevationView({ visible: e.target.checked })}
-          title="Toggle elevation overlay"
-        />
-        <span className="layer-icon">⛰</span>
-        <span className="layer-name" title="Saved with the map">
-          Elevation
-          <span style={{ color: '#888', marginLeft: 6, fontSize: 11 }}>
-            {range.min === range.max
-              ? formatHeight(range.min, units)
-              : `${formatHeight(range.min, units)} – ${formatHeight(range.max, units)}`}
-          </span>
-        </span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 8px', fontSize: 12 }}>
-        <label title="Overlay opacity">
-          Opacity{' '}
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={Math.round(elevationView.opacity * 100)}
-            onChange={(e) => setElevationView({ opacity: Number(e.target.value) / 100 })}
-            style={{ width: 70, verticalAlign: 'middle' }}
-          />
-        </label>
-        <label title="Shade slopes as if lit from the north-west">
-          <input
-            type="checkbox"
-            checked={elevationView.hillshade}
-            onChange={(e) => setElevationView({ hillshade: e.target.checked })}
-          />{' '}
-          Hillshade
-        </label>
-      </div>
-      {childNames.length > 0 && (
-        <div style={{ padding: '2px 8px', fontSize: 12 }}>
-          <label title={`Inside their footprints, show the heights of: ${childNames.join(', ')}. This map's own heights are unchanged.`}>
-            <input
-              type="checkbox"
-              checked={elevationView.showChildren}
-              onChange={(e) => setElevationView({ showChildren: e.target.checked })}
-            />{' '}
-            Show child maps ({childNames.length})
-          </label>
-        </div>
-      )}
-      <div style={{ padding: '2px 8px', fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: '2px 10px' }}>
-        <label title="Show lakes and the sea, shaded by depth">
-          <input type="checkbox" checked={elevationView.water} onChange={(e) => setElevationView({ water: e.target.checked })} /> Water
-        </label>
-        <label title="Ground below 0 m that reaches the map's edge is sea. Saved with the map.">
-          <input type="checkbox" checked={seaEnabled(mapData)} onChange={(e) => setSea(e.target.checked)} /> Sea below 0 {unitLabel}
-        </label>
-        <label title="Show where rain would run (streams) and pool (hollows), worked out from the heights. Drawn rivers count as channels.">
-          <input type="checkbox" checked={elevationView.flow} onChange={(e) => setElevationView({ flow: e.target.checked })} /> Flow
-        </label>
-      </div>
-      {elevationView.flow && (() => {
-        const auto = defaultStreamSamples(heights.cols, heights.rows);
-        const value = elevationView.streamSamples ?? auto;
-        // Slider in log steps: right shows more (smaller) streams
-        const max = Math.log2(Math.max(64, heights.cols * heights.rows / 8));
-        return (
-          <div style={{ padding: '0 8px 2px', fontSize: 12 }}>
-            <label title={`A stream shows where at least ${value.toLocaleString('en-US')} cells drain through`}>
-              Streams: fewer{' '}
-              <input
-                type="range" min={1} max={max} step={0.25} value={max + 1 - Math.log2(value)}
-                onChange={(e) => setElevationView({ streamSamples: Math.round(2 ** (max + 1 - Number(e.target.value))) })}
-                style={{ width: 80, verticalAlign: 'middle' }}
-              />{' '}
-              more
-            </label>
-            {elevationView.streamSamples !== null && (
-              <button className="btn-secondary" style={{ fontSize: 10, marginLeft: 4, padding: '0 4px' }} onClick={() => setElevationView({ streamSamples: null })}>
-                Reset
-              </button>
-            )}
-          </div>
-        );
-      })()}
       {parentFit && (() => {
         const shift = rebaseShiftRange(mapData, heights, parentFit.fit, tilt);
         const fmt = (cm: number) => formatHeight(Math.round(Math.abs(cm)), units);
@@ -312,37 +226,10 @@ export const ElevationPanel: React.FC = () => {
             </button>
           );
         })()}
-        {' '}
-        {(() => {
-          const classes = resolveLineClasses(mapWorldSet === activeWorldSetName ? activeWorldSet?.lineClasses : undefined);
-          const rivers = waterLines(readLines(mapData), classes);
-          return (
-            <button
-              className="btn-secondary"
-              style={{ fontSize: 11 }}
-              disabled={rivers.length === 0}
-              title={rivers.length
-                ? 'Lower the ground along each drawn river, stream, brook and canal into a channel that falls all the way downstream (depth from its width). Hand-set heights are kept. Undoable.'
-                : 'No rivers drawn yet: draw them with the Line tool (River, Stream, Brook or Canal)'}
-              onClick={() => {
-                const { mapData: map, heights: patch } = useMapStore.getState();
-                if (!map || !patch) return;
-                const result = carveRivers(map, patch, rivers, classes, resolveMetersPerUnit(map, worldSetUnits) ?? null);
-                if (result.changed > 0) replaceHeights(result.cm);
-                setTerrainNote(result.changed > 0
-                  ? `Carved ${rivers.length} river${rivers.length === 1 ? '' : 's'}: lowered ${result.changed.toLocaleString('en-US')} heights.`
-                  : 'The rivers are already carved in.');
-              }}
-            >
-              Carve rivers ({rivers.length})
-            </button>
-          );
-        })()}
         {terrainNote && <div style={{ color: '#888', marginTop: 4 }}>{terrainNote}</div>}
         {gapNote && <div style={{ color: '#fbbf24', marginTop: 4 }}>⚠ {gapNote}</div>}
       </div>
       {generating && <GenerateControls units={units} onClose={() => setGenerating(false)} />}
-      {selectedTool === 'height' && <HeightBrushControls units={units} />}
       <div style={{ padding: '2px 8px' }}>
         {!confirmRemove ? (
           <button className="btn-secondary" onClick={() => setConfirmRemove(true)} style={{ fontSize: 11 }}>
@@ -357,5 +244,7 @@ export const ElevationPanel: React.FC = () => {
         )}
       </div>
     </div>
+    </PanelSection>
+    </>
   );
 };

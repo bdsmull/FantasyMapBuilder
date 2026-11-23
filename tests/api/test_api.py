@@ -166,9 +166,11 @@ async def test_download_nonexistent_404(client):
 # Tileset image
 # ---------------------------------------------------------------------------
 
-async def test_tileset_image_not_found(client):
+async def test_tileset_image_not_found(client, tmp_path):
     """Requesting a tileset image that doesn't exist returns 404."""
-    resp = await client.get("/api/tilesets/C:/does_not_exist_path/fake.png")
+    # Absolute on this platform (C:/... on Windows, /tmp/... on Linux and macOS)
+    missing = tmp_path / "does_not_exist_path" / "fake.png"
+    resp = await client.get(f"/api/tilesets/{missing.as_posix()}")
     assert resp.status_code == 404
 
 

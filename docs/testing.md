@@ -30,6 +30,23 @@ npx tsc --noEmit -p . # type check (also part of npm run build)
 
 ---
 
+## Continuous integration
+
+GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every push to `main`,
+on a clean Ubuntu checkout. Each job is a check on the pull request:
+
+| Check | Runs |
+|-------|------|
+| **Backend (pytest)** | Python 3.14: `pip install -r requirements-dev.txt`, then `pytest` |
+| **Frontend (Vitest, type check, build)** | Node LTS, in `frontend/`: `npm ci`, `npm test`, `npm run build` (`tsc && vite build`) |
+| **Docs (mkdocs --strict)** | `mkdocs build --strict`: broken links, anchors or nav fail it |
+
+A failing test, type error, build error or broken docs link marks the pull request's check as
+failed. To reproduce a failure, run the same command locally (see above). A newer push to the same
+branch cancels the run still in progress.
+
+---
+
 ## What's covered
 
 ### Python (`tests/`)

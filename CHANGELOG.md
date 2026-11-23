@@ -12,6 +12,9 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
+- **Continuous integration** (issue #42): a GitHub Actions workflow runs `pytest`, the Vitest
+  suite, the type check and build, and `mkdocs build --strict` on every pull request and push to
+  `main`. Status badge in the README.
 - **Water** (issue #8 phase 4)
   - Height tool → **Water** mode: a lake is a surface height placed in a basin and fills the
     connected ground below it. Warnings when it's dry or spills over the map's edge. Stored as

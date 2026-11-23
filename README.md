@@ -1,5 +1,7 @@
 # Fantasy RPG Map Builder
 
+[![CI](https://github.com/bdsmull/FantasyMapBuilder/actions/workflows/ci.yml/badge.svg)](https://github.com/bdsmull/FantasyMapBuilder/actions/workflows/ci.yml)
+
 A web-based editor for fantasy RPG maps, built with FastAPI and React.
 
 Maps range from a single room to the whole world. They link into a navigable hierarchy

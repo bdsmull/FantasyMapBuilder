@@ -36,6 +36,10 @@ python main.py --dev          # and, in a second terminal: cd frontend && npm ru
   - `README.md`: if features, setup or usage change
   - `docs/`: the user guide, file formats and architecture pages it affects
 - Run both test suites and the type check before opening the pull request.
+- **CI** ([GitHub Actions](https://github.com/bdsmull/FantasyMapBuilder/actions), `.github/workflows/ci.yml`)
+  runs on every pull request and every push to `main`: `pytest`, the Vitest suite, the type check
+  and build (`npm run build`) and `mkdocs build --strict`. All three checks (**Backend**,
+  **Frontend**, **Docs**) should pass before merging; see [Testing](testing.md#continuous-integration).
 
 ---
 

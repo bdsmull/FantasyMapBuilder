@@ -9,10 +9,13 @@ import { surfaceAt } from '../utils/worldSurface';
 import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { ceilingAtPixel, describeCeiling, readCeilings } from '../utils/ceilings';
 import { useCeilingContext } from './useCeilings';
+import { useWorldFrame } from './useWorldFrame';
+import { formatWorld, pixelToWorld } from '../utils/worldCoords';
 
 export const StatusBar: React.FC = () => {
   const { mapData, mapName, mapWorldSet, isDirty, zoom, heights, elevationView } = useMapStore();
   const ceilingCtx = useCeilingContext();
+  const frame = useWorldFrame();
   const surface = useWorldSurfaceStore();
   const children = elevationView.showChildren && surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children : [];
   const cursor = useCursorStore((s) => s.mapPos);
@@ -88,6 +91,15 @@ export const StatusBar: React.FC = () => {
               title={ceiling ? `Headroom under the cursor: ceiling at ${formatHeight(ceiling.cm, units)} (${describeCeiling(ceiling)})` : 'No ceiling under the cursor'}
             >
               {ceiling ? <>↕ {formatHeight(ceiling.headroomCm, units)}<span style={{ color: '#888' }}> · {describeCeiling(ceiling)}</span></> : <span style={{ color: '#888' }}>open sky</span>}
+            </span>
+          );
+        })()}
+        {frame && cursor && (() => {
+          const units = resolveUnits(mapData, worldSetStore.activeWorldSet?.units);
+          const w = pixelToWorld(frame, mapData, cursor.x, cursor.y);
+          return (
+            <span className="status-world" title={`World position under the cursor: east (x) and north (y) of the world origin on '${frame.root}'`}>
+              {formatWorld(w, units, frame.mpu)}
             </span>
           );
         })()}

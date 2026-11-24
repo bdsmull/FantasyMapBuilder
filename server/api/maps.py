@@ -23,15 +23,47 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
 from server import data_dir as dd
 from server import heights as hs
+from server.map_scales import has_own_units, stamp_cell_size
 from server.tileset_files import externalize_tilesets, inline_tilesets
 
 router = APIRouter(tags=["maps"])
+
+
+def world_set_units(world_set_dir: Path) -> Optional[str]:
+    """The world set's default unit system ("metric" / "imperial"), or None if unset or unreadable."""
+    try:
+        data = json.loads((world_set_dir / f"{world_set_dir.name}{dd.WORLD_SET_SUFFIX}").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    units = data.get("units") if isinstance(data, dict) else None
+    return units if units in ("metric", "imperial") else None
+
+
+def restamp_cell_sizes(world_set_dir: Path, units: Optional[str]) -> list[str]:
+    """
+    Rewrite ``metersPerUnit`` in the world set's maps that inherit its units (after the
+    world set's default units change). Returns the maps changed.
+    """
+    changed = []
+    for path in sorted((world_set_dir / "maps").glob("*.tmj")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(data, dict) or has_own_units(data):
+            continue
+        stamped = stamp_cell_size(data, units)
+        if stamped != data:
+            path.write_text(format_tmj(stamped), encoding="utf-8")
+            changed.append(path.stem)
+    return changed
 
 
 def _maps_dir(world_set: str) -> Path:
@@ -147,11 +179,13 @@ async def save_map(world_set: str, name: str, request_body: dict):
 
     Tilesets are written to the world set's shared .tsj files; the response's
     ``tilesets`` lists where each one went ({firstgid, source, name}) so the
-    editor can record it.
+    editor can record it. The map's cell size in meters is recorded as its
+    ``metersPerUnit`` property (see server/map_scales.py).
     """
     path = _map_path(world_set, name)
     world_set_dir = path.parent.parent
-    on_disk, refs = externalize_tilesets(request_body, world_set_dir, world_set_dir.name)
+    body = stamp_cell_size(request_body, world_set_units(world_set_dir))
+    on_disk, refs = externalize_tilesets(body, world_set_dir, world_set_dir.name)
     path.write_text(format_tmj(on_disk), encoding="utf-8")
     return {"saved": path.stem, "tilesets": refs}
 

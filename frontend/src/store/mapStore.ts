@@ -24,6 +24,8 @@ import { WATER_LAYER, WATER_TYPE, isWaterBody, waterProperties, withSea } from '
 import { CONTOUR_LAYER, CONTOUR_TYPE, isContour, contourPoints, contourShape, minContourPoints } from '../utils/contours';
 import type { Pt } from '../utils/lines';
 import { CEILING_LAYER, CEILING_TYPE, isCeiling, ceilingProperties, ceilingShape, withLengthProperty } from '../utils/ceilings';
+import { WORLD_ORIGIN_LAYER, WORLD_ORIGIN_NAME, WORLD_ORIGIN_TYPE, defaultOriginPixel, findWorldOrigin } from '../utils/worldCoords';
+import { useWorldSetStore } from './worldSetStore';
 
 /** Object layer new lines go into when the active layer isn't an object layer. */
 export const LINE_LAYER = 'Roads and rivers';
@@ -194,6 +196,12 @@ export interface MapStore {
   /** Set the map's own headroom or floor thickness (cm), or remove it (null). Saved with the map. */
   setMapLength: (property: 'headroom' | 'slab', cm: number | null) => void;
 
+  // ---- World origin (#9): a point object on a root map ----
+  /** Move the world origin to (x, y) map pixels, adding it on the "World" layer if missing. One undo step. */
+  setWorldOrigin: (x: number, y: number) => void;
+  /** Add the world origin at the map's centre if it has none (not an undo step); true if added. */
+  ensureWorldOrigin: () => boolean;
+
   // ---- Lines: roads and rivers (each change is one undo step) ----
   /**
    * Add a line (map-pixel points) of a class. It goes into the active layer if that is
@@ -336,6 +344,11 @@ function _topObjectLayer(mapData: TmjMap, name: string, color: string): { layers
   };
 }
 
+/** The world origin point object (#9). */
+function _originObject(id: number, x: number, y: number): TmjObject {
+  return { id, name: WORLD_ORIGIN_NAME, type: WORLD_ORIGIN_TYPE, x, y, width: 0, height: 0, visible: true, point: true };
+}
+
 function _commitLayers(set: StoreSet, get: () => MapStore, layers: TmjLayer[], active: number, nextlayerid: number): void {
   const { mapData, activeLayerIndex, past } = get();
   if (!mapData) return;
@@ -416,6 +429,14 @@ export const useMapStore = create<MapStore>((set, get) => ({
   },
 
   saveMapToServer: async () => {
+    // A world set's root map records its world origin (#9): add it at the centre the
+    // first time the root is saved, so later resizes don't move world coordinates
+    const ws = useWorldSetStore.getState();
+    const { mapName: openName, mapWorldSet: openSet } = get();
+    if (openSet && openSet === ws.activeWorldSetName
+      && ws.activeWorldSet?.nodes.some((n) => n.mapName === openName && n.parentMapName === null)) {
+      get().ensureWorldOrigin();
+    }
     const { mapData, mapName, mapWorldSet, heights, heightsDirty } = get();
     if (!mapData || !mapName || !mapWorldSet) throw new Error('No map loaded');
     if (heightsDirty) {
@@ -746,6 +767,35 @@ export const useMapStore = create<MapStore>((set, get) => ({
       return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
     });
     if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  setWorldOrigin: (x, y) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    const found = findWorldOrigin(mapData);
+    if (found) {
+      if (found.object.x === x && found.object.y === y) return;
+      const layers = updateObjectLayer(mapData.layers, found.layerIndex, (objects) =>
+        objects.map((o) => (o.id === found.object.id ? { ...o, x, y } : o)));
+      _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+      return;
+    }
+    const id = mapData.nextobjectid;
+    const top = _topObjectLayer(mapData, WORLD_ORIGIN_LAYER, '#e8c547');
+    const layers = updateObjectLayer(top.layers, top.index, (objects) => [...objects, _originObject(id, x, y)]);
+    _commitLayers(set, get, layers, activeLayerIndex, top.nextlayerid);
+    set((state) => ({ mapData: state.mapData && { ...state.mapData, nextobjectid: id + 1 } }));
+  },
+
+  ensureWorldOrigin: () => {
+    const { mapData } = get();
+    if (!mapData || findWorldOrigin(mapData)) return false;
+    const { x, y } = defaultOriginPixel(mapData);
+    const id = mapData.nextobjectid;
+    const top = _topObjectLayer(mapData, WORLD_ORIGIN_LAYER, '#e8c547');
+    const layers = updateObjectLayer(top.layers, top.index, (objects) => [...objects, _originObject(id, x, y)]);
+    set({ mapData: { ...mapData, layers, nextlayerid: top.nextlayerid, nextobjectid: id + 1 }, isDirty: true });
+    return true;
   },
 
   setMapLength: (property, cm) => {

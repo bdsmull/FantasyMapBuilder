@@ -119,6 +119,24 @@ Because every map knows where it sits in real meters, several features work acro
   refined ([Roads & Rivers](roads-rivers.md#across-map-scales)).
 - **Generation** — generated terrain detail is one world-wide pattern, so maps generated
   separately match where they overlap ([Elevation](elevation.md#generate)).
+- **World coordinates** — every point has a world position (see below).
+
+### World coordinates
+
+Every point of every placed map has a **world position**: meters east (**x**) and north
+(**y**) of the **world origin**, a `0, 0` marker on the world set's root map.
+
+- **Where it is:** the origin starts at the root map's centre. The editor stores it in the map
+  (a point object on a **World** layer) the first time you save the root, so resizing the map
+  later doesn't move anyone's coordinates.
+- **Moving it:** with the **Points** tool on the root map, drag the marker. The Points panel's
+  **Centre it** puts it back in the middle. Both are undoable.
+- **Seeing positions:** the **status bar** shows the world position under the cursor, and the
+  **Inspect** card shows it for the clicked point, with **Copy** for the exact meters.
+
+Games and other tools can work out the same positions from the files, without the editor:
+[World Coordinates](world-coordinates.md) describes the method and the ready-made Godot 4 and
+Python libraries.
 
 ---
 

@@ -1,0 +1,13 @@
+[
+  { "id": "room",      "label": "Room Scale",      "metric": { "metersPerUnit": 1,      "unit": "1 m" },    "imperial": { "feetPerUnit": 2,       "unit": "2 ft" },   "defaultShape": "tile" },
+  { "id": "battle",    "label": "Battle Scale",    "metric": { "metersPerUnit": 2,      "unit": "2 m" },    "imperial": { "feetPerUnit": 5,       "unit": "5 ft" },   "defaultShape": "tile" },
+  { "id": "dungeon",   "label": "Dungeon Scale",   "metric": { "metersPerUnit": 5,      "unit": "5 m" },    "imperial": { "feetPerUnit": 10,      "unit": "10 ft" },  "defaultShape": "tile" },
+  { "id": "site",      "label": "Site Scale",      "metric": { "metersPerUnit": 10,     "unit": "10 m" },   "imperial": { "feetPerUnit": 30,      "unit": "30 ft" },  "defaultShape": "tile" },
+  { "id": "town",      "label": "Town Scale",      "metric": { "metersPerUnit": 50,     "unit": "50 m" },   "imperial": { "feetPerUnit": 150,     "unit": "150 ft" }, "defaultShape": "hex" },
+  { "id": "city",      "label": "City Scale",      "metric": { "metersPerUnit": 250,    "unit": "250 m" },  "imperial": { "feetPerUnit": 660,     "unit": "⅛ mi" },   "defaultShape": "hex" },
+  { "id": "local",     "label": "Local Scale",     "metric": { "metersPerUnit": 1000,   "unit": "1 km" },   "imperial": { "feetPerUnit": 5280,    "unit": "1 mi" },   "defaultShape": "hex" },
+  { "id": "province",  "label": "Province Scale",  "metric": { "metersPerUnit": 5000,   "unit": "5 km" },   "imperial": { "feetPerUnit": 31680,   "unit": "6 mi" },   "defaultShape": "hex" },
+  { "id": "kingdom",   "label": "Kingdom Scale",   "metric": { "metersPerUnit": 25000,  "unit": "25 km" },  "imperial": { "feetPerUnit": 158400,  "unit": "30 mi" },  "defaultShape": "hex" },
+  { "id": "continent", "label": "Continent Scale", "metric": { "metersPerUnit": 100000, "unit": "100 km" }, "imperial": { "feetPerUnit": 528000,  "unit": "100 mi" }, "defaultShape": "hex" },
+  { "id": "world",     "label": "World Scale",     "metric": { "metersPerUnit": 500000, "unit": "500 km" }, "imperial": { "feetPerUnit": 2640000, "unit": "500 mi" }, "defaultShape": "hex" }
+]

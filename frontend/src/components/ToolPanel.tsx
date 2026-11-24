@@ -8,7 +8,9 @@ import { TilePalette } from './TilePalette';
 import { HeightPanel } from './HeightPanel';
 import { WaterPanel } from './WaterPanel';
 import { LineControls } from './LineControls';
-import { deletePoint } from '../tools/pointTool';
+import { deletePoint, worldOriginMarker } from '../tools/pointTool';
+import { useWorldSetStore } from '../store/worldSetStore';
+import { defaultOriginPixel } from '../utils/worldCoords';
 
 export const TOOL_TITLES: Record<ToolName, string> = {
   inspect: 'Inspect',
@@ -53,7 +55,9 @@ const TerrainPanel: React.FC = () => {
 
 /** Points: the selected point (with Delete), where new ones go and how to remove them. */
 const PointPanel: React.FC = () => {
-  const { mapData, activeLayerIndex } = useMapStore();
+  const { mapData, mapName, mapWorldSet, activeLayerIndex } = useMapStore();
+  useWorldSetStore((s) => s.activeWorldSet); // re-render when the world set (which maps are roots) changes
+  const origin = worldOriginMarker({ mapData, mapName, mapWorldSet });
   const selectedId = useViewStore((s) => s.selectedObjectId);
   const setSelectedId = useViewStore((s) => s.setSelectedObjectId);
   const layer = mapData?.layers[activeLayerIndex];
@@ -77,6 +81,23 @@ const PointPanel: React.FC = () => {
             onClick={() => { deletePoint(useMapStore.getState(), selectedId!); setSelectedId(null); }}
           >
             Delete
+          </button>
+        </div>
+      )}
+      {origin && mapData && (
+        <div style={{ padding: '6px 8px', fontSize: 12, borderBottom: '1px solid #333' }}>
+          <div style={{ color: '#e8c547', marginBottom: 4 }}>World origin</div>
+          <div style={{ color: '#888', marginBottom: 4 }}>
+            World coordinates are meters east (x) and north (y) of the 0, 0 marker. Drag it to move it.
+            {!origin.stored && ' It is stored in this map when you save.'}
+          </div>
+          <button
+            className="btn-secondary"
+            style={{ fontSize: 11 }}
+            title="Put the world origin back at the map's centre (one undo step)"
+            onClick={() => { const c = defaultOriginPixel(mapData); useMapStore.getState().setWorldOrigin(c.x, c.y); }}
+          >
+            Centre it
           </button>
         </div>
       )}

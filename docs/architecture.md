@@ -39,6 +39,7 @@ FantasyMapBuilder/
 │   ├── data_dir.py              # Where the data folder is; safe names
 │   ├── tileset_files.py         # Inline / externalize .tsj tilesets, swatch images
 │   ├── heights.py               # Height TIFF + mask read/write
+│   ├── map_scales.py            # Scale presets; writes each map's metersPerUnit on save
 │   ├── heightmap_image.py       # 16-bit heightmap PNG encode, heightmap image decode
 │   ├── map_import.py            # Single-map import planning (tileset merge, GID remap)
 │   └── api/
@@ -56,7 +57,8 @@ FantasyMapBuilder/
 │   ├── App.tsx, main.tsx        # Layout, keyboard shortcuts
 │   ├── types/                   # tmj.ts (Tiled JSON), worldSet.ts
 │   ├── api/                     # client.ts (fetch wrappers), tmjFile.ts (custom properties ↔ fields)
-│   ├── data/                    # mapScales.ts, lineClasses.ts, defaultTilesets.ts
+│   ├── data/                    # mapScales.json (scale table; the server reads it too), mapScales.ts,
+│   │                            # lineClasses.ts, defaultTilesets.ts
 │   ├── store/
 │   │   ├── mapStore.ts          # The open map, heights, tools, undo/redo
 │   │   ├── worldSetStore.ts     # The active world set
@@ -77,6 +79,10 @@ FantasyMapBuilder/
 │   └── __tests__/               # Vitest
 │
 ├── tests/                       # pytest: models/, io/, api/
+├── clients/                     # World coordinates outside the editor (World Coordinates page)
+│   ├── godot/addons/worldset_coords/  # Godot 4 addon (GDScript); godot/tests: headless test runner
+│   ├── python/worldset_coords/  # Python package (no dependencies); python/tests: pytest
+│   └── conformance/             # Shared test world set + expected.json (written by Vitest)
 └── docs/                        # This documentation (MkDocs)
 ```
 

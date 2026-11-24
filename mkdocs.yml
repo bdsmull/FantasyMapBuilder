@@ -59,6 +59,7 @@ nav:
     - Objects: objects.md
     - Coordinate Systems: coordinates.md
   - File Format: file-format.md
+  - World Coordinates: world-coordinates.md
   - Development:
     - Architecture: architecture.md
     - Testing: testing.md

@@ -1,0 +1,8 @@
+; Test project for the worldset_coords addon (run tests/run_tests.gd headless).
+
+config_version=5
+
+[application]
+
+config/name="worldset_coords tests"
+config/features=PackedStringArray("4.3")

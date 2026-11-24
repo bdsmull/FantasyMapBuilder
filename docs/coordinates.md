@@ -8,6 +8,7 @@ The editor works with four kinds of position.
 | **Map pixels** | pixels from the map's top-left corner | Objects, lines, the canvas (exactly Tiled's object coordinates) |
 | **Cell space** | fractional cells (`u`, `v`) | Where child maps sit on their parents |
 | **Real distance** | meters | Scale, line widths, elevation, world-wide generation |
+| **World** | meters east (x) and north (y) of the world origin | The status bar, the Inspect card, and outside tools ([World Coordinates](world-coordinates.md)) |
 
 ---
 
@@ -48,7 +49,9 @@ A **child map** is placed on its parent in the parent's cell space:
 
 Chaining placements up the hierarchy gives every map a position in meters relative to the root
 map. That's how a parent shows a child's heights and roads, and how generated terrain lines up
-across maps.
+across maps. Measured from the root map's **world origin**, with north up, it's the map's
+**world position**: see [World Coordinates](world-coordinates.md) for the exact steps and the
+libraries that work it out for Godot and Python.
 
 !!! note "Hex maps in cell space"
     On hex maps, cell space spaces columns by the column pitch and rows by the row pitch, so a hex

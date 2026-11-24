@@ -3,7 +3,8 @@
  * Left-click/tap on a point: select it (the panel's Delete button, or Delete / Backspace,
  * removes it). Left-click elsewhere: add a point at the cell's centre on the active object
  * layer, selected. Right-click removes the nearest point (on maps outside a world set;
- * inside one, right-click opens the map menu).
+ * inside one, right-click opens the map menu). On a world set's root map, dragging the
+ * world origin marker (#9) moves it.
  */
 
 import type { Tool } from './baseTool';
@@ -14,15 +15,36 @@ import { cellCenter } from '../canvas/canvasUtils';
 import { useViewStore } from '../store/viewStore';
 import { SPOT_TYPE } from '../utils/spotHeights';
 import { WATER_TYPE } from '../utils/water';
+import { WORLD_ORIGIN_TYPE, defaultOriginPixel, findWorldOrigin } from '../utils/worldCoords';
+import { useWorldSetStore } from '../store/worldSetStore';
 
 /** Screen pixels around a point's marker that count as clicking it. */
 export const POINT_PICK_RADIUS_PX = 10;
 
-/** A plain point object: not a line, area, spot height or water body (those have their own tools). */
+/** A plain point object: not a line, area, spot height, water body or the world origin (those have their own handling). */
 export function isPlainPoint(o: TmjObject): boolean {
   const point = o.point || (o.width === 0 && o.height === 0 && !o.polyline && !o.polygon);
-  return !!point && o.type !== SPOT_TYPE && o.type !== WATER_TYPE;
+  return !!point && o.type !== SPOT_TYPE && o.type !== WATER_TYPE && o.type !== WORLD_ORIGIN_TYPE;
 }
+
+/** Whether the open map is a root of its (active) world set: the one that holds the world origin. */
+export function openMapIsRoot(store: Pick<MapStore, 'mapName' | 'mapWorldSet'>): boolean {
+  const ws = useWorldSetStore.getState();
+  return !!store.mapWorldSet && store.mapWorldSet === ws.activeWorldSetName
+    && !!ws.activeWorldSet?.nodes.some((n) => n.mapName === store.mapName && n.parentMapName === null);
+}
+
+/** Where the world origin marker is on the open map (#9), or null when it shows none: roots, and maps with an origin object. */
+export function worldOriginMarker(store: Pick<MapStore, 'mapData' | 'mapName' | 'mapWorldSet'>): { x: number; y: number; stored: boolean } | null {
+  const map = store.mapData;
+  if (!map) return null;
+  const found = findWorldOrigin(map);
+  if (found) return { x: found.object.x, y: found.object.y, stored: true };
+  return openMapIsRoot(store) ? { ...defaultOriginPixel(map), stored: false } : null;
+}
+
+/** Dragging the world origin with the Points tool. */
+let _draggingOrigin = false;
 
 /** The nearest plain point within `radius` map pixels of (x, y) on a shown object layer, or null. */
 export function pointNear(map: TmjMap, x: number, y: number, radius: number): { layerIndex: number; object: TmjObject } | null {
@@ -61,6 +83,13 @@ export const pointTool: Tool = {
     const { mapData, activeLayerIndex } = store;
     if (!mapData) return;
     const at = pos ?? cellCenter(mapData, col, row);
+    const origin = worldOriginMarker(store);
+    if (origin && Math.hypot(origin.x - at.x, origin.y - at.y) <= _radius(store, mapData)) {
+      _draggingOrigin = true;
+      _view().setSelectedObjectId(null);
+      _view().setOriginDrag({ x: origin.x, y: origin.y });
+      return;
+    }
     const hit = pointNear(mapData, at.x, at.y, _radius(store, mapData));
     if (hit) {
       _view().setSelectedObjectId(hit.object.id);
@@ -77,8 +106,21 @@ export const pointTool: Tool = {
     _view().setSelectedObjectId(id);
   },
 
-  onDrag() { /* no-op */ },
-  onRelease() { /* no-op */ },
+  onDrag(_col, _row, _store, pos) {
+    if (_draggingOrigin && pos) _view().setOriginDrag({ x: Math.round(pos.x), y: Math.round(pos.y) });
+  },
+  onRelease(store) {
+    if (!_draggingOrigin) return;
+    _draggingOrigin = false;
+    const to = _view().originDrag;
+    _view().setOriginDrag(null);
+    const from = worldOriginMarker(store);
+    if (to && (!from?.stored || from.x !== to.x || from.y !== to.y)) store.setWorldOrigin(to.x, to.y);
+  },
+  onCancel() {
+    _draggingOrigin = false;
+    _view().setOriginDrag(null);
+  },
 
   onRightPress(col, row, store, pos) {
     const { mapData } = store;

@@ -5,6 +5,7 @@ import { resolveUnits } from '../data/mapScales';
 import { createPatch, formatHeight, hasHeightsProperty, parseHeightToCm } from '../utils/heightGrid';
 import { HeightBrushControls } from './HeightBrushControls';
 import { GenerateControls } from './GenerateControls';
+import { HeightmapExport, HeightmapImport } from './HeightmapControls';
 import { useEdgeFits } from './useEdgeFits';
 import { rebasedHeights, rebaseShiftRange } from '../utils/elevationFit';
 import { hasTerrainHeights, heightsFromTerrain, terrainGaps, describeTerrainGaps } from '../utils/terrainHeights';
@@ -16,7 +17,7 @@ import { PanelSection } from './PanelSection';
 /**
  * The Height tool's panel (#38): add or remove the map's elevation, build it (from
  * terrain, generated detail, spot heights and contours, fitting it to the parent map),
- * and the height brush. Heights are saved with the map (Ctrl+S). How the elevation is
+ * export or import it as an engine heightmap (#46), and the height brush. Heights are saved with the map (Ctrl+S). How the elevation is
  * shown is in the left panel's Show section.
  */
 export const HeightPanel: React.FC = () => {
@@ -38,6 +39,7 @@ export const HeightPanel: React.FC = () => {
   const setTerrainNote = (text: string) => { setTerrainNoteOnly(text); setGapNote(''); };
   const [generating, setGenerating] = useState(false);
   const [fitting, setFitting] = useState(false);
+  const [heightmap, setHeightmap] = useState<'export' | 'import' | null>(null);
   useEffect(() => {
     setTerrainNoteOnly('');
     setAddNote('');
@@ -230,6 +232,26 @@ export const HeightPanel: React.FC = () => {
         {gapNote && <div style={{ color: '#fbbf24', marginTop: 4 }}>⚠ {gapNote}</div>}
       </div>
       {generating && <GenerateControls units={units} onClose={() => setGenerating(false)} />}
+      <div style={{ padding: '2px 8px', fontSize: 12 }}>
+        <button
+          className={`btn-secondary${heightmap === 'export' ? ' active' : ''}`}
+          style={{ fontSize: 11 }}
+          title="Save the heights as a 16-bit PNG or RAW heightmap for a game engine"
+          onClick={() => setHeightmap(heightmap === 'export' ? null : 'export')}
+        >
+          Export heightmap…
+        </button>{' '}
+        <button
+          className={`btn-secondary${heightmap === 'import' ? ' active' : ''}`}
+          style={{ fontSize: 11 }}
+          title="Set the heights from a heightmap image or RAW file"
+          onClick={() => setHeightmap(heightmap === 'import' ? null : 'import')}
+        >
+          Import heightmap…
+        </button>
+      </div>
+      {heightmap === 'export' && <HeightmapExport units={units} onClose={() => setHeightmap(null)} />}
+      {heightmap === 'import' && <HeightmapImport units={units} onClose={() => setHeightmap(null)} />}
       <div style={{ padding: '2px 8px' }}>
         {!confirmRemove ? (
           <button className="btn-secondary" onClick={() => setConfirmRemove(true)} style={{ fontSize: 11 }}>

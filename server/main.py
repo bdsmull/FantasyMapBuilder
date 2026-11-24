@@ -22,6 +22,7 @@ from server.api import world_sets as world_sets_router
 from server.api import mapsets as mapsets_router
 from server.api import map_imports as map_imports_router
 from server.api import heights as heights_router
+from server.api import heightmaps as heightmaps_router
 
 app = FastAPI(
     title="Fantasy RPG Map Editor API",
@@ -44,6 +45,7 @@ app.include_router(tilesets_router.router, prefix="/api")
 app.include_router(world_sets_router.router, prefix="/api")
 app.include_router(map_imports_router.router, prefix="/api")
 app.include_router(heights_router.router, prefix="/api")
+app.include_router(heightmaps_router.router, prefix="/api")
 app.include_router(mapsets_router.router, prefix="/api")
 
 # Serve the React build as a SPA at / (only when the build exists)

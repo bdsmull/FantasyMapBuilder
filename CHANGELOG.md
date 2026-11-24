@@ -12,6 +12,16 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
+- **Heightmaps for game engines** (issue #46): Height tool → Elevation → **Export heightmap…** /
+  **Import heightmap…**.
+  - Export writes a 16-bit grayscale PNG or 16-bit little-endian RAW (`.r16`), plus a `.json`
+    with the lowest and highest heights, meters per step, sample spacing and terrain size (also
+    embedded in the PNG). Choose the map's own samples or a square 2ⁿ + 1 size (Unity), the
+    map's own range or a fixed one (so neighbours line up), and whether to include child maps'
+    heights. Hex maps are resampled to a square grid.
+  - Import reads PNG or TIFF (8, 16 or 32-bit) or RAW, stretches it over the map and sets the
+    heights across a range you give (filled in from an exported file). Hand-set heights are kept
+    unless you choose to overwrite them. One undo step.
 - **Ceilings for Z levels** (issue #45): how much headroom there is over each spot of a level.
   - The ceiling is the floor of the next level up (a sibling map at a higher Z on the same parent)
     less its **floor thickness**, or for maps below ground the parent's ground.

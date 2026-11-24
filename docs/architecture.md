@@ -39,12 +39,14 @@ FantasyMapBuilder/
 │   ├── data_dir.py              # Where the data folder is; safe names
 │   ├── tileset_files.py         # Inline / externalize .tsj tilesets, swatch images
 │   ├── heights.py               # Height TIFF + mask read/write
+│   ├── heightmap_image.py       # 16-bit heightmap PNG encode, heightmap image decode
 │   ├── map_import.py            # Single-map import planning (tileset merge, GID remap)
 │   └── api/
 │       ├── maps.py              # Map CRUD, upload, download, Tiled-style formatting
 │       ├── world_sets.py        # World set CRUD, data folder info
 │       ├── tilesets.py          # Tileset image upload and serving
 │       ├── heights.py           # Binary height patch GET / PUT / DELETE
+│       ├── heightmaps.py        # Engine heightmap image conversion (nothing stored)
 │       ├── mapsets.py           # .mapset export / import
 │       └── map_imports.py       # Inspect a .mapset, plan and run a map import
 │
@@ -68,7 +70,7 @@ FantasyMapBuilder/
 │   │                            # line (roads, rivers), point
 │   ├── utils/                   # heightGrid, heightBrush, terrainHeights, heightGeneration,
 │   │                            # spotHeights, contours, surfaceFit, water, flow, carve, elevationFit,
-│   │                            # worldSurface, worldSetUtils,
+│   │                            # worldSurface, worldSetUtils, ceilings, heightmap,
 │   │                            # lines, crossScaleLines, inspect, importPlan, navigation, …
 │   ├── components/              # MapCanvas, LayerPanel + ShowPanel (left), ToolPanel (right:
 │   │                            # Terrain, HeightPanel, WaterPanel, LineControls), dialogs, hooks
@@ -98,6 +100,8 @@ All routes are under `/api`. Names are world set and map names (URL-encoded).
 | `GET` | `/world_sets/{ws}/tilesets/{file}` | Serve a tileset image |
 | `GET` | `/tilesets/{path}` | Serve an image by absolute path (old maps) |
 | `GET` / `PUT` / `DELETE` | `/world_sets/{ws}/heights/{name}` | Height patch as binary: little-endian int32 cm, then one mask byte per sample; size in `X-Height-Cols` / `X-Height-Rows` headers |
+| `POST` | `/heightmaps/png` | Pack 16-bit heightmap steps (multipart `values`, `width`, `height`, `info`) into a grayscale PNG |
+| `POST` | `/heightmaps/decode` | Unpack a heightmap image (multipart `file`): samples as binary; size and layout in `X-Heightmap-*` headers |
 | `GET` | `/mapsets/{ws}` | Export a world set as `.mapset` |
 | `POST` | `/mapsets` | Import a `.mapset` (optional new name) |
 | `POST` | `/mapsets/inspect` | List the maps in an uploaded `.mapset` (for single-map import) |

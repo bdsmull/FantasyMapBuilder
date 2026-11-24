@@ -28,6 +28,7 @@ const _WHOLE_CELL_TOLERANCE := 1e-9
 
 ## Scale preset id -> [meters per cell (metric), feet per cell (imperial)]. Only needed
 ## for map files without a "metersPerUnit" property (saved by older editors).
+## A copy of the editor's frontend/src/data/mapScales.json; the tests check they match.
 const SCALES := {
 	"room": [1.0, 2.0],
 	"battle": [2.0, 5.0],

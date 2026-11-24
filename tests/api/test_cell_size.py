@@ -3,10 +3,11 @@ Every saved map records its cell size in meters (#9): the ``metersPerUnit`` cust
 property, from its scale preset and units (its own, else the world set's).
 """
 import json
+import re
 
 import pytest
 
-from server.map_scales import preset_meters, stamp_cell_size
+from server.map_scales import SCALES, SCALES_FILE, preset_meters, stamp_cell_size
 
 pytestmark = pytest.mark.asyncio
 
@@ -53,6 +54,22 @@ async def test_world_set_units_change_restamps_inheriting_maps(client, sample_tm
     # Saving again with the same units rewrites nothing
     resp = await client.post("/api/world_sets/ws", json={"name": "ws", "version": "1.0", "units": "imperial", "nodes": []})
     assert resp.json() == {"saved": "ws"}
+
+
+async def test_the_server_uses_the_editors_scale_table():
+    table = json.loads(SCALES_FILE.read_text(encoding="utf-8"))
+    assert SCALES and set(SCALES) == {s["id"] for s in table}
+    for s in table:
+        assert preset_meters(s["id"], "metric") == s["metric"]["metersPerUnit"]
+        assert preset_meters(s["id"], "imperial") == pytest.approx(s["imperial"]["feetPerUnit"] * 0.3048)
+
+
+async def test_the_documented_scale_table_matches():
+    """docs/world-coordinates.md is what other implementations copy the table from."""
+    page = (SCALES_FILE.parents[3] / "docs" / "world-coordinates.md").read_text(encoding="utf-8")
+    rows = re.findall(r"^\| `(\w+)` \| ([\d,]+) \| ([\d,]+) \|$", page, re.MULTILINE)
+    documented = {name: (float(m.replace(",", "")), float(ft.replace(",", ""))) for name, m, ft in rows}
+    assert documented == SCALES
 
 
 async def test_stamping_helpers():

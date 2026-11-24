@@ -25,6 +25,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
     addon** (`clients/godot/addons/worldset_coords`, GDScript) and a **Python package**
     (`clients/python`). The method is specified in the new World Coordinates docs page. A
     shared test suite (`clients/conformance`) checks both against the editor in CI.
+  - The scale table is now one file, `frontend/src/data/mapScales.json`, read by the editor and the
+    server. Tests fail if the libraries' copies, or the documented table, differ from it.
 - **Heightmaps for game engines** (issue #46): Height tool → Elevation → **Export heightmap…** /
   **Import heightmap…**.
   - Export writes a 16-bit grayscale PNG or 16-bit little-endian RAW (`.r16`), plus a `.json`

@@ -57,7 +57,8 @@ FantasyMapBuilder/
 │   ├── App.tsx, main.tsx        # Layout, keyboard shortcuts
 │   ├── types/                   # tmj.ts (Tiled JSON), worldSet.ts
 │   ├── api/                     # client.ts (fetch wrappers), tmjFile.ts (custom properties ↔ fields)
-│   ├── data/                    # mapScales.ts, lineClasses.ts, defaultTilesets.ts
+│   ├── data/                    # mapScales.json (scale table; the server reads it too), mapScales.ts,
+│   │                            # lineClasses.ts, defaultTilesets.ts
 │   ├── store/
 │   │   ├── mapStore.ts          # The open map, heights, tools, undo/redo
 │   │   ├── worldSetStore.ts     # The active world set

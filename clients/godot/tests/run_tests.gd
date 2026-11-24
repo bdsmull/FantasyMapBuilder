@@ -22,6 +22,7 @@ func _init() -> void:
 		quit(1)
 		return
 	_run(ws, expected)
+	_check_scales(conformance.path_join("../../frontend/src/data/mapScales.json").simplify_path())
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -36,6 +37,35 @@ func _check(ok: bool, what: String) -> void:
 func _close(got: Variant, want: Array, what: String) -> void:
 	var ok: bool = got != null and absf(float(got.x) - float(want[0])) <= TOL and absf(float(got.y) - float(want[1])) <= TOL
 	_check(ok, "%s: got %s, want %s" % [what, str(got), str(want)])
+
+
+## The addon embeds the scale table (it must work outside this repository). The editor and
+## its server share one file; this fails if the addon's copy drifts from it.
+func _check_scales(path: String) -> void:
+	var shared = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if typeof(shared) != TYPE_ARRAY or shared.is_empty():
+		_check(false, "can't read the shared scale table %s" % path)
+		return
+	var ids := []
+	for s in shared:
+		ids.append(s["id"])
+	for id in WorldSetCoords.SCALES:
+		_check(id in ids, "scale '%s' is in the addon but not in the shared table" % id)
+	var ws := WorldSetCoords.new()
+	for s in shared:
+		var id: String = s["id"]
+		var meters := float(s["metric"]["metersPerUnit"])
+		var feet := float(s["imperial"]["feetPerUnit"])
+		var embedded = WorldSetCoords.SCALES.get(id)
+		_check(embedded != null and embedded[0] == meters and embedded[1] == feet,
+			"scale '%s': the addon has %s, the shared table [%s, %s]" % [id, str(embedded), meters, feet])
+		# And through the addon's own code, with its unit conversion
+		ws._maps[id] = {"properties": [{"name": "scale", "type": "string", "value": id}]}
+		for units in ["metric", "imperial"]:
+			ws.units = units
+			var want := meters if units == "metric" else feet * 0.3048
+			_check(absf(ws.cell_size(id) - want) <= 1e-12 * want,
+				"%s cell size of scale '%s': got %s, want %s" % [units, id, ws.cell_size(id), want])
 
 
 func _run(ws: WorldSetCoords, expected: Dictionary) -> void:

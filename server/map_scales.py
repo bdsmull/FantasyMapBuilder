@@ -1,32 +1,32 @@
 """
 Map scale presets and cell sizes (#9), so every saved map records its cell size in
 meters (the ``metersPerUnit`` custom property) and readers outside the editor never
-need this table.
+need the scale table.
 
-@mirrors frontend/src/data/mapScales.ts (MAP_SCALES, resolveMetersPerUnit).
+The presets are the editor's own table, frontend/src/data/mapScales.json, read once at
+startup. @mirrors frontend/src/data/mapScales.ts (resolveMetersPerUnit).
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Optional
 
-_METERS_PER_FOOT = 0.3048
-_FEET_PER_MILE = 5280
+SCALES_FILE = Path(__file__).resolve().parent.parent / "frontend" / "src" / "data" / "mapScales.json"
 
-#: Scale preset id -> (meters per cell in metric, feet per cell in imperial)
-SCALES: dict[str, tuple[float, float]] = {
-    "room": (1, 2),
-    "battle": (2, 5),
-    "dungeon": (5, 10),
-    "site": (10, 30),
-    "town": (50, 150),
-    "city": (250, _FEET_PER_MILE / 8),
-    "local": (1e3, _FEET_PER_MILE),
-    "province": (5e3, _FEET_PER_MILE * 6),
-    "kingdom": (25e3, _FEET_PER_MILE * 30),
-    "continent": (100e3, _FEET_PER_MILE * 100),
-    "world": (500e3, _FEET_PER_MILE * 500),
-}
+_METERS_PER_FOOT = 0.3048
+
+
+def load_scales() -> dict[str, tuple[float, float]]:
+    """Scale preset id -> (meters per cell in metric, feet per cell in imperial)."""
+    return {
+        s["id"]: (float(s["metric"]["metersPerUnit"]), float(s["imperial"]["feetPerUnit"]))
+        for s in json.loads(SCALES_FILE.read_text(encoding="utf-8"))
+    }
+
+
+SCALES = load_scales()
 
 CELL_SIZE_PROPERTY = "metersPerUnit"
 
@@ -43,7 +43,7 @@ def preset_meters(scale: str, units: str) -> Optional[float]:
     preset = SCALES.get(scale)
     if preset is None:
         return None
-    return preset[1] * _METERS_PER_FOOT if units == "imperial" else float(preset[0])
+    return preset[1] * _METERS_PER_FOOT if units == "imperial" else preset[0]
 
 
 def has_own_units(map_data: dict) -> bool:

@@ -7,9 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from worldset_coords import WorldSet
+from worldset_coords import SCALES, WorldSet
 
 CONFORMANCE = Path(__file__).resolve().parents[2] / "conformance"
+SHARED_SCALES = Path(__file__).resolve().parents[3] / "frontend" / "src" / "data" / "mapScales.json"
 EXPECTED = json.loads((CONFORMANCE / "expected.json").read_text(encoding="utf-8"))
 TOL = 1e-6
 
@@ -36,6 +37,28 @@ def test_cell_sizes(ws):
             assert ws.cell_size(name) is None
         else:
             assert ws.cell_size(name) == pytest.approx(size, rel=1e-12)
+
+
+def test_embedded_scale_table_matches_the_editors():
+    """
+    The library embeds the scale table (it must work outside this repository). The editor
+    and its server share one file; this fails if the copy here drifts from it.
+    """
+    shared = {
+        s["id"]: (s["metric"]["metersPerUnit"], s["imperial"]["feetPerUnit"])
+        for s in json.loads(SHARED_SCALES.read_text(encoding="utf-8"))
+    }
+    assert shared, "the shared scale table is empty"
+    assert {k: tuple(v) for k, v in SCALES.items()} == shared
+
+    # And through the library's own code, with its unit conversion
+    blank = {"orientation": "orthogonal", "width": 1, "height": 1, "tilewidth": 32, "tileheight": 32}
+    for units in ("metric", "imperial"):
+        ws = WorldSet(CONFORMANCE, {"name": "scales", "units": units, "nodes": []})
+        for scale, (meters, feet) in shared.items():
+            ws._maps[scale] = {**blank, "properties": [{"name": "scale", "type": "string", "value": scale}]}
+            want = meters if units == "metric" else feet * 0.3048
+            assert ws.cell_size(scale) == pytest.approx(want, rel=1e-12), (scale, units)
 
 
 def test_roots(ws):

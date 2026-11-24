@@ -27,6 +27,7 @@ _WHOLE_CELL_TOLERANCE = 1e-9
 
 #: Scale preset id -> (meters per cell in metric, feet per cell in imperial). Only
 #: needed for map files without a ``metersPerUnit`` property (saved by older editors).
+#: A copy of the editor's frontend/src/data/mapScales.json; the tests check they match.
 SCALES: Dict[str, Tuple[float, float]] = {
     "room": (1, 2),
     "battle": (2, 5),

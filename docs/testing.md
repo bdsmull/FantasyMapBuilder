@@ -11,7 +11,7 @@ cd frontend && npm ci
 
 ## Running the tests
 
-**Python** (276 tests: models, TMJ I/O, API, and the `clients/python` world-coordinate library):
+**Python** (279 tests: models, TMJ I/O, API, and the `clients/python` world-coordinate library):
 
 ```bash
 pytest
@@ -28,7 +28,7 @@ npm run test:watch    # watch mode
 npx tsc --noEmit -p . # type check (also part of npm run build)
 ```
 
-**Godot addon** (world coordinates, 192 checks; needs Godot 4):
+**Godot addon** (world coordinates, 236 checks; needs Godot 4):
 
 ```bash
 godot --headless --path clients/godot --import

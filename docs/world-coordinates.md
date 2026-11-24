@@ -236,7 +236,12 @@ map, offsets, Z levels, imperial units, a file without `metersPerUnit`, a second
 origin object, and an unplaced map. Answers are in meters and should match within 1e-6.
 
 CI runs all three implementations against it: pytest for Python, a headless Godot for the addon,
-and Vitest for the reference. After changing the reference, regenerate the answers:
+and Vitest for the reference. The scale table has one source, `frontend/src/data/mapScales.json`, which the editor and its server
+both read. The libraries embed copies so they work on their own, and the table
+[above](#1-cell-size) is another. Tests fail if any of them differs from the source. To change a
+scale, edit the source, then update those three.
+
+After changing the reference, regenerate the answers:
 
 ```bash
 cd frontend

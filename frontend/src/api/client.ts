@@ -320,3 +320,50 @@ export async function deleteHeights(worldSet: string, name: string): Promise<voi
   const res = await fetch(heightsUrl(worldSet, name), { method: 'DELETE' });
   if (res.status !== 404) await handleResponse<unknown>(res);
 }
+
+// ---------------------------------------------------------------------------
+// Heightmap images for game engines (#46) — the server only packs and unpacks
+// ---------------------------------------------------------------------------
+
+/** Wrap 16-bit steps (row-major, top row first) in a grayscale PNG, with `info` inside it. */
+export async function encodeHeightmapPng(
+  steps: Uint16Array, width: number, height: number, info: object,
+): Promise<Blob> {
+  const bytes = new Uint8Array(steps.length * 2);
+  const view = new DataView(bytes.buffer);
+  for (let i = 0; i < steps.length; i++) view.setUint16(i * 2, steps[i], true);
+  const form = new FormData();
+  form.append('values', new Blob([bytes], { type: 'application/octet-stream' }), 'values.bin');
+  form.append('width', String(width));
+  form.append('height', String(height));
+  form.append('info', JSON.stringify(info));
+  const res = await fetch(`${BASE}/heightmaps/png`, { method: 'POST', body: form });
+  if (!res.ok) await handleResponse<unknown>(res);
+  return res.blob();
+}
+
+/** How the server laid out a decoded image's samples, and what the file said about itself. */
+export interface DecodedHeightmapInfo {
+  sample: 'u8' | 'u16' | 'f32';
+  /** The heightmap text embedded in a PNG this editor exported, if any. */
+  metadata: Record<string, unknown> | null;
+  /** 32-bit images: their own lowest and highest values. */
+  rawMin?: number;
+  rawMax?: number;
+}
+
+/** Unpack a heightmap image (PNG, TIFF, …) into its samples. */
+export async function decodeHeightmap(
+  file: Blob,
+): Promise<{ width: number; height: number; samples: ArrayBuffer; info: DecodedHeightmapInfo }> {
+  const form = new FormData();
+  form.append('file', file, 'heightmap');
+  const res = await fetch(`${BASE}/heightmaps/decode`, { method: 'POST', body: form });
+  if (!res.ok) await handleResponse<unknown>(res);
+  return {
+    width: Number(res.headers.get('X-Heightmap-Width')),
+    height: Number(res.headers.get('X-Heightmap-Height')),
+    info: JSON.parse(res.headers.get('X-Heightmap-Info') ?? '{}') as DecodedHeightmapInfo,
+    samples: await res.arrayBuffer(),
+  };
+}

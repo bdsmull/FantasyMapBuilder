@@ -67,6 +67,14 @@ export interface TileChange {
   newGid: number;
 }
 
+/** Every height sample before and after; the hand-set marks too when they changed. */
+interface WholeHeights {
+  before: Int32Array;
+  after: Int32Array;
+  maskBefore?: Uint8Array;
+  maskAfter?: Uint8Array;
+}
+
 type UndoStep =
   | { type: 'tiles'; changes: TileChange[] }
   | { type: 'object-add'; layerIndex: number; object: TmjObject }
@@ -75,7 +83,7 @@ type UndoStep =
    * Height edit: per-sample changes, or (re-base) every sample's height before and
    * after in `whole`, which is far smaller than one change record per sample.
    */
-  | { type: 'heights'; changes: HeightChange[]; whole?: { before: Int32Array; after: Int32Array } }
+  | { type: 'heights'; changes: HeightChange[]; whole?: WholeHeights }
   /** Layer structure change (add, delete, rename, move): the layer list before and after. */
   | { type: 'layers'; before: LayerSnapshot; after: LayerSnapshot };
 
@@ -152,8 +160,11 @@ export interface MapStore {
   applyHeightDab: (x: number, y: number) => void;
   /** End the current stroke: one undo step, and a full overlay refresh. */
   commitHeightStroke: () => void;
-  /** Replace every height sample (re-base) as one undo step; hand-set marks are kept. */
-  replaceHeights: (cm: Int32Array) => void;
+  /**
+   * Replace every height sample (re-base) as one undo step. Hand-set marks are kept,
+   * unless `mask` gives new ones (heightmap import overwriting hand-set heights).
+   */
+  replaceHeights: (cm: Int32Array, mask?: Uint8Array) => void;
 
   // ---- Spot heights (each change is one undo step) ----
   /** Add a spot height at map pixel (x, y) to the "Spot heights" layer (created if needed); returns its object ID. */
@@ -278,11 +289,13 @@ function _withoutHeightSteps(state: { past: UndoStep[]; future: UndoStep[] }) {
 /** Write a height step's old or new values back into the patch (in place). */
 function _applyHeightChanges(
   patch: HeightPatch | null, changes: HeightChange[], which: 'old' | 'new',
-  whole?: { before: Int32Array; after: Int32Array },
+  whole?: WholeHeights,
 ): void {
   if (!patch) return;
   if (whole) {
     patch.cm.set(which === 'old' ? whole.before : whole.after);
+    const mask = which === 'old' ? whole.maskBefore : whole.maskAfter;
+    if (mask) patch.mask.set(mask);
     patch.fullRefresh = true;
     return;
   }
@@ -495,19 +508,24 @@ export const useMapStore = create<MapStore>((set, get) => ({
     }));
   },
 
-  replaceHeights: (cm) => {
+  replaceHeights: (cm, mask) => {
     const { heights, past } = get();
     if (!heights || cm.length !== heights.cm.length) return;
-    const before = heights.cm.slice();
-    const after = cm.slice();
-    heights.cm.set(after);
+    if (mask && mask.length !== heights.mask.length) return;
+    const whole: WholeHeights = { before: heights.cm.slice(), after: cm.slice() };
+    heights.cm.set(whole.after);
+    if (mask) {
+      whole.maskBefore = heights.mask.slice();
+      whole.maskAfter = mask.slice();
+      heights.mask.set(whole.maskAfter);
+    }
     heights.fullRefresh = true;
     set((state) => ({
       heightsDirty: true,
       isDirty: true,
       heightsRev: state.heightsRev + 1,
       pendingHeights: new Map(),
-      past: [...past, { type: 'heights' as const, changes: [], whole: { before, after } }],
+      past: [...past, { type: 'heights' as const, changes: [], whole }],
       future: [],
     }));
   },

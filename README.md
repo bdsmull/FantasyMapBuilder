@@ -25,7 +25,8 @@ works from other devices on the same network, such as an iPad.
   world set as Tiled external tilesets
 - **Elevation** — a height surface per map: paint it, build it from terrain types, generate
   natural detail, fit it to known spot heights and traced contour lines, and see child maps'
-  heights on their parents; headroom on Z levels (floors, caves) from the level above
+  heights on their parents; headroom on Z levels (floors, caves) from the level above; export
+  and import 16-bit heightmaps for game engines
 - **Water** — lakes and seas that fill their basins, an automatic sea below 0 m, streams and
   hollows worked out from the heights (each stream can become a drawn river), and drawn rivers
   carved into the ground
@@ -112,8 +113,8 @@ The data folder is not committed to git.
 
 ```bash
 pip install -r requirements-dev.txt
-pytest                         # Python: models, TMJ I/O and API (253 tests)
-cd frontend && npm test        # Frontend: Vitest (414 tests)
+pytest                         # Python: models, TMJ I/O and API (259 tests)
+cd frontend && npm test        # Frontend: Vitest (431 tests)
 ```
 
 ---

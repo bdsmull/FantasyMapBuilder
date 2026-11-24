@@ -132,8 +132,33 @@ Samples are at cell **corners** on square maps (`(width + 1) × (height + 1)`) a
 **centres** on hex maps (`width × height`), row-major, top-left first. The map links its heights
 with the `heights` file property; the mask sits beside the TIFF by name.
 
-Game engines usually import 16-bit heightmaps with a vertical scale; convert from these 32-bit
-centimeter values on import.
+Game engines usually import 16-bit heightmaps with a vertical scale. The editor's
+[Export heightmap](elevation.md#heightmaps-for-game-engines) writes those, or a reader can convert
+these 32-bit centimeter values itself.
+
+### Exported heightmaps
+
+**Export heightmap** writes `<map>.heightmap.png` (16-bit grayscale) or `<map>.heightmap.r16`
+(16-bit unsigned, little-endian, no header), and `<map>.heightmap.json` beside it:
+
+```json
+{
+  "map": "inn-ground", "format": "png", "width": 21, "height": 21,
+  "minM": 96, "maxM": 104.2, "metersPerStep": 0.000125124,
+  "spacingXM": 1, "spacingYM": 1, "widthM": 20, "heightM": 20,
+  "rowOrder": "top-first"
+}
+```
+
+A sample of `s` steps (0 … 65535) is `minM + s × metersPerStep` meters high. Rows run from the
+map's top (north) edge, columns from its left; samples are `spacingXM` / `spacingYM` meters
+apart, `widthM × heightM` from the first to the last. RAW files add `"byteOrder":
+"little-endian"`; `"assembled": true` means child maps' heights are included. The PNG also
+carries the same JSON in a `heightmap` text chunk.
+
+Square maps export their corner samples as they are; hex maps are sampled onto a square grid
+through the hex centres, one sample per hex each way. The **2ⁿ + 1** size stretches either to a
+square of 33 … 4097 samples.
 
 ---
 

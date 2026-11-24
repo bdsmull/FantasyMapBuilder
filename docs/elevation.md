@@ -15,6 +15,7 @@ Heights can come from several sources, which combine on one surface:
 | [Spot heights](#spot-heights) | Known heights at points, such as a summit or a ford |
 | [Contour lines](#contour-lines) | Lines of known height, e.g. traced from a topographic map |
 | [Child maps](#across-maps) | More detailed maps refine their parent |
+| [Heightmap import](#import-heightmap) | A heightmap made in another tool |
 
 Hand-painted heights are **protected**: terrain fills, generation and fitting to spots and
 contours leave them alone. The brush's **Release** mode removes that protection.
@@ -346,6 +347,44 @@ above the floor over it. Each change is one undo step.
 
 The levels above are read when the map opens; after editing another level, reopen this one to
 see the change.
+
+---
+
+## Heightmaps for game engines
+
+Game engines (Unity, Unreal, Godot terrain plugins) build terrain from a **heightmap**: a grid of
+16-bit values, 0 to 65535, plus the heights those stand for. In the Height tool's Elevation
+section:
+
+### Export heightmap
+
+| Setting | Choices |
+|---|---|
+| Format | **PNG**, 16-bit grayscale (Unreal, Godot, most tools), or **RAW** `.r16`, 16-bit little-endian (Unity's *Import Raw*, byte order *Windows*) |
+| Size | **This map's samples** (a 40 × 20 map's 41 × 21 corners), or **square 2ⁿ + 1** (33 … 4097, as Unity needs), stretched to fill it |
+| Range | **This map's range**: 0 is its lowest height and 65535 its highest. Or a **fixed range**, so neighbouring maps' heightmaps line up |
+| Include child maps' heights | The surface as shown, with child maps' heights inside their footprints (when they have some) |
+
+**Export** downloads the image and a `.json` beside it (the browser may ask to allow two
+downloads). The panel and the `.json` give what the engine asks for: the lowest and highest
+heights, the size of one step, the spacing between samples and the terrain's real width and
+length. Set the engine terrain to that size and height range. Heights outside a fixed range are
+clamped to it, and the panel warns first. Hex maps are resampled to a square grid, one sample per
+hex each way. See [File Format](file-format.md#exported-heightmaps) for the `.json`.
+
+### Import heightmap
+
+**Choose file…** takes a grayscale PNG or TIFF (8- or 16-bit, or 32-bit integer or float), a
+16-bit RAW (`.r16` / `.raw`), or the `.json` exported beside one (it fills in the range and RAW
+size). Then:
+
+- **Heights from … to …**: the heights the file's lowest and highest values stand for. A PNG this
+  editor exported fills them in; otherwise they start at the map's current range.
+- **Size** and **Big-endian** (RAW only): RAW files have no header; a square size is guessed.
+- **Keep hand-set heights**: on by default; untick to overwrite them too (they lose their mark).
+
+The file is stretched over the whole map, like an engine terrain; the panel warns when its shape
+differs from the map's. **Import** sets the heights as one undo step.
 
 ---
 

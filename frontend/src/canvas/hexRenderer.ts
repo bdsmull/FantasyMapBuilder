@@ -45,6 +45,8 @@ export interface HexRenderOptions {
   afterTileLayers?: (ctx: CanvasRenderingContext2D) => void;
   /** How to draw line objects (roads, rivers); without it they are skipped. */
   lineStyle?: LineStyleFn;
+  /** Draw only part of the map, without clearing the canvas (see RenderOptions in tileRenderer.ts). */
+  part?: 'ground' | 'objects';
 }
 
 /** Trace a hex outline at (x, y) (screen top-left) into the current path. */
@@ -102,12 +104,14 @@ export function renderHexMap(
   map: TmjMap,
   options: HexRenderOptions,
 ): void {
-  const { view, showGrid, onImageLoad, afterTileLayers, lineStyle } = options;
+  const { view, showGrid, onImageLoad, afterTileLayers, lineStyle, part } = options;
   const { zoom, pan } = view;
   const layout = hexLayout(map);
 
-  ctx.fillStyle = BACKGROUND;
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  if (!part) {
+    ctx.fillStyle = BACKGROUND;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  }
 
   const vis = visibleHexRange(ctx.canvas, pan, zoom, layout, map.width, map.height);
 
@@ -116,9 +120,10 @@ export function renderHexMap(
 
   // Overlay hook goes after the last tile layer (or first, if there are none)
   const lastTileLayer = map.layers.reduce((last, l, i) => (isTileLayer(l) ? i : last), -1);
-  if (lastTileLayer < 0) afterTileLayers?.(ctx);
+  if (lastTileLayer < 0 || part === 'objects') afterTileLayers?.(ctx);
 
   map.layers.forEach((layer, index) => {
+    if (part && isTileLayer(layer) !== (part === 'ground')) return;
     if (layer.visible) {
       ctx.globalAlpha = layer.opacity;
       if (isTileLayer(layer)) {
@@ -128,12 +133,12 @@ export function renderHexMap(
       }
       ctx.globalAlpha = 1;
     }
-    if (index === lastTileLayer) afterTileLayers?.(ctx);
+    if (index === lastTileLayer && part !== 'objects') afterTileLayers?.(ctx);
   });
 
   ctx.globalAlpha = 1;
 
-  if (showGrid) {
+  if (showGrid && part !== 'ground') {
     drawHexGrid(ctx, map, layout, zoom, vis);
   }
 

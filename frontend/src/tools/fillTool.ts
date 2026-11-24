@@ -6,6 +6,7 @@
 
 import type { Tool } from './baseTool';
 import { isTileLayer } from '../types/tmj';
+import { mod, wrapsX } from '../utils/worldWrap';
 
 export const fillTool: Tool = {
   name: 'fill',
@@ -21,7 +22,7 @@ export const fillTool: Tool = {
     const targetGid = layer.data[row * layer.width + col];
     if (targetGid === activeGid) return; // already the desired tile
 
-    const changed = bfsFloodFill(layer.data, layer.width, layer.height, col, row, targetGid, activeGid);
+    const changed = bfsFloodFill(layer.data, layer.width, layer.height, col, row, targetGid, activeGid, wrapsX(mapData));
     if (changed.length === 0) return;
 
     store.applyFill(activeLayerIndex, changed, activeGid);
@@ -33,7 +34,8 @@ export const fillTool: Tool = {
 
 /**
  * BFS flood-fill implementation.
- * Returns list of [col, row] pairs that were changed.
+ * Returns list of [col, row] pairs that were changed. `wrap`: the columns continue round
+ * the world, so the fill runs across its seam.
  */
 export function bfsFloodFill(
   data: number[],
@@ -43,6 +45,7 @@ export function bfsFloodFill(
   startRow: number,
   targetGid: number,
   fillGid: number,
+  wrap = false,
 ): [number, number][] {
   if (targetGid === fillGid) return [];
 
@@ -59,7 +62,8 @@ export function bfsFloodFill(
     if (data[r * width + c] !== targetGid) continue;
     changed.push([c, r]);
 
-    for (const [nc, nr] of [[c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1]] as [number, number][]) {
+    for (const [tc, nr] of [[c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1]] as [number, number][]) {
+      const nc = wrap ? mod(tc, width) : tc;
       if (nc < 0 || nr < 0 || nc >= width || nr >= height) continue;
       const ni = nr * width + nc;
       if (visited[ni]) continue;

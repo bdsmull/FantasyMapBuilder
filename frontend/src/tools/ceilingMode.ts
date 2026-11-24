@@ -43,6 +43,14 @@ const _selected = (store: MapStore) => {
   return id !== null && store.mapData ? readCeilings(store.mapData).find((c) => c.id === id) : undefined;
 };
 
+/** Whether a ceiling shape's outline, or a handle of the selected one, is at `pos`. */
+export function ceilingPicks(store: MapStore, pos: MapPoint): boolean {
+  if (!store.mapData) return false;
+  const r = CEILING_PICK_RADIUS_PX / store.zoom, sel = _selected(store);
+  return (!!sel && (pointAt(sel.points, pos.x, pos.y, r) >= 0 || midpointAt(ceilingPath(sel), pos.x, pos.y, r) >= 0))
+    || ceilingAreaAt(readCeilings(store.mapData), pos.x, pos.y, r) !== null;
+}
+
 export function ceilingPress(store: MapStore, pos: MapPoint): void {
   if (!store.mapData) return;
   const r = CEILING_PICK_RADIUS_PX / store.zoom;

@@ -22,6 +22,13 @@ export interface Tool {
   /** `pos` is the exact pointer position, for tools that work below cell precision. */
   onPress(col: number, row: number, store: MapStore, pos?: MapPoint, mods?: PressModifiers): void;
   onDrag(col: number, row: number, store: MapStore, pos?: MapPoint): void;
+  /**
+   * Whether a press at `pos` would take hold of something there (a point, a line, a handle).
+   * On a wrapped map a press is tried on the turns either side, too: what's by one edge, or
+   * reaches past it, can be picked up where it shows by the other. A drag then carries on
+   * from that turn, so positions may lie past the map's edges.
+   */
+  picks?(store: MapStore, pos: MapPoint): boolean;
   onRelease(store: MapStore): void;
   /** The gesture was abandoned (e.g. a second finger started a pinch). Defaults to onRelease. */
   onCancel?(store: MapStore): void;

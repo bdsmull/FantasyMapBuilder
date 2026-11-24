@@ -19,8 +19,15 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
     then continue across it, and generated detail repeats once around the world.
   - World coordinates stay continuous; looking up a point accepts any x. The Godot and Python
     libraries follow, and gain `world_width` and `wrap_delta`.
-  - Scrolling past the seam, child maps across it, and lines over it come in later parts. The poles
-    stay the top and bottom edges of a flat map.
+  - The poles stay the top and bottom edges of a flat map.
+- **Worlds that wrap east–west, part 2** (issue #36): the view. Roads, rivers and contours across the
+  seam come in part 3.
+  - Scrolling east or west goes round and round, showing the world once at a time. A faint dashed
+    line marks the seam while the grid is on.
+  - Painting, filling, the height brush and Inspect work over the seam, and objects beside it can be
+    picked from either side.
+  - Child maps can be placed and dragged across it; their footprints, ground, roads, heights and
+    overlap warnings follow.
 - **World coordinates** (issue #9): every point of every placed map has a world position in
   meters, x east and y north of a **world origin**.
   - The origin is a `0, 0` marker on the world set's root map: a point object (type

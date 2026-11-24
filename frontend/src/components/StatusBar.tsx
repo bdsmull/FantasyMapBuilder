@@ -11,6 +11,7 @@ import { ceilingAtPixel, describeCeiling, readCeilings } from '../utils/ceilings
 import { useCeilingContext } from './useCeilings';
 import { useWorldFrame } from './useWorldFrame';
 import { formatWorld, pixelToWorld } from '../utils/worldCoords';
+import { wrapPixelX } from '../utils/worldWrap';
 
 export const StatusBar: React.FC = () => {
   const { mapData, mapName, mapWorldSet, isDirty, zoom, heights, elevationView } = useMapStore();
@@ -18,7 +19,9 @@ export const StatusBar: React.FC = () => {
   const frame = useWorldFrame();
   const surface = useWorldSurfaceStore();
   const children = elevationView.showChildren && surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children : [];
-  const cursor = useCursorStore((s) => s.mapPos);
+  const pointer = useCursorStore((s) => s.mapPos);
+  // A drag may run past the edge of a wrapped map: read out the place itself
+  const cursor = pointer && mapData ? { x: wrapPixelX(mapData, pointer.x), y: pointer.y } : null;
   const worldSetStore = useWorldSetStore();
   const inActiveWorldSet = mapWorldSet === worldSetStore.activeWorldSetName;
   const parentNode = mapName && inActiveWorldSet ? worldSetStore.parentOf(mapName) : null;

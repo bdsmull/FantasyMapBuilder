@@ -43,6 +43,14 @@ const _selected = (store: MapStore) => {
   return id !== null && store.mapData ? readContours(store.mapData).find((c) => c.id === id) : undefined;
 };
 
+/** Whether a contour, or a handle of the selected one, is at `pos`. */
+export function contourPicks(store: MapStore, pos: MapPoint): boolean {
+  if (!store.mapData) return false;
+  const r = CONTOUR_PICK_RADIUS_PX / store.zoom, sel = _selected(store);
+  return (!!sel && (pointAt(sel.points, pos.x, pos.y, r) >= 0 || midpointAt(contourPath(sel), pos.x, pos.y, r) >= 0))
+    || contourAt(readContours(store.mapData), pos.x, pos.y, r) !== null;
+}
+
 export function contourPress(store: MapStore, pos: MapPoint): void {
   if (!store.mapData) return;
   const r = CONTOUR_PICK_RADIUS_PX / store.zoom;

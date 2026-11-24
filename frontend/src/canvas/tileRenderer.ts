@@ -28,6 +28,12 @@ export interface RenderOptions {
   afterTileLayers?: (ctx: CanvasRenderingContext2D) => void;
   /** How to draw line objects (roads, rivers); without it they are skipped. */
   lineStyle?: LineStyleFn;
+  /**
+   * Draw only part of the map, without clearing the canvas: the tile layers, or what goes
+   * over them (the hook, object layers and grid). For a world that wraps, drawn once per
+   * turn: every turn's ground comes first, so none of it covers what reaches over the seam.
+   */
+  part?: 'ground' | 'objects';
 }
 
 // ---------------------------------------------------------------------------
@@ -39,36 +45,38 @@ export function renderTileMap(
   map: TmjMap,
   options: RenderOptions,
 ): void {
-  const { view, showGrid, onImageLoad, afterTileLayers, lineStyle } = options;
+  const { view, showGrid, onImageLoad, afterTileLayers, lineStyle, part } = options;
   const { zoom, pan } = view;
 
-  // Background
-  ctx.fillStyle = BACKGROUND;
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  if (!part) {
+    ctx.fillStyle = BACKGROUND;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  }
 
   ctx.save();
   ctx.translate(pan.x, pan.y);
 
   // Overlay hook goes after the last tile layer (or first, if there are none)
   const lastTileLayer = map.layers.reduce((last, l, i) => (isTileLayer(l) ? i : last), -1);
-  if (lastTileLayer < 0) afterTileLayers?.(ctx);
+  if (lastTileLayer < 0 || part === 'objects') afterTileLayers?.(ctx);
 
   map.layers.forEach((layer, index) => {
+    if (part && isTileLayer(layer) !== (part === 'ground')) return;
     if (layer.visible) {
       ctx.globalAlpha = layer.opacity;
       if (isTileLayer(layer)) {
-        drawTileLayer(ctx, map, layer, zoom, onImageLoad);
+        drawTileLayer(ctx, map, layer, view, onImageLoad);
       } else if (isObjectLayer(layer)) {
         drawObjectLayer(ctx, layer, map.tilewidth, zoom, lineStyle);
       }
       ctx.globalAlpha = 1;
     }
-    if (index === lastTileLayer) afterTileLayers?.(ctx);
+    if (index === lastTileLayer && part !== 'objects') afterTileLayers?.(ctx);
   });
 
   ctx.globalAlpha = 1;
 
-  if (showGrid) {
+  if (showGrid && part !== 'ground') {
     drawGrid(ctx, map, zoom);
   }
 
@@ -83,14 +91,18 @@ function drawTileLayer(
   ctx: CanvasRenderingContext2D,
   map: TmjMap,
   layer: TmjTileLayer,
-  zoom: number,
+  view: ViewState,
   onImageLoad: () => void,
 ): void {
+  const { zoom, pan } = view;
   const tw = map.tilewidth;
   const th = map.tileheight;
+  // Only the cells in view (ctx is already moved by the pan)
+  const c0 = Math.max(0, Math.floor(-pan.x / (tw * zoom))), c1 = Math.min(layer.width - 1, Math.floor((ctx.canvas.width - pan.x) / (tw * zoom)));
+  const r0 = Math.max(0, Math.floor(-pan.y / (th * zoom))), r1 = Math.min(layer.height - 1, Math.floor((ctx.canvas.height - pan.y) / (th * zoom)));
 
-  for (let row = 0; row < layer.height; row++) {
-    for (let col = 0; col < layer.width; col++) {
+  for (let row = r0; row <= r1; row++) {
+    for (let col = c0; col <= c1; col++) {
       const gid = layer.data[row * layer.width + col];
       if (gid === 0) continue;
 

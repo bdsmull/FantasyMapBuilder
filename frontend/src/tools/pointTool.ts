@@ -17,6 +17,7 @@ import { SPOT_TYPE } from '../utils/spotHeights';
 import { WATER_TYPE } from '../utils/water';
 import { WORLD_ORIGIN_TYPE, defaultOriginPixel, findWorldOrigin } from '../utils/worldCoords';
 import { useWorldSetStore } from '../store/worldSetStore';
+import { wrapPixelX } from '../utils/worldWrap';
 
 /** Screen pixels around a point's marker that count as clicking it. */
 export const POINT_PICK_RADIUS_PX = 10;
@@ -79,6 +80,12 @@ export const pointTool: Tool = {
   name: 'point',
   cursor: 'pointer',
 
+  picks(store, pos) {
+    if (!store.mapData) return false;
+    const r = _radius(store, store.mapData), origin = worldOriginMarker(store);
+    return (!!origin && Math.hypot(origin.x - pos.x, origin.y - pos.y) <= r) || pointNear(store.mapData, pos.x, pos.y, r) !== null;
+  },
+
   onPress(col, row, store, pos) {
     const { mapData, activeLayerIndex } = store;
     if (!mapData) return;
@@ -112,7 +119,8 @@ export const pointTool: Tool = {
   onRelease(store) {
     if (!_draggingOrigin) return;
     _draggingOrigin = false;
-    const to = _view().originDrag;
+    const drag = _view().originDrag;
+    const to = drag && store.mapData ? { x: wrapPixelX(store.mapData, drag.x), y: drag.y } : drag;
     _view().setOriginDrag(null);
     const from = worldOriginMarker(store);
     if (to && (!from?.stored || from.x !== to.x || from.y !== to.y)) store.setWorldOrigin(to.x, to.y);

@@ -20,6 +20,7 @@ import {
 import type { UnitSystem } from '../../data/mapScales';
 import { childRect, detectRectOverlaps } from '../../utils/worldSetUtils';
 import type { RectNode } from '../../utils/worldSetUtils';
+import { wrapsX } from '../../utils/worldWrap';
 import type { WorldSet, WorldSetNode } from '../../types/worldSet';
 import { WORLD_SET_VERSION } from '../../types/worldSet';
 import type { TmjMap } from '../../types/tmj';
@@ -401,7 +402,7 @@ export const WorldSetDialog: React.FC<Props> = ({
               rect: childRect(sibData.width, sibData.height, sibMPU, parentMPU, sib.parentAnchor!, sib.parentOffset),
             });
           }
-          const overlaps = detectRectOverlaps([candidate, ...siblingFootprints]);
+          const overlaps = detectRectOverlaps([candidate, ...siblingFootprints], wrapsX(parentData) ? parentData.width : undefined);
           for (const [a, b] of overlaps) {
             const other = a === selectedMap ? b : a;
             localWarnings.push(`Footprint overlaps with '${other}' at the same Z level.`);

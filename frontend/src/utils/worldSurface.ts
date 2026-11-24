@@ -20,6 +20,7 @@ import type { HeightPatch, CellRect } from './heightGrid';
 import { heightAt, unionRect } from './heightGrid';
 import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 import { childRect } from './worldSetUtils';
+import { wrapsX } from './worldWrap';
 
 // ---------------------------------------------------------------------------
 // Cell space <-> map pixels
@@ -165,12 +166,20 @@ export function buildSurface(
 // Point readout
 // ---------------------------------------------------------------------------
 
-/** The child (if any) that counts most at cell-space point (u, v). */
-function _strongestChild(children: PlacedChild[], u: number, v: number): { child: PlacedChild; w: number } | null {
-  let best: { child: PlacedChild; w: number } | null = null;
+/** Cell-space shifts at which a child shows on a map: on a wrapped one, also one turn to either side. */
+export function turnShifts(map: TmjMap): number[] {
+  return wrapsX(map) ? [0, -map.width, map.width] : [0];
+}
+
+/** The child (if any) that counts most at cell-space point (u, v), and the point's u on the child's turn. */
+function _strongestChild(map: TmjMap, children: PlacedChild[], u: number, v: number): { child: PlacedChild; w: number; u: number } | null {
+  let best: { child: PlacedChild; w: number; u: number } | null = null;
+  const shifts = turnShifts(map);
   for (const child of children) {
-    const w = blendWeight(child.place, u, v);
-    if (w > 0 && (!best || w > best.w)) best = { child, w };
+    for (const s of shifts) {
+      const w = blendWeight(child.place, u + s, v);
+      if (w > 0 && (!best || w > best.w)) best = { child, w, u: u + s };
+    }
   }
   return best;
 }
@@ -190,10 +199,10 @@ export function surfaceAt(
 ): { cm: number; source: string } {
   const own = heightAt(map, patch, x, y);
   const { u, v } = pixelToCell(map, x, y);
-  const hit = _strongestChild(children, u, v);
+  const hit = _strongestChild(map, children, u, v);
   if (!hit) return { cm: own, source: name };
   const { node } = hit.child;
-  const p = _childPixel(hit.child, u, v);
+  const p = _childPixel(hit.child, hit.u, v);
   const inner = surfaceAt(node.map, node.patch, node.children, p.x, p.y, node.name);
   return { cm: own + (inner.cm - own) * hit.w, source: hit.w >= 0.5 ? inner.source : name };
 }
@@ -224,11 +233,13 @@ export function sampleCell(map: TmjMap, col: number, row: number): { u: number; 
 
 /**
  * For each parent sample whose cell overlaps a child: average the child's surface
- * (with blending) over a one-cell window around the sample.
+ * (with blending) over a one-cell window around the sample. On a wrapped map a child
+ * across the seam counts on both sides of it.
  */
 export function computeOverrides(map: TmjMap, cols: number, rows: number, children: PlacedChild[]): SurfaceOverrides {
   const acc = new Map<number, { keep: number; add: number }>();
-  for (const child of children) {
+  const shifts = turnShifts(map);
+  for (const child of children.flatMap((c) => shifts.map((s): PlacedChild => ({ ...c, place: { ...c.place, left: c.place.left + s } })))) {
     const { place, node } = child;
     const n = Math.max(1, Math.min(_MAX_SUBSAMPLES, Math.ceil(place.scale - 1e-9)));
     // Samples whose window [s - 0.5, s + 0.5] might touch the child (hex stagger adds half a row)

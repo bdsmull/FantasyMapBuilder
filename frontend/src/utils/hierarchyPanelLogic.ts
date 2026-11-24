@@ -4,6 +4,7 @@ import { resolveMetersPerUnit } from '../data/mapScales';
 import type { UnitSystem } from '../data/mapScales';
 import { childRect, detectRectOverlaps } from './worldSetUtils';
 import type { RectNode } from './worldSetUtils';
+import { wrapsX } from './worldWrap';
 
 /** Per-world-set collapsed-mapName sets. Outer key = world set name. */
 export type CollapseState = Record<string, Set<string>>;
@@ -102,7 +103,7 @@ export function getWarnings(node: WorldSetNode, ctx: WarningContext): string[] {
             rect: childRect(sibData.width, sibData.height, sibMPU, parentMPU, sib.parentAnchor, sib.parentOffset),
           });
         }
-        const overlaps = detectRectOverlaps([candidate, ...siblingFootprints]);
+        const overlaps = detectRectOverlaps([candidate, ...siblingFootprints], parentData && wrapsX(parentData) ? parentData.width : undefined);
         for (const [a, b] of overlaps) {
           const other = a === node.mapName ? b : a;
           warnings.push(`Footprint overlap: conflicts with '${other}' at the same Z level`);

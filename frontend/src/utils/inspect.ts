@@ -7,6 +7,7 @@ import { isTileLayer, isObjectLayer } from '../types/tmj';
 import { hexLayout, pixelToHex, hexMapPixelSize } from '../canvas/hexGeometry';
 import { tileTerrainHeight } from './terrainHeights';
 import { nearestOnLine } from './lines';
+import { mod, unrolledHex, wrapPeriodPx, wrapPixelX, wrapsX } from './worldWrap';
 import type { TerrainHeight } from './terrainHeights';
 
 const _GID_MASK = 0x0fffffff;
@@ -44,15 +45,20 @@ export interface Inspection {
   objects: InspectedObject[];
 }
 
-/** The cell under a map pixel, or null off the map. */
+/** The cell under a map pixel, or null off the map. Columns continue round a wrapped map. */
 export function cellAt(map: TmjMap, x: number, y: number): { col: number; row: number } | null {
+  const wrap = wrapsX(map);
   if (map.orientation === 'hexagonal') {
     const layout = hexLayout(map);
     const size = hexMapPixelSize(layout, map.width, map.height);
-    if (x < 0 || y < 0 || x > size.width || y > size.height) return null;
+    if (y < 0 || y > size.height || (!wrap && (x < 0 || x > size.width))) return null;
+    if (wrap) {
+      const at = unrolledHex(map, x, y);
+      return { col: mod(at.col, map.width), row: at.row };
+    }
     return pixelToHex(layout, x, y, map.width, map.height);
   }
-  const col = Math.floor(x / map.tilewidth), row = Math.floor(y / map.tileheight);
+  const col = Math.floor(wrapPixelX(map, x) / map.tilewidth), row = Math.floor(y / map.tileheight);
   return col >= 0 && row >= 0 && col < map.width && row < map.height ? { col, row } : null;
 }
 
@@ -114,6 +120,10 @@ function _hits(o: TmjObject, x: number, y: number, pickRadius: number): boolean 
 export function inspectAt(map: TmjMap, x: number, y: number, pickRadius: number): Inspection | null {
   const cell = cellAt(map, x, y);
   if (!cell) return null;
+  x = wrapPixelX(map, x);
+  // On a wrapped map an object by one edge (or reaching past it) shows by the other, too
+  const turn = wrapsX(map) ? wrapPeriodPx(map) : 0;
+  const hits = (o: TmjObject) => (turn ? [0, -turn, turn] : [0]).some((s) => _hits(o, x + s, y, pickRadius));
   const i = cell.row * map.width + cell.col;
   const tiles: InspectedTile[] = [];
   const objects: InspectedObject[] = [];
@@ -134,7 +144,7 @@ export function inspectAt(map: TmjMap, x: number, y: number, pickRadius: number)
     } else if (isObjectLayer(layer)) {
       for (let k = layer.objects.length - 1; k >= 0; k--) {
         const o = layer.objects[k];
-        if (!_hits(o, x, y, pickRadius)) continue;
+        if (!hits(o)) continue;
         objects.push({ layer: layer.name, id: o.id, name: o.name, type: o.type, kind: _kind(o), properties: o.properties ?? [] });
       }
     }

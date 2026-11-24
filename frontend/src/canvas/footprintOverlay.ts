@@ -303,7 +303,7 @@ export function footprintAtPoint(
   screenY: number,
   rendered: RenderedFootprint[],
 ): string[] {
-  return rendered
+  const names = rendered
     .filter(
       (r) =>
         screenX >= r.screenX &&
@@ -311,8 +311,8 @@ export function footprintAtPoint(
         screenY >= r.screenY &&
         screenY <= r.screenY + r.screenH,
     )
-    .map((r) => r.mapName)
-    .sort();
+    .map((r) => r.mapName);
+  return [...new Set(names)].sort(); // a wrapped map draws each once per turn
 }
 
 // Re-exported for callers that work with whole-cell footprints

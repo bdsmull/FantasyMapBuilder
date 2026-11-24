@@ -15,8 +15,8 @@ import { cellDistance } from '../utils/heightBrush';
 import { heightAt } from '../utils/heightGrid';
 import { readSpots, spotNear, DEFAULT_REACH_CELLS } from '../utils/spotHeights';
 import { useViewStore } from '../store/viewStore';
-import { contourPress, contourDrag, contourRelease, contourCancel } from './contourMode';
-import { ceilingPress, ceilingDrag, ceilingRelease, ceilingCancel } from './ceilingMode';
+import { contourPress, contourDrag, contourRelease, contourCancel, contourPicks } from './contourMode';
+import { ceilingPress, ceilingDrag, ceilingRelease, ceilingCancel, ceilingPicks } from './ceilingMode';
 
 /** Last position a dab was applied in the current stroke. */
 let _lastDab: MapPoint | null = null;
@@ -27,6 +27,13 @@ export const SPOT_PICK_RADIUS_PX = 10;
 export const heightTool: Tool = {
   name: 'height',
   cursor: 'crosshair',
+
+  picks(store, pos) {
+    if (store.heightBrush.mode === 'contour') return contourPicks(store, pos);
+    if (store.heightBrush.mode === 'ceiling') return ceilingPicks(store, pos);
+    return store.heightBrush.mode === 'spot' && !!store.mapData
+      && spotNear(readSpots(store.mapData), pos.x, pos.y, SPOT_PICK_RADIUS_PX / store.zoom) !== null;
+  },
 
   onPress(_col, _row, store, pos) {
     if (!pos || !store.heights || !store.mapData) return;

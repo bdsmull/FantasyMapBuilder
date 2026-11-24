@@ -150,9 +150,16 @@ Open the world set's root map, choose **File → Map Properties…** and tick **
 - **The sea, lakes and flow** run across it; only the top and bottom are the map's edge. A
   stream turned into a drawn river stops at the seam for now.
 - **World coordinates** are continuous, and looking one up works any number of turns around.
+- **Scrolling** east or west goes round and round. The world is shown once at a time, however far you
+  zoom out, and the picture is cut opposite the middle of the view. With the grid on, a faint dashed
+  line marks the seam.
+- **Painting, filling, erasing, the height brush and Inspect** work over the seam as anywhere else.
+- **Child maps** can be placed and dragged across it: their footprints, ground and roads show on both
+  sides, and their heights, the overlap check and **Open** find them there.
 
-A flat-topped hex map needs an even number of columns. Scrolling past the seam, placing child maps
-across it, and drawing roads and rivers over it are still to come.
+A flat-topped hex map needs an even number of columns. Roads, rivers and contours over the seam are
+still to come: you can draw one past it, but joining other lines there, and what the line does to
+the land on the far side, isn't finished.
 
 The **poles** are just the top and bottom edges: the world is a cylinder, and every cell counts as
 the same size. On a map that stands for a whole globe, east–west distances are too long away from the

@@ -11,7 +11,7 @@
 import type { TmjMap } from '../types/tmj';
 import { hexLayout, hexCenter, pixelToHex } from '../canvas/hexGeometry';
 import type { UnitSystem } from '../data/mapScales';
-import { mod, wrapsX } from './worldWrap';
+import { mod, unrolledHex, wrapPixelX, wrapsX } from './worldWrap';
 
 /** Inclusive range of sample columns/rows. */
 export interface CellRect { c0: number; r0: number; c1: number; r1: number }
@@ -129,9 +129,13 @@ export function hexNeighbours(map: TmjMap, col: number, row: number): { col: num
  */
 export function hexHeightWeights(map: TmjMap, x: number, y: number): { col: number; row: number; w: number }[] {
   const layout = hexLayout(map);
-  const { col, row } = pixelToHex(layout, x, y, map.width, map.height);
-  const c = hexCenter(layout, col, row);
-  const ns = hexNeighbours(map, col, row);
+  const wrap = wrapsX(map);
+  const at = wrap ? unrolledHex(map, x, y) : { x, ...pixelToHex(layout, x, y, map.width, map.height) };
+  x = at.x;
+  const { row } = at;
+  const c = hexCenter(layout, at.col, row);
+  const col = wrap ? mod(at.col, map.width) : at.col;
+  const ns = hexNeighbours(map, at.col, row);
   for (let i = 0; i < ns.length; i++) {
     const a = ns[i];
     const b = ns[(i + 1) % ns.length];
@@ -155,8 +159,9 @@ function hexHeightAt(map: TmjMap, p: HeightPatch, x: number, y: number): number 
   return h;
 }
 
-/** Height (cm, fractional) at a map pixel position. */
+/** Height (cm, fractional) at a map pixel position; past the sides of a wrapped map, round the world. */
 export function heightAt(map: TmjMap, p: HeightPatch, x: number, y: number): number {
+  if (map.orientation !== 'hexagonal' && (x < 0 || x > map.width * map.tilewidth)) x = wrapPixelX(map, x);
   return map.orientation === 'hexagonal' ? hexHeightAt(map, p, x, y) : squareHeightAt(map, p, x, y);
 }
 

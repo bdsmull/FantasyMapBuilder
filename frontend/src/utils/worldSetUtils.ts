@@ -88,14 +88,17 @@ export interface RectNode {
   rect: ChildRect;
 }
 
-/** Pairs of children at the same Z level whose real areas overlap (alphabetical). */
-export function detectRectOverlaps(nodes: RectNode[]): [string, string][] {
+/**
+ * Pairs of children at the same Z level whose real areas overlap (alphabetical). `turn`: the
+ * parent's width in cells when it wraps east-west, so children meet across its seam too.
+ */
+export function detectRectOverlaps(nodes: RectNode[], turn?: number): [string, string][] {
   const out: [string, string][] = [];
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i], b = nodes[j];
       if (a.z !== b.z) continue;
-      const hit = a.rect.left < b.rect.left + b.rect.width && b.rect.left < a.rect.left + a.rect.width
+      const hit = (turn ? [0, -turn, turn] : [0]).some((s) => a.rect.left + s < b.rect.left + b.rect.width && b.rect.left < a.rect.left + s + a.rect.width)
         && a.rect.top < b.rect.top + b.rect.height && b.rect.top < a.rect.top + a.rect.height;
       if (hit) out.push(a.mapName < b.mapName ? [a.mapName, b.mapName] : [b.mapName, a.mapName]);
     }

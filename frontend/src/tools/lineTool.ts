@@ -97,6 +97,17 @@ function _lineTool(name: string, kind: LineKind): Tool {
   name,
   cursor: 'crosshair',
 
+  picks(store, pos) {
+    if (!store.mapData) return false;
+    const r = LINE_PICK_RADIUS_PX / store.zoom;
+    const selected = linesOfKind(store, kind).find((l) => l.id === _view().selectedLineId);
+    if (selected) {
+      const points = linePoints(selected.object);
+      if (pointAt(points, pos.x, pos.y, r) >= 0 || midpointAt(points, pos.x, pos.y, r) >= 0) return true;
+    }
+    return (_view().showLines && lineAt(linesOfKind(store, kind, true), pos.x, pos.y, r) !== null) || ghostAt(store, pos, r, kind) !== null;
+  },
+
   onPress(_col, _row, store, pos) {
     if (!pos || !store.mapData) return;
     const r = LINE_PICK_RADIUS_PX / store.zoom;

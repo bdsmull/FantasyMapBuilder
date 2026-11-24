@@ -13,7 +13,7 @@
  */
 
 import type { TmjMap, TmjProperty } from '../types/tmj';
-import { hexLayout } from '../canvas/hexGeometry';
+import { hexLayout, hexMapPixelSize, pixelToHex } from '../canvas/hexGeometry';
 
 /** Map property (bool) that turns the wrap on. */
 export const WRAP_PROPERTY = 'wrapX';
@@ -51,6 +51,69 @@ export function wrapPeriodPx(map: TmjMap): number {
   const layout = hexLayout(map);
   return map.width * (layout.staggerX ? layout.columnWidth : layout.tileWidth + layout.sideLengthX);
 }
+
+// ---------------------------------------------------------------------------
+// Viewing: scrolling round the world
+// ---------------------------------------------------------------------------
+
+/** Map pixel x on the map's own turn: 0 up to one turn (unchanged on a map that doesn't wrap). */
+export function wrapPixelX(map: TmjMap, x: number): number {
+  if (!wrapsX(map)) return x;
+  return mod(x, wrapPeriodPx(map));
+}
+
+/** Pixels from one map x to another, the short way round a wrapped map. */
+export function seamDelta(map: TmjMap, from: number, to: number): number {
+  const d = to - from;
+  if (!wrapsX(map)) return d;
+  const period = wrapPeriodPx(map);
+  return d - period * Math.floor(d / period + 0.5);
+}
+
+/**
+ * The hex at a pixel of a wrapped hex map, found as if the map were unrolled (the strip
+ * inside an edge is partly hexes from across the seam). `x` is the pixel on the map's own
+ * turn and `col` the column beside it there, so it can be -1 or `width`; the row is
+ * clamped to the map.
+ */
+export function unrolledHex(map: TmjMap, x: number, y: number): { x: number; col: number; row: number } {
+  const own = wrapPixelX(map, x);
+  const { col, row } = pixelToHex(hexLayout(map), own + wrapPeriodPx(map), y, 3 * map.width, map.height);
+  return { x: own, col: col - map.width, row };
+}
+
+/** What a wrapped map shows on a canvas of some width. */
+export interface WrapView {
+  /** One turn of the world, screen px. */
+  period: number;
+  /**
+   * The part of the canvas that shows the world: one turn, centred, so no place shows
+   * twice (the cut is opposite the middle of the view). All of it when zoomed in.
+   */
+  x0: number;
+  x1: number;
+  /** Turns to draw the ground of: turn k is the map drawn k periods to the right. */
+  ground: number[];
+  /** Turns to draw lines, objects and marks of: what reaches over the seam from one more each side, too. */
+  marks: number[];
+}
+
+/** How to draw a wrapped map at a view; null for a map that doesn't wrap. */
+export function wrapView(map: TmjMap, zoom: number, panX: number, canvasWidth: number): WrapView | null {
+  if (!wrapsX(map)) return null;
+  const period = wrapPeriodPx(map) * zoom;
+  const x0 = Math.max(0, (canvasWidth - period) / 2), x1 = Math.min(canvasWidth, (canvasWidth + period) / 2);
+  // Hex maps reach a little past one turn, into the next one's first column
+  const width = map.orientation === 'hexagonal' ? hexMapPixelSize(hexLayout(map), map.width, map.height).width * zoom : period;
+  const first = Math.floor((x0 - panX - width) / period) + 1;
+  const last = Math.ceil((x1 - panX) / period) - 1;
+  const range = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
+  return { period, x0, x1, ground: range(first, last), marks: range(first - 1, last + 1) };
+}
+
+// ---------------------------------------------------------------------------
+// Height samples
+// ---------------------------------------------------------------------------
 
 /** Whether the last column of height samples is the first one again (wrapped square maps). */
 export function hasSeamTwin(map: TmjMap): boolean {

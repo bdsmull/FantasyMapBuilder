@@ -6,7 +6,7 @@ import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
 import { resolveMetersPerUnit, resolveUnits } from '../data/mapScales';
 import type { UnitSystem } from '../data/mapScales';
 import { formatHeight, heightAt } from '../utils/heightGrid';
-import { surfaceAt, pixelToCell } from '../utils/worldSurface';
+import { surfaceAt, pixelToCell, turnShifts } from '../utils/worldSurface';
 import { inspectAt } from '../utils/inspect';
 import type { ChildRect } from '../utils/worldSetUtils';
 import { waterAt } from '../utils/water';
@@ -72,7 +72,8 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
   // Child maps whose real area holds the inspected point
   const at = pixelToCell(mapData, inspected.x, inspected.y);
   const childMaps = info
-    ? [...footprints].filter(([, r]) => at.u >= r.left && at.u <= r.left + r.width && at.v >= r.top && at.v <= r.top + r.height).map(([n]) => n)
+    ? [...footprints].filter(([, r]) => turnShifts(mapData).some((s) => at.u + s >= r.left && at.u + s <= r.left + r.width)
+      && at.v >= r.top && at.v <= r.top + r.height).map(([n]) => n)
     : [];
 
   return (

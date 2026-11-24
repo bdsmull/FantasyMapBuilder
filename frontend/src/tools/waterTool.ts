@@ -8,13 +8,17 @@ import type { Tool } from './baseTool';
 import { useViewStore } from '../store/viewStore';
 import { heightAt } from '../utils/heightGrid';
 import { riversTool } from './lineTool';
-import { waterPress, waterDrag, waterRelease, waterCancel } from './waterMode';
+import { waterPress, waterDrag, waterRelease, waterCancel, waterPicks } from './waterMode';
 
 const _rivers = () => useViewStore.getState().waterMode === 'rivers';
 
 export const waterTool: Tool = {
   name: 'water',
   cursor: 'crosshair',
+
+  picks(store, pos) {
+    return _rivers() ? !!riversTool.picks?.(store, pos) : waterPicks(store, pos);
+  },
 
   onPress(col, row, store, pos) {
     if (_rivers()) { riversTool.onPress(col, row, store, pos); return; }

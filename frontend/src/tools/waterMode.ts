@@ -8,6 +8,7 @@ import type { MapPoint } from './baseTool';
 import type { MapStore } from '../store/mapStore';
 import { useViewStore } from '../store/viewStore';
 import { readWaterBodies, waterBodyNear } from '../utils/water';
+import { wrapPixelX } from '../utils/worldWrap';
 
 /** Screen pixels around a water body's marker that count as clicking it. */
 export const WATER_PICK_RADIUS_PX = 10;
@@ -18,6 +19,11 @@ const _view = () => useViewStore.getState();
 
 /** Surface height for new water bodies: its own setting, else the Set target. */
 export const newWaterCm = (store: MapStore) => store.heightBrush.waterCm ?? store.heightBrush.targetCm;
+
+/** Whether a water body's marker is at `pos`. */
+export function waterPicks(store: MapStore, pos: MapPoint): boolean {
+  return !!store.mapData && waterBodyNear(readWaterBodies(store.mapData), pos.x, pos.y, WATER_PICK_RADIUS_PX / store.zoom) !== null;
+}
 
 export function waterPress(store: MapStore, pos: MapPoint): void {
   if (!store.mapData) return;
@@ -48,7 +54,10 @@ export function waterRelease(store: MapStore): boolean {
   const drag = _drag;
   _drag = null;
   _view().setDragPoints(null);
-  if (drag?.moved) store.updateWaterBody(drag.id, { x: drag.at.x, y: drag.at.y });
+  if (drag?.moved) {
+    const x = store.mapData ? wrapPixelX(store.mapData, drag.at.x) : drag.at.x;
+    store.updateWaterBody(drag.id, { x, y: drag.at.y });
+  }
   return drag !== null;
 }
 

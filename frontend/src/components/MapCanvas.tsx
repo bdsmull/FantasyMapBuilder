@@ -14,8 +14,12 @@ import { renderTileMap } from '../canvas/tileRenderer';
 import { renderHexMap, clearHexTileCache } from '../canvas/hexRenderer';
 import { hexLayout, pixelToHex } from '../canvas/hexGeometry';
 import { screenToTile } from '../canvas/canvasUtils';
+import type { ViewState } from '../canvas/canvasUtils';
+import { mod, seamDelta, unrolledHex, wrapPeriodPx, wrapPixelX, wrapsX, wrapView } from '../utils/worldWrap';
+import { mapPixelSize } from '../utils/worldCoords';
 import { isObjectLayer } from '../types/tmj';
-import type { Tool } from '../tools/baseTool';
+import type { TmjMap } from '../types/tmj';
+import type { MapPoint, Tool } from '../tools/baseTool';
 import { terrainTool } from '../tools/terrainTool';
 import { pointTool, worldOriginMarker, POINT_PICK_RADIUS_PX } from '../tools/pointTool';
 import { heightTool } from '../tools/heightTool';
@@ -29,6 +33,8 @@ import { useCrossScaleStore } from '../store/crossScaleStore';
 import { refinedByIndex, hiddenAreas, lineKey, mapExtent } from '../utils/crossScaleLines';
 import { useRefinementChecks } from './useRefinementChecks';
 
+/** Around the map, and where a wrapped world has been shown once. */
+const _BACKGROUND = '#141414';
 /** Opacity of roads and rivers from other maps. */
 const _GHOST_ALPHA = 0.5;
 /** Screen pixels around a Flow stream that count as clicking it (Convert to River). */
@@ -84,6 +90,15 @@ interface MapCanvasProps {
   onOpenWorldSetDialog: (args: OpenWorldSetDialogArgs) => void;
 }
 
+/** The cell at a pixel of a wrapped map, any number of turns round; its row may be off the map. */
+function _wrappedTile(map: TmjMap, p: MapPoint): { col: number; row: number } {
+  if (map.orientation !== 'hexagonal') {
+    return { col: mod(Math.floor(p.x / map.tilewidth), map.width), row: Math.floor(p.y / map.tileheight) };
+  }
+  const at = unrolledHex(map, p.x, p.y);
+  return { col: mod(at.col, map.width), row: at.row };
+}
+
 export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const store = useMapStore();
@@ -92,6 +107,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const isPanning = useRef(false);
   const lastPanPoint = useRef<{ x: number; y: number } | null>(null);
   const isDrawing = useRef(false);
+  /** The pointer in the current press-drag, in map pixels: on a wrapped map the next position is followed from it. */
+  const gesturePos = useRef<MapPoint | null>(null);
   /** Terrain tool: a right press waiting to become an erase drag or a menu (see onPointerDown). */
   const rightGesture = useRef<{ tile: { col: number; row: number }; pos: { x: number; y: number }; openMenu: () => void } | null>(null);
 
@@ -251,8 +268,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const ctx = canvas.getContext('2d');
     if (!ctx || !store.mapData) return;
 
-    const view = { zoom: store.zoom, pan: store.pan };
     const map = store.mapData;
+    const { zoom, pan } = store;
     const { heights, elevationView } = store;
     const shown = heights && elevationView.showChildren ? displayPatch(heights, surfaceOverrides) : heights;
     // Roads and rivers: the world set's classes when this map belongs to the active one
@@ -266,379 +283,410 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       if (!showLines) return;
       for (const g of ghosts) {
         if (refIndex.get(g.key)?.includes(store.mapName)) continue;
-        drawLine(c, g.placed, view.zoom, classForType(g.object.type, lineClasses).cls, ppm, {
+        drawLine(c, g.placed, zoom, classForType(g.object.type, lineClasses).cls, ppm, {
           exclude: hiddenAreas(g.key, refIndex, store.mapName, openRect, related),
           clipTo: g.clipTo,
           alpha: _GHOST_ALPHA,
         });
       }
       for (const { object, layerIndex } of shownLines(map)) {
-        drawLine(c, object, view.zoom, classForType(object.type, lineClasses).cls, ppm, {
+        drawLine(c, object, zoom, classForType(object.type, lineClasses).cls, ppm, {
           exclude: related.length ? hiddenAreas(lineKey(store.mapName, object.id), refIndex, store.mapName, openRect, related) : undefined,
           alpha: map.layers[layerIndex].opacity,
         });
       }
     };
-    const opts = {
-      view,
-      showGrid: store.showGrid,
-      onImageLoad: () => { clearHexTileCache(); requestAnimationFrame(render); },
-      afterTileLayers: (c: CanvasRenderingContext2D) => {
-        if (shown && elevationView.visible) {
-          renderElevationOverlay(c, map, shown, view.zoom, view.pan, {
-            opacity: elevationView.opacity,
-            hillshade: elevationView.hillshade,
-            intervalCm: bandIntervalCm(map.scale, resolveUnits(map, defaultUnits)),
-          });
-        }
-        // Water over the ground, under roads and rivers (from the map's own heights)
-        if (heights && waterView.water && (elevationView.water || elevationView.flow)) {
-          renderWaterOverlay(c, map, heights, waterView.water, waterView.flow, view.zoom, view.pan, {
-            water: elevationView.water, flow: elevationView.flow, streamSamples: waterView.streamSamples,
-            opacity: store.selectedTool === 'terrain' ? _WATER_ALPHA_PAINTING : 1,
-          });
-        }
-        if (headroom) renderHeadroomOverlay(c, map, headroom.grid, headroom.own, view.zoom, view.pan);
-        drawLines(c);
-      },
+    // The map at a view: all of it, or (for a world that wraps) its ground or what goes over it
+    const drawMap = (view: ViewState, part?: 'ground' | 'objects') => {
+      const opts = {
+        view,
+        part,
+        showGrid: store.showGrid,
+        onImageLoad: () => { clearHexTileCache(); requestAnimationFrame(render); },
+        afterTileLayers: (c: CanvasRenderingContext2D) => {
+          if (part === 'objects') { drawLines(c); return; }
+          if (shown && elevationView.visible) {
+            renderElevationOverlay(c, map, shown, view.zoom, view.pan, {
+              opacity: elevationView.opacity,
+              hillshade: elevationView.hillshade,
+              intervalCm: bandIntervalCm(map.scale, resolveUnits(map, defaultUnits)),
+            });
+          }
+          // Water over the ground, under roads and rivers (from the map's own heights)
+          if (heights && waterView.water && (elevationView.water || elevationView.flow)) {
+            renderWaterOverlay(c, map, heights, waterView.water, waterView.flow, view.zoom, view.pan, {
+              water: elevationView.water, flow: elevationView.flow, streamSamples: waterView.streamSamples,
+              opacity: store.selectedTool === 'terrain' ? _WATER_ALPHA_PAINTING : 1,
+            });
+          }
+          if (headroom) renderHeadroomOverlay(c, map, headroom.grid, headroom.own, view.zoom, view.pan);
+          if (!part) drawLines(c);
+        },
+      };
+      if (map.orientation === 'hexagonal') renderHexMap(ctx, map, opts);
+      else renderTileMap(ctx, map, opts);
     };
 
-    if (store.mapData.orientation === 'hexagonal') {
-      renderHexMap(ctx, store.mapData, opts);
-    } else {
-      renderTileMap(ctx, store.mapData, opts);
-    }
-
-    // Footprint overlay pass — must come after tile/hex render
-    const children = mapName ? worldSetStore.childrenOf(mapName) : [];
-    if (children.length > 0 && store.mapData) {
-      renderedFootprintsRef.current = renderFootprintOverlay(
-        ctx,
-        children,
-        store.mapData,
-        view,
-        hoveredFootprint,
-        footprintMap,
-      );
-    } else {
-      renderedFootprintsRef.current = [];
-    }
-
-    // Contour lines (in visible layers): a thin brown line with its height
-    const shownLayers = new Set(map.layers.map((l, i) => (l.visible ? i : -1)));
-    const contours = readContours(map).filter((c) => shownLayers.has(c.layerIndex));
-    if (contours.length) {
-      const units = resolveUnits(map, defaultUnits);
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      ctx.lineJoin = 'round';
-      ctx.font = "600 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      for (const c of contours) {
-        const path = contourPath(c);
-        ctx.beginPath();
-        path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
-        ctx.lineWidth = 3.5;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.stroke();
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = c.id === selectedContourId ? '#ffd400' : '#5b3716';
-        ctx.stroke();
-        // The height label halfway along the line
-        const lens = path.slice(1).map((p, i) => Math.hypot(p.x - path[i].x, p.y - path[i].y));
-        let left = lens.reduce((a, b) => a + b, 0) / 2, k = 0;
-        while (k < lens.length - 1 && left > lens[k]) left -= lens[k++];
-        const t = lens[k] ? left / lens[k] : 0;
-        const lx = (path[k].x + (path[k + 1].x - path[k].x) * t) * view.zoom, ly = (path[k].y + (path[k + 1].y - path[k].y) * t) * view.zoom;
-        const label = `${c.name ? c.name + ' ' : ''}${formatHeight(c.cm, units)}`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.strokeText(label, lx, ly);
-        ctx.fillStyle = c.id === selectedContourId ? '#ffd400' : '#f3e2c7';
-        ctx.fillText(label, lx, ly);
+    // Everything drawn over the map at a view: footprints, marks, handles
+    const drawMarks = (view: ViewState) => {
+      // Footprint overlay pass — must come after tile/hex render
+      const children = mapName ? worldSetStore.childrenOf(mapName) : [];
+      if (children.length > 0) {
+        renderedFootprintsRef.current.push(...renderFootprintOverlay(ctx, children, map, view, hoveredFootprint, footprintMap));
       }
-      ctx.restore();
-    }
 
-    // Ceiling objects (in visible layers): a dashed purple outline with the headroom
-    const ceilings = readCeilings(map).filter((c) => shownLayers.has(c.layerIndex));
-    if (ceilings.length) {
-      const units = resolveUnits(map, defaultUnits);
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      ctx.lineJoin = 'round';
-      ctx.font = "600 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      for (const c of ceilings) {
-        const sel = c.id === selectedCeilingId;
-        const path = ceilingPath(c);
-        ctx.beginPath();
-        path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
-        ctx.setLineDash([]);
-        ctx.lineWidth = 3.5;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.stroke();
-        ctx.setLineDash([5, 3]);
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = sel ? '#ffd400' : '#6b3fa0';
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // The headroom at the shape's centre (average of its corners)
-        const cx = c.points.reduce((a, p) => a + p.x, 0) / c.points.length * view.zoom;
-        const cy = c.points.reduce((a, p) => a + p.y, 0) / c.points.length * view.zoom;
-        const label = `${c.name ? c.name + ' ' : ''}↕ ${formatHeight(c.headroomCm, units)}`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.strokeText(label, cx, cy);
-        ctx.fillStyle = sel ? '#ffd400' : '#e4d3f7';
-        ctx.fillText(label, cx, cy);
-      }
-      ctx.restore();
-    }
-
-    // Convert to River: the stream that a click would convert, from source to end
-    if (hoverRiver) {
-      const cls = classForType(hoverRiver.classId, lineClasses).cls;
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      hoverRiver.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
-      ctx.lineWidth = 7;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-      ctx.stroke();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = cls.color;
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Points tool: a ring around the selected point
-    if (store.selectedTool === 'point' && selectedObjectId !== null) {
-      for (const layer of map.layers) {
-        const o = isObjectLayer(layer) && layer.visible ? layer.objects.find((x) => x.id === selectedObjectId) : undefined;
-        if (!o) continue;
-        const x = o.x * view.zoom + view.pan.x, y = o.y * view.zoom + view.pan.y;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(x, y, 9, 0, Math.PI * 2);
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.stroke();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#ffd400';
-        ctx.stroke();
-        ctx.restore();
-        break;
-      }
-    }
-
-    // Water bodies: a blue disc with the name and surface height
-    const waterBodies = waterView.bodies.filter((b) => shownLayers.has(b.layerIndex));
-    if (waterBodies.length) {
-      const units = resolveUnits(map, defaultUnits);
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      ctx.textBaseline = 'middle';
-      waterBodies.forEach((b) => {
-        const sel = b.id === selectedWaterId;
-        const at = sel && waterMode && dragPoints ? dragPoints[0] : b;
-        const x = at.x * view.zoom, y = at.y * view.zoom;
-        const fill = waterView.water?.fills[waterView.bodies.indexOf(b)];
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = sel ? '#ffd400' : fill?.dry ? '#9aa4ad' : '#3d7fd1';
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.5;
-        ctx.fill(); ctx.stroke();
-        // A small wave across the disc
-        ctx.beginPath();
-        ctx.moveTo(x - 4, y); ctx.quadraticCurveTo(x - 2, y - 2.5, x, y); ctx.quadraticCurveTo(x + 2, y + 2.5, x + 4, y);
-        ctx.strokeStyle = sel ? '#000' : '#fff';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        const label = `${b.name ? b.name + ' ' : ''}${formatHeight(b.cm, units)}${fill?.dry ? ' (dry)' : ''}`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.strokeText(label, x + 9, y);
-        ctx.fillStyle = sel ? '#ffd400' : '#cfe6ff';
-        ctx.fillText(label, x + 9, y);
-      });
-      ctx.restore();
-    }
-
-    // Spot heights: a triangle and the height, on top of everything
-    const spotLayers = shownLayers;
-    const spots = readSpots(map).filter((s) => spotLayers.has(s.layerIndex));
-    if (spots.length) {
-      const units = resolveUnits(map, defaultUnits);
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      ctx.textBaseline = 'middle';
-      for (const s of spots) {
-        const x = s.x * view.zoom, y = s.y * view.zoom;
-        const sel = s.id === selectedSpotId;
-        ctx.beginPath();
-        ctx.moveTo(x, y - 6); ctx.lineTo(x + 5, y + 4); ctx.lineTo(x - 5, y + 4); ctx.closePath();
-        ctx.fillStyle = sel ? '#ffd400' : '#fff';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.fill(); ctx.stroke();
-        const label = `${s.name ? s.name + ' ' : ''}${formatHeight(s.cm, units)}`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-        ctx.strokeText(label, x + 8, y);
-        ctx.fillStyle = sel ? '#ffd400' : '#fff';
-        ctx.fillText(label, x + 8, y);
-      }
-      ctx.restore();
-    }
-
-    // Refined lines that no longer meet their originals: rings at the ends that are off,
-    // and at crossings of the original that no copy meets
-    if (showLines) {
-      const bad = refinementChecks.filter((c) => c.result.status === 'moved');
-      if (bad.length) {
+      // Contour lines (in visible layers): a thin brown line with its height
+      const shownLayers = new Set(map.layers.map((l, i) => (l.visible ? i : -1)));
+      const contours = readContours(map).filter((c) => shownLayers.has(c.layerIndex));
+      if (contours.length) {
+        const units = resolveUnits(map, defaultUnits);
         ctx.save();
         ctx.translate(view.pan.x, view.pan.y);
-        // A dark halo under each ring keeps it visible over lines and light terrain
-        const ring = (p: { x: number; y: number }, color: string, dashed: boolean) => {
+        ctx.lineJoin = 'round';
+        ctx.font = "600 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (const c of contours) {
+          const path = contourPath(c);
           ctx.beginPath();
-          ctx.arc(p.x * view.zoom, p.y * view.zoom, 10, 0, Math.PI * 2);
-          ctx.setLineDash([]);
-          ctx.lineWidth = 5;
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+          path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
           ctx.stroke();
-          ctx.setLineDash(dashed ? [4, 3] : []);
-          ctx.lineWidth = 2.5;
-          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = c.id === selectedContourId ? '#ffd400' : '#5b3716';
           ctx.stroke();
-        };
-        for (const c of bad) {
-          for (const e of c.result.badEnds) ring(e.at, '#ff5a3c', false);
-          for (const x of c.result.unmatchedCrossings) ring(x, '#ffb000', true);
+          // The height label halfway along the line
+          const lens = path.slice(1).map((p, i) => Math.hypot(p.x - path[i].x, p.y - path[i].y));
+          let left = lens.reduce((a, b) => a + b, 0) / 2, k = 0;
+          while (k < lens.length - 1 && left > lens[k]) left -= lens[k++];
+          const t = lens[k] ? left / lens[k] : 0;
+          const lx = (path[k].x + (path[k + 1].x - path[k].x) * t) * view.zoom, ly = (path[k].y + (path[k + 1].y - path[k].y) * t) * view.zoom;
+          const label = `${c.name ? c.name + ' ' : ''}${formatHeight(c.cm, units)}`;
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+          ctx.strokeText(label, lx, ly);
+          ctx.fillStyle = c.id === selectedContourId ? '#ffd400' : '#f3e2c7';
+          ctx.fillText(label, lx, ly);
         }
         ctx.restore();
       }
-    }
 
-    // Line drawing (Roads, Water → Rivers): the line being drawn, and the selected line's handles
-    // A selected line from another map: outline it
-    const ghost = selectedGhost ? ghosts.find((g) => g.key === selectedGhost) : undefined;
-    if (ghost?.placed.polyline) {
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.beginPath();
-      ghost.placed.polyline.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (draftLine || selectedLineId !== null || selectedContourId !== null || selectedCeilingId !== null) {
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      const z = view.zoom;
-      const handle = (p: { x: number; y: number }, fill: string, size = 4) => {
-        ctx.fillStyle = fill;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
-        ctx.fillRect(p.x * z - size, p.y * z - size, size * 2, size * 2);
-        ctx.strokeRect(p.x * z - size, p.y * z - size, size * 2, size * 2);
-      };
-      if (draftLine) {
-        const pts = cursorPos ? [...draftLine, cursorPos] : draftLine;
-        ctx.setLineDash([6, 4]);
-        ctx.strokeStyle = '#ffd400';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * z, p.y * z) : ctx.lineTo(p.x * z, p.y * z)));
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // In Contour and Ceiling modes a bigger first point shows where to click to close the loop
-        draftLine.forEach((p, i) => handle(p, '#ffd400', i === 0 && (contourMode || ceilingMode) && draftLine.length >= 3 ? 5 : 3));
-      } else {
-        // The selected line, contour or ceiling shape (a closed one gets its closing segment's handle too)
-        const line = selectedLineId !== null ? readLines(map).find((l) => l.id === selectedLineId) : undefined;
-        const contour = selectedContourId !== null ? readContours(map).find((c) => c.id === selectedContourId) : undefined;
-        const ceiling = selectedCeilingId !== null && ceilingMode ? readCeilings(map).find((c) => c.id === selectedCeilingId) : undefined;
-        const editPts = line ? linePoints(line.object) : contour ? contour.points : ceiling?.points;
-        if (editPts) {
-          const own = (!waterMode && dragPoints) || editPts;
-          const pts = contour ? contourPath({ points: own, closed: contour.closed }) : ceiling ? ceilingPath({ points: own }) : own;
-          ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
+      // Ceiling objects (in visible layers): a dashed purple outline with the headroom
+      const ceilings = readCeilings(map).filter((c) => shownLayers.has(c.layerIndex));
+      if (ceilings.length) {
+        const units = resolveUnits(map, defaultUnits);
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        ctx.lineJoin = 'round';
+        ctx.font = "600 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (const c of ceilings) {
+          const sel = c.id === selectedCeilingId;
+          const path = ceilingPath(c);
+          ctx.beginPath();
+          path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+          ctx.setLineDash([]);
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.stroke();
+          ctx.setLineDash([5, 3]);
           ctx.lineWidth = 1.5;
-          ctx.setLineDash([4, 3]);
+          ctx.strokeStyle = sel ? '#ffd400' : '#6b3fa0';
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // The headroom at the shape's centre (average of its corners)
+          const cx = c.points.reduce((a, p) => a + p.x, 0) / c.points.length * view.zoom;
+          const cy = c.points.reduce((a, p) => a + p.y, 0) / c.points.length * view.zoom;
+          const label = `${c.name ? c.name + ' ' : ''}↕ ${formatHeight(c.headroomCm, units)}`;
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+          ctx.strokeText(label, cx, cy);
+          ctx.fillStyle = sel ? '#ffd400' : '#e4d3f7';
+          ctx.fillText(label, cx, cy);
+        }
+        ctx.restore();
+      }
+
+      // Convert to River: the stream that a click would convert, from source to end
+      if (hoverRiver) {
+        const cls = classForType(hoverRiver.classId, lineClasses).cls;
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        hoverRiver.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+        ctx.lineWidth = 7;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = cls.color;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Points tool: a ring around the selected point
+      if (store.selectedTool === 'point' && selectedObjectId !== null) {
+        for (const layer of map.layers) {
+          const o = isObjectLayer(layer) && layer.visible ? layer.objects.find((x) => x.id === selectedObjectId) : undefined;
+          if (!o) continue;
+          const x = o.x * view.zoom + view.pan.x, y = o.y * view.zoom + view.pan.y;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, 9, 0, Math.PI * 2);
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.stroke();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#ffd400';
+          ctx.stroke();
+          ctx.restore();
+          break;
+        }
+      }
+
+      // Water bodies: a blue disc with the name and surface height
+      const waterBodies = waterView.bodies.filter((b) => shownLayers.has(b.layerIndex));
+      if (waterBodies.length) {
+        const units = resolveUnits(map, defaultUnits);
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        ctx.textBaseline = 'middle';
+        waterBodies.forEach((b) => {
+          const sel = b.id === selectedWaterId;
+          const at = sel && waterMode && dragPoints ? dragPoints[0] : b;
+          const x = at.x * view.zoom, y = at.y * view.zoom;
+          const fill = waterView.water?.fills[waterView.bodies.indexOf(b)];
+          ctx.beginPath();
+          ctx.arc(x, y, 6, 0, Math.PI * 2);
+          ctx.fillStyle = sel ? '#ffd400' : fill?.dry ? '#9aa4ad' : '#3d7fd1';
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.5;
+          ctx.fill(); ctx.stroke();
+          // A small wave across the disc
+          ctx.beginPath();
+          ctx.moveTo(x - 4, y); ctx.quadraticCurveTo(x - 2, y - 2.5, x, y); ctx.quadraticCurveTo(x + 2, y + 2.5, x + 4, y);
+          ctx.strokeStyle = sel ? '#000' : '#fff';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          const label = `${b.name ? b.name + ' ' : ''}${formatHeight(b.cm, units)}${fill?.dry ? ' (dry)' : ''}`;
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+          ctx.strokeText(label, x + 9, y);
+          ctx.fillStyle = sel ? '#ffd400' : '#cfe6ff';
+          ctx.fillText(label, x + 9, y);
+        });
+        ctx.restore();
+      }
+
+      // Spot heights: a triangle and the height, on top of everything
+      const spotLayers = shownLayers;
+      const spots = readSpots(map).filter((s) => spotLayers.has(s.layerIndex));
+      if (spots.length) {
+        const units = resolveUnits(map, defaultUnits);
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        ctx.textBaseline = 'middle';
+        for (const s of spots) {
+          const x = s.x * view.zoom, y = s.y * view.zoom;
+          const sel = s.id === selectedSpotId;
+          ctx.beginPath();
+          ctx.moveTo(x, y - 6); ctx.lineTo(x + 5, y + 4); ctx.lineTo(x - 5, y + 4); ctx.closePath();
+          ctx.fillStyle = sel ? '#ffd400' : '#fff';
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1.5;
+          ctx.fill(); ctx.stroke();
+          const label = `${s.name ? s.name + ' ' : ''}${formatHeight(s.cm, units)}`;
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+          ctx.strokeText(label, x + 8, y);
+          ctx.fillStyle = sel ? '#ffd400' : '#fff';
+          ctx.fillText(label, x + 8, y);
+        }
+        ctx.restore();
+      }
+
+      // Refined lines that no longer meet their originals: rings at the ends that are off,
+      // and at crossings of the original that no copy meets
+      if (showLines) {
+        const bad = refinementChecks.filter((c) => c.result.status === 'moved');
+        if (bad.length) {
+          ctx.save();
+          ctx.translate(view.pan.x, view.pan.y);
+          // A dark halo under each ring keeps it visible over lines and light terrain
+          const ring = (p: { x: number; y: number }, color: string, dashed: boolean) => {
+            ctx.beginPath();
+            ctx.arc(p.x * view.zoom, p.y * view.zoom, 10, 0, Math.PI * 2);
+            ctx.setLineDash([]);
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.stroke();
+            ctx.setLineDash(dashed ? [4, 3] : []);
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+          };
+          for (const c of bad) {
+            for (const e of c.result.badEnds) ring(e.at, '#ff5a3c', false);
+            for (const x of c.result.unmatchedCrossings) ring(x, '#ffb000', true);
+          }
+          ctx.restore();
+        }
+      }
+
+      // Line drawing (Roads, Water → Rivers): the line being drawn, and the selected line's handles
+      // A selected line from another map: outline it
+      const ghost = selectedGhost ? ghosts.find((g) => g.key === selectedGhost) : undefined;
+      if (ghost?.placed.polyline) {
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ghost.placed.polyline.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (draftLine || selectedLineId !== null || selectedContourId !== null || selectedCeilingId !== null) {
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        const z = view.zoom;
+        const handle = (p: { x: number; y: number }, fill: string, size = 4) => {
+          ctx.fillStyle = fill;
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1;
+          ctx.fillRect(p.x * z - size, p.y * z - size, size * 2, size * 2);
+          ctx.strokeRect(p.x * z - size, p.y * z - size, size * 2, size * 2);
+        };
+        if (draftLine) {
+          const pts = cursorPos ? [...draftLine, cursorPos] : draftLine;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeStyle = '#ffd400';
+          ctx.lineWidth = 2;
           ctx.beginPath();
           pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * z, p.y * z) : ctx.lineTo(p.x * z, p.y * z)));
           ctx.stroke();
           ctx.setLineDash([]);
-          // Midpoint handles (drag to insert a point)
-          for (let i = 0; i + 1 < pts.length; i++) {
+          // In Contour and Ceiling modes a bigger first point shows where to click to close the loop
+          draftLine.forEach((p, i) => handle(p, '#ffd400', i === 0 && (contourMode || ceilingMode) && draftLine.length >= 3 ? 5 : 3));
+        } else {
+          // The selected line, contour or ceiling shape (a closed one gets its closing segment's handle too)
+          const line = selectedLineId !== null ? readLines(map).find((l) => l.id === selectedLineId) : undefined;
+          const contour = selectedContourId !== null ? readContours(map).find((c) => c.id === selectedContourId) : undefined;
+          const ceiling = selectedCeilingId !== null && ceilingMode ? readCeilings(map).find((c) => c.id === selectedCeilingId) : undefined;
+          const editPts = line ? linePoints(line.object) : contour ? contour.points : ceiling?.points;
+          if (editPts) {
+            const own = (!waterMode && dragPoints) || editPts;
+            const pts = contour ? contourPath({ points: own, closed: contour.closed }) : ceiling ? ceilingPath({ points: own }) : own;
+            ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
             ctx.beginPath();
-            ctx.arc((pts[i].x + pts[i + 1].x) / 2 * z, (pts[i].y + pts[i + 1].y) / 2 * z, 3, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
-            ctx.fill();
+            pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * z, p.y * z) : ctx.lineTo(p.x * z, p.y * z)));
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // Midpoint handles (drag to insert a point)
+            for (let i = 0; i + 1 < pts.length; i++) {
+              ctx.beginPath();
+              ctx.arc((pts[i].x + pts[i + 1].x) / 2 * z, (pts[i].y + pts[i + 1].y) / 2 * z, 3, 0, Math.PI * 2);
+              ctx.fillStyle = 'rgba(255,255,255,0.6)';
+              ctx.fill();
+            }
+            own.forEach((p, i) => handle(p, i === selectedPoint ? '#ffd400' : '#fff'));
           }
-          own.forEach((p, i) => handle(p, i === selectedPoint ? '#ffd400' : '#fff'));
         }
+        ctx.restore();
+      }
+
+      // The world origin (#9) on a root map: a crosshair, dashed until it's stored in the map
+      const origin = worldOriginMarker(store);
+      if (origin) {
+        const at = originDrag ?? origin;
+        const x = view.pan.x + at.x * view.zoom, y = view.pan.y + at.y * view.zoom;
+        ctx.save();
+        ctx.strokeStyle = '#e8c547';
+        ctx.lineWidth = 2;
+        ctx.setLineDash(origin.stored || originDrag ? [] : [3, 3]);
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.moveTo(x - 13, y); ctx.lineTo(x + 13, y);
+        ctx.moveTo(x, y - 13); ctx.lineTo(x, y + 13);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillText('0, 0', x + 11, y - 9);
+        ctx.fillStyle = '#e8c547';
+        ctx.fillText('0, 0', x + 10, y - 10);
+        ctx.restore();
+      }
+
+      // Outline the inspected cell
+      const cell = inspected && cellAt(map, inspected.x, inspected.y);
+      if (cell) {
+        ctx.save();
+        ctx.translate(view.pan.x, view.pan.y);
+        ctx.beginPath();
+        if (map.orientation === 'hexagonal') {
+          const layout = hexLayout(map);
+          const tl = hexTopLeft(layout, cell.col, cell.row);
+          hexPolygon(layout).forEach((p, i) => {
+            const x = (tl.x + p.x) * view.zoom, y = (tl.y + p.y) * view.zoom;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+        } else {
+          ctx.rect(cell.col * map.tilewidth * view.zoom, cell.row * map.tileheight * view.zoom,
+            map.tilewidth * view.zoom, map.tileheight * view.zoom);
+        }
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffd400';
+        ctx.stroke();
+        ctx.restore();
+      }
+    };
+
+    renderedFootprintsRef.current = [];
+    const wrap = wrapView(map, zoom, pan.x, canvas.width);
+    if (!wrap) {
+      drawMap({ zoom, pan });
+      drawMarks({ zoom, pan });
+      return;
+    }
+    // A world that wraps (#36): one turn of it, centred in the view
+    ctx.fillStyle = _BACKGROUND;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(wrap.x0, 0, wrap.x1 - wrap.x0, canvas.height);
+    ctx.clip();
+    const turn = (k: number): ViewState => ({ zoom, pan: { x: pan.x + k * wrap.period, y: pan.y } });
+    for (const k of wrap.ground) drawMap(turn(k), 'ground');
+    for (const k of wrap.marks) drawMap(turn(k), 'objects');
+    if (store.showGrid) {
+      // The seam: where the map's own columns start again
+      const top = pan.y, bottom = pan.y + mapPixelSize(map).height * zoom;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([7, 5]);
+      for (const k of wrap.marks) {
+        const x = pan.x + k * wrap.period;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
       }
       ctx.restore();
     }
-
-    // The world origin (#9) on a root map: a crosshair, dashed until it's stored in the map
-    const origin = worldOriginMarker(store);
-    if (origin) {
-      const at = originDrag ?? origin;
-      const x = view.pan.x + at.x * view.zoom, y = view.pan.y + at.y * view.zoom;
-      ctx.save();
-      ctx.strokeStyle = '#e8c547';
-      ctx.lineWidth = 2;
-      ctx.setLineDash(origin.stored || originDrag ? [] : [3, 3]);
-      ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI * 2);
-      ctx.moveTo(x - 13, y); ctx.lineTo(x + 13, y);
-      ctx.moveTo(x, y - 13); ctx.lineTo(x, y + 13);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillText('0, 0', x + 11, y - 9);
-      ctx.fillStyle = '#e8c547';
-      ctx.fillText('0, 0', x + 10, y - 10);
-      ctx.restore();
-    }
-
-    // Outline the inspected cell
-    const cell = inspected && cellAt(map, inspected.x, inspected.y);
-    if (cell) {
-      ctx.save();
-      ctx.translate(view.pan.x, view.pan.y);
-      ctx.beginPath();
-      if (map.orientation === 'hexagonal') {
-        const layout = hexLayout(map);
-        const tl = hexTopLeft(layout, cell.col, cell.row);
-        hexPolygon(layout).forEach((p, i) => {
-          const x = (tl.x + p.x) * view.zoom, y = (tl.y + p.y) * view.zoom;
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        });
-        ctx.closePath();
-      } else {
-        ctx.rect(cell.col * map.tilewidth * view.zoom, cell.row * map.tileheight * view.zoom,
-          map.tilewidth * view.zoom, map.tileheight * view.zoom);
-      }
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#ffd400';
-      ctx.stroke();
-      ctx.restore();
-    }
+    for (const k of wrap.marks) drawMarks(turn(k));
+    ctx.restore();
   }, [originDrag, refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, selectedObjectId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedCeilingId, ceilingMode, headroom, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.selectedTool, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
@@ -754,15 +802,41 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
-  /** Pointer position in map pixels (object coordinate space). */
-  function pointerToMap(e: PointerEvent): { x: number; y: number } {
+  /**
+   * Pointer position in map pixels (object coordinate space). On a wrapped map: on its own
+   * turn, except that a drag, or a line being drawn, carries on from where it was (so it
+   * can run past an edge without jumping across the map).
+   */
+  function pointerToMap(e: PointerEvent): MapPoint {
     const pt = getCanvasPoint(e);
-    return { x: (pt.x - store.pan.x) / store.zoom, y: (pt.y - store.pan.y) / store.zoom };
+    const x = (pt.x - store.pan.x) / store.zoom, y = (pt.y - store.pan.y) / store.zoom;
+    const map = store.mapData;
+    if (!map || !wrapsX(map)) return { x, y };
+    const draft = useViewStore.getState().draftLine;
+    const from = isDrawing.current ? gesturePos.current : draft?.[draft.length - 1];
+    return { x: from ? from.x + seamDelta(map, from.x, x) : wrapPixelX(map, x), y };
+  }
+
+  /** Whether the pointer is beside the one turn of a wrapped world that's shown. */
+  function offWorld(e: PointerEvent): boolean {
+    const wrap = store.mapData && wrapView(store.mapData, store.zoom, store.pan.x, canvasRef.current!.width);
+    if (!wrap) return false;
+    const { x } = getCanvasPoint(e);
+    return x < wrap.x0 || x > wrap.x1;
+  }
+
+  /** Where a press lands: on a wrapped map, on the turn where the tool finds something to take hold of. */
+  function pressPos(e: PointerEvent, tool: Tool): MapPoint {
+    const pos = pointerToMap(e), map = store.mapData;
+    if (!map || !wrapsX(map) || !tool.picks || useViewStore.getState().draftLine) return pos;
+    const period = wrapPeriodPx(map);
+    return [0, -period, period].map((s) => ({ x: pos.x + s, y: pos.y })).find((p) => tool.picks!(store, p)) ?? pos;
   }
 
   function pointerToTile(e: PointerEvent): { col: number; row: number } | null {
     const { mapData, zoom, pan } = store;
     if (!mapData) return null;
+    if (wrapsX(mapData)) return _wrappedTile(mapData, pointerToMap(e));
     const pt = getCanvasPoint(e);
 
     if (mapData.orientation === 'hexagonal') {
@@ -811,7 +885,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     }
 
     const tile = pointerToTile(e.nativeEvent);
-    if (!tile) return;
+    if (!tile || offWorld(e.nativeEvent)) return;
 
     // Convert to River: a click on a Flow stream makes it a drawn river. Before footprints,
     // so streams inside child maps can be picked too.
@@ -828,7 +902,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     // The Points tool drags the world origin (#9) even where it sits on a child's footprint
     const origin = store.selectedTool === 'point' ? worldOriginMarker(store) : null;
     const at = origin && pointerToMap(e.nativeEvent);
-    const onOrigin = !!origin && !!at && Math.hypot(origin.x - at.x, origin.y - at.y) * store.zoom <= POINT_PICK_RADIUS_PX;
+    const onOrigin = !!origin && !!at && !!store.mapData
+      && Math.hypot(seamDelta(store.mapData, at.x, origin.x), origin.y - at.y) * store.zoom <= POINT_PICK_RADIUS_PX;
     if (store.mapData && store.selectedTool !== 'inspect' && !drawingLines && !onOrigin
       && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
       const canvasPt = getCanvasPoint(e.nativeEvent);
@@ -898,14 +973,15 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         // Snap to a point object near the pointer, so a child can be put exactly on its marker
         const at = pointerToMap(e.nativeEvent);
         const snapRadius = 12 / store.zoom;
-        let snap: { x: number; y: number; name: string } | undefined;
+        let snap: { x: number; y: number; name: string } | undefined, snapD = Infinity;
         for (const layer of store.mapData.layers) {
           if (layer.type !== 'objectgroup') continue;
           for (const o of layer.objects) {
             const isPoint = o.point || (o.width === 0 && o.height === 0 && !o.polyline && !o.polygon);
-            if (isPoint && Math.hypot(o.x - at.x, o.y - at.y) <= snapRadius
-              && (!snap || Math.hypot(o.x - at.x, o.y - at.y) < Math.hypot(snap.x - at.x, snap.y - at.y))) {
+            const d = Math.hypot(seamDelta(store.mapData, at.x, o.x), o.y - at.y);
+            if (isPoint && d <= snapRadius && d < snapD) {
               snap = { x: o.x, y: o.y, name: o.name || 'the marker' };
+              snapD = d;
             }
           }
         }
@@ -928,7 +1004,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       }
 
       const tool = TOOLS[store.selectedTool];
-      const pos = pointerToMap(e.nativeEvent);
+      const pos = pressPos(e.nativeEvent, tool);
+      gesturePos.current = pos;
       // Terrain: dragging with the right button erases; a right-click that doesn't move
       // still opens the world set's menu (decided once the pointer moves or lifts)
       if (store.selectedTool === 'terrain' && openMenu) {
@@ -940,9 +1017,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       return;
     }
 
-    isDrawing.current = true;
     const tool = TOOLS[store.selectedTool];
-    tool.onPress(tile.col, tile.row, store, pointerToMap(e.nativeEvent), { shift: e.shiftKey });
+    const pos = pressPos(e.nativeEvent, tool);
+    isDrawing.current = true;
+    gesturePos.current = pos;
+    tool.onPress(tile.col, tile.row, store, pos, { shift: e.shiftKey });
   }, [store, touchedFootprint, hoveredFootprint]);
 
   /** Convert to River at a map point: add the stream there as a drawn river (one undo step). */
@@ -968,10 +1047,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointers.current.set(e.pointerId, e.nativeEvent);
     // Map-pixel position for status bar readouts (e.g. elevation under the cursor)
-    {
-      const pt = getCanvasPoint(e.nativeEvent);
-      useCursorStore.getState().setMapPos({ x: (pt.x - store.pan.x) / store.zoom, y: (pt.y - store.pan.y) / store.zoom });
-    }
+    const pos = pointerToMap(e.nativeEvent);
+    if (isDrawing.current) gesturePos.current = pos;
+    useCursorStore.getState().setMapPos(offWorld(e.nativeEvent) ? null : pos);
 
     if (activePointers.current.size === 2 && lastPinchDistance.current !== null) {
       // Pinch-to-zoom
@@ -995,7 +1073,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     // Footprint hover tracking (desktop mouse only)
     if (e.pointerType === 'mouse' && store.mapData) {
       const canvasPt = getCanvasPoint(e.nativeEvent);
-      const hits = footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);
+      const hits = offWorld(e.nativeEvent) ? [] : footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);
       const newHovered = hits.length > 0 ? hits[0] : null;
       if (newHovered !== hoveredFootprint) {
         setHoveredFootprint(newHovered);
@@ -1025,7 +1103,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const tile = pointerToTile(e.nativeEvent);
     if (!tile) return;
     const tool = TOOLS[store.selectedTool];
-    tool.onDrag(tile.col, tile.row, store, pointerToMap(e.nativeEvent));
+    tool.onDrag(tile.col, tile.row, store, pos);
   }, [store, hoveredFootprint, render]);
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {

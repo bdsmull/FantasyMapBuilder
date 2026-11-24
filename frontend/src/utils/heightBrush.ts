@@ -11,6 +11,7 @@ import type { TmjMap } from '../types/tmj';
 import type { HeightPatch, CellRect } from './heightGrid';
 import { hexNeighbours } from './heightGrid';
 import { hexLayout, hexCenter } from '../canvas/hexGeometry';
+import { hasSeamTwin, mod, wrapsX } from './worldWrap';
 
 /**
  * 'spot' places and selects spot heights, 'contour' draws and edits contour lines,
@@ -64,41 +65,60 @@ export function falloff(d: number, radius: number): number {
 
 interface Sample { index: number; d: number; col: number; row: number }
 
-/** Samples within `radius` cells of map pixel (x, y). */
+/**
+ * Samples within `radius` cells of map pixel (x, y). On a wrapped map the brush reaches
+ * across the seam; a wrapped square map's last column is included with its twin, the first.
+ */
 function samplesInBrush(map: TmjMap, patch: HeightPatch, x: number, y: number, radius: number): Sample[] {
   const result: Sample[] = [];
+  const wrap = wrapsX(map), twin = hasSeamTwin(map);
+  const period = twin ? patch.cols - 1 : patch.cols;
+  // A brush wider than the world would meet a sample twice: keep the nearer
+  const nearest = new Map<number, Sample>();
+  const add = (col: number, row: number, d: number) => {
+    const push = (c: number) => {
+      const s = { index: row * patch.cols + c, d, col: c, row };
+      if (!wrap) { result.push(s); return; }
+      const had = nearest.get(s.index);
+      if (!had || d < had.d) nearest.set(s.index, s);
+    };
+    const c = wrap ? mod(col, period) : col;
+    push(c);
+    if (twin && c === 0) push(patch.cols - 1);
+  };
+  const lo = (c: number) => (wrap ? c : Math.max(0, c)), hi = (c: number) => (wrap ? c : Math.min(patch.cols - 1, c));
   if (map.orientation === 'hexagonal') {
     const layout = hexLayout(map);
     const unit = Math.min(layout.tileWidth, layout.tileHeight) || 1;
     const colStep = layout.staggerX ? layout.columnWidth : layout.tileWidth + layout.sideLengthX;
     const rowStep = layout.staggerX ? layout.tileHeight + layout.sideLengthY : layout.rowHeight;
     const reach = radius * unit;
-    const c0 = Math.max(0, Math.floor((x - reach) / colStep) - 1);
-    const c1 = Math.min(patch.cols - 1, Math.ceil((x + reach) / colStep) + 1);
+    const c0 = lo(Math.floor((x - reach) / colStep) - 1);
+    const c1 = hi(Math.ceil((x + reach) / colStep) + 1);
     const r0 = Math.max(0, Math.floor((y - reach) / rowStep) - 1);
     const r1 = Math.min(patch.rows - 1, Math.ceil((y + reach) / rowStep) + 1);
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
         const c = hexCenter(layout, col, row);
         const d = Math.hypot(c.x - x, c.y - y) / unit;
-        if (d < radius - EDGE_TOLERANCE) result.push({ index: row * patch.cols + col, d, col, row });
+        if (d < radius - EDGE_TOLERANCE) add(col, row, d);
       }
     }
   } else {
     const fx = x / map.tilewidth;
     const fy = y / map.tileheight;
-    const c0 = Math.max(0, Math.floor(fx - radius));
-    const c1 = Math.min(patch.cols - 1, Math.ceil(fx + radius));
+    const c0 = lo(Math.floor(fx - radius));
+    const c1 = hi(Math.ceil(fx + radius));
     const r0 = Math.max(0, Math.floor(fy - radius));
     const r1 = Math.min(patch.rows - 1, Math.ceil(fy + radius));
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
         const d = Math.hypot(col - fx, row - fy);
-        if (d < radius - EDGE_TOLERANCE) result.push({ index: row * patch.cols + col, d, col, row });
+        if (d < radius - EDGE_TOLERANCE) add(col, row, d);
       }
     }
   }
-  return result;
+  return wrap ? [...nearest.values()] : result;
 }
 
 function _neighbourAverage(map: TmjMap, patch: HeightPatch, col: number, row: number, snapshot: Int32Array): number {
@@ -106,8 +126,9 @@ function _neighbourAverage(map: TmjMap, patch: HeightPatch, col: number, row: nu
   if (map.orientation === 'hexagonal') {
     for (const nb of hexNeighbours(map, col, row)) { sum += snapshot[nb.row * patch.cols + nb.col]; n++; }
   } else {
+    const twin = hasSeamTwin(map);
     for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const c = col + dc, r = row + dr;
+      const c = twin ? mod(col + dc, patch.cols - 1) : col + dc, r = row + dr;
       if (c >= 0 && r >= 0 && c < patch.cols && r < patch.rows) { sum += snapshot[r * patch.cols + c]; n++; }
     }
   }

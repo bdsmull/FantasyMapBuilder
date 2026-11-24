@@ -106,6 +106,16 @@ def test_maps_at(ws):
             _close(m.pixel, want["pixel"])
 
 
+def test_world_widths(ws):
+    assert {root: ws.world_width(root) for root in ws.roots} == EXPECTED["worldWidths"]
+    assert any(EXPECTED["worldWidths"].values())
+
+
+def test_wrap_delta(ws):
+    for case in EXPECTED["wrapDelta"]:
+        assert ws.wrap_delta(case["root"], case["from"], case["to"]) == pytest.approx(case["delta"], abs=TOL), case
+
+
 def test_unplaced_and_unknown_maps(ws):
     assert ws.pixel_to_world("loose", 0, 0) is None
     assert ws.frame("no-such-map") is None

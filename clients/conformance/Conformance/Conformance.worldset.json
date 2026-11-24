@@ -69,6 +69,61 @@
       "parentMapName": null,
       "parentAnchor": null,
       "z": 0
+    },
+    {
+      "mapName": "ring",
+      "parentMapName": null,
+      "parentAnchor": null,
+      "z": 0
+    },
+    {
+      "mapName": "straits",
+      "parentMapName": "ring",
+      "parentAnchor": {
+        "col": 15,
+        "row": 3
+      },
+      "z": 0
+    },
+    {
+      "mapName": "isle",
+      "parentMapName": "straits",
+      "parentAnchor": {
+        "col": 5,
+        "row": 1
+      },
+      "parentOffset": {
+        "x": 0.2,
+        "y": 0.1
+      },
+      "z": 0
+    },
+    {
+      "mapName": "band",
+      "parentMapName": "ring",
+      "parentAnchor": {
+        "col": 4,
+        "row": 6
+      },
+      "z": 0
+    },
+    {
+      "mapName": "hexring",
+      "parentMapName": null,
+      "parentAnchor": null,
+      "z": 0
+    },
+    {
+      "mapName": "pointring",
+      "parentMapName": null,
+      "parentAnchor": null,
+      "z": 0
+    },
+    {
+      "mapName": "oddring",
+      "parentMapName": null,
+      "parentAnchor": null,
+      "z": 0
     }
   ]
 }

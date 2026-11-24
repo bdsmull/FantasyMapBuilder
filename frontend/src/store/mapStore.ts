@@ -26,6 +26,7 @@ import type { Pt } from '../utils/lines';
 import { CEILING_LAYER, CEILING_TYPE, isCeiling, ceilingProperties, ceilingShape, withLengthProperty } from '../utils/ceilings';
 import { WORLD_ORIGIN_LAYER, WORLD_ORIGIN_NAME, WORLD_ORIGIN_TYPE, defaultOriginPixel, findWorldOrigin } from '../utils/worldCoords';
 import { useWorldSetStore } from './worldSetStore';
+import { blendSeam, joinSeam, withWrap, wrapProblem, wrapsX } from '../utils/worldWrap';
 
 /** Object layer new lines go into when the active layer isn't an object layer. */
 export const LINE_LAYER = 'Roads and rivers';
@@ -83,9 +84,10 @@ type UndoStep =
   | { type: 'object-remove'; layerIndex: number; object: TmjObject }
   /**
    * Height edit: per-sample changes, or (re-base) every sample's height before and
-   * after in `whole`, which is far smaller than one change record per sample.
+   * after in `whole`, which is far smaller than one change record per sample. `wrap`:
+   * the map's east-west wrap changed with it (turning it on joins the heights at the seam).
    */
-  | { type: 'heights'; changes: HeightChange[]; whole?: WholeHeights }
+  | { type: 'heights'; changes: HeightChange[]; whole?: WholeHeights; wrap?: { before: boolean; after: boolean } }
   /** Layer structure change (add, delete, rename, move): the layer list before and after. */
   | { type: 'layers'; before: LayerSnapshot; after: LayerSnapshot };
 
@@ -201,6 +203,13 @@ export interface MapStore {
   setWorldOrigin: (x: number, y: number) => void;
   /** Add the world origin at the map's centre if it has none (not an undo step); true if added. */
   ensureWorldOrigin: () => boolean;
+
+  // ---- East-west wrap (#36) ----
+  /**
+   * Make the map wrap east-west or not. Turning it on eases the heights near the seam to
+   * meet. One undo step, both together. False if the map can't wrap.
+   */
+  setWrapX: (on: boolean) => boolean;
 
   // ---- Lines: roads and rivers (each change is one undo step) ----
   /**
@@ -530,14 +539,17 @@ export const useMapStore = create<MapStore>((set, get) => ({
   },
 
   replaceHeights: (cm, mask) => {
-    const { heights, past } = get();
+    const { mapData, heights, past } = get();
     if (!heights || cm.length !== heights.cm.length) return;
     if (mask && mask.length !== heights.mask.length) return;
     const whole: WholeHeights = { before: heights.cm.slice(), after: cm.slice() };
+    const newMask = mask?.slice();
+    // On a wrapped square map the last column is the first one again
+    if (mapData) joinSeam(mapData, whole.after, newMask ?? null, heights.cols);
     heights.cm.set(whole.after);
     if (mask) {
       whole.maskBefore = heights.mask.slice();
-      whole.maskAfter = mask.slice();
+      whole.maskAfter = newMask!;
       heights.mask.set(whole.maskAfter);
     }
     heights.fullRefresh = true;
@@ -795,6 +807,30 @@ export const useMapStore = create<MapStore>((set, get) => ({
     const top = _topObjectLayer(mapData, WORLD_ORIGIN_LAYER, '#e8c547');
     const layers = updateObjectLayer(top.layers, top.index, (objects) => [...objects, _originObject(id, x, y)]);
     set({ mapData: { ...mapData, layers, nextlayerid: top.nextlayerid, nextobjectid: id + 1 }, isDirty: true });
+    return true;
+  },
+
+  setWrapX: (on) => {
+    const { mapData, heights, past } = get();
+    if (!mapData) return false;
+    const before = wrapsX(mapData);
+    if (before === on) return true;
+    if (on && wrapProblem(mapData)) return false;
+    let whole: WholeHeights | undefined;
+    if (on && heights) {
+      const joined = blendSeam(heights);
+      whole = { before: heights.cm.slice(), after: joined.cm, maskBefore: heights.mask.slice(), maskAfter: joined.mask };
+      heights.cm.set(joined.cm);
+      heights.mask.set(joined.mask);
+      heights.fullRefresh = true;
+    }
+    set((state) => ({
+      mapData: { ...mapData, properties: withWrap(mapData.properties, on) },
+      isDirty: true,
+      ...(whole ? { heightsDirty: true, heightsRev: state.heightsRev + 1, pendingHeights: new Map() } : {}),
+      past: [...past, { type: 'heights' as const, changes: [], whole, wrap: { before, after: on } }],
+      future: [],
+    }));
     return true;
   },
 
@@ -1093,11 +1129,11 @@ export const useMapStore = create<MapStore>((set, get) => ({
     }
 
     set((state) => ({
-      mapData: { ...mapData, layers: newLayers },
+      mapData: { ...mapData, layers: newLayers, ...(step.type === 'heights' && step.wrap ? { properties: withWrap(mapData.properties, step.wrap.before) } : {}) },
       isDirty: true,
       past: newPast,
       future: [...future, step],
-      ...(step.type === 'heights' ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
+      ...(step.type === 'heights' && (step.whole || step.changes.length > 0) ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
       ...(step.type === 'layers' ? _layerExtras(mapData, step.before) : {}),
     }));
   },
@@ -1129,11 +1165,11 @@ export const useMapStore = create<MapStore>((set, get) => ({
     }
 
     set((state) => ({
-      mapData: { ...mapData, layers: newLayers },
+      mapData: { ...mapData, layers: newLayers, ...(step.type === 'heights' && step.wrap ? { properties: withWrap(mapData.properties, step.wrap.after) } : {}) },
       isDirty: true,
       past: [...past, step],
       future: newFuture,
-      ...(step.type === 'heights' ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
+      ...(step.type === 'heights' && (step.whole || step.changes.length > 0) ? { heightsDirty: true, heightsRev: state.heightsRev + 1 } : {}),
       ...(step.type === 'layers' ? _layerExtras(mapData, step.after) : {}),
     }));
   },

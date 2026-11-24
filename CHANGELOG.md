@@ -12,6 +12,15 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
+- **Worlds that wrap east–west, part 1** (issue #36): File → Map Properties → **Wraps east–west** on a
+  world set's root map.
+  - Turning it on eases the heights near the seam to meet (one undo step with the setting). The
+    height brush, smoothing, heights from terrain, fitting, hillshading, the sea, lakes and flow
+    then continue across it, and generated detail repeats once around the world.
+  - World coordinates stay continuous; looking up a point accepts any x. The Godot and Python
+    libraries follow, and gain `world_width` and `wrap_delta`.
+  - Scrolling past the seam, child maps across it, and lines over it come in later parts. The poles
+    stay the top and bottom edges of a flat map.
 - **World coordinates** (issue #9): every point of every placed map has a world position in
   meters, x east and y north of a **world origin**.
   - The origin is a `0, 0` marker on the world set's root map: a point object (type

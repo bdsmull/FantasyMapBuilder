@@ -13,6 +13,7 @@
 import type { TmjMap } from '../types/tmj';
 import type { HeightPatch } from './heightGrid';
 import { heightAt } from './heightGrid';
+import { canonicalSample } from './worldWrap';
 import type { LineRef, Pt } from './lines';
 import { linePoints, readWidths, pixelsPerMeter } from './lines';
 import type { LineClass } from '../data/lineClasses';
@@ -118,6 +119,13 @@ export function carveRivers(
         target[i] = Math.min(target[i], bedAt(s));
       }
     }
+  }
+
+  // A wrapped square map's last column is its first: carve both the same
+  const canonical = canonicalSample(map, cols);
+  for (let i = 0; i < out.length; i++) {
+    const c = canonical(i);
+    if (c !== i) target[c] = target[i] = Math.min(target[c], target[i]);
   }
 
   let changed = 0;

@@ -72,7 +72,7 @@ FantasyMapBuilder/
 │   │                            # line (roads, rivers), point
 │   ├── utils/                   # heightGrid, heightBrush, terrainHeights, heightGeneration,
 │   │                            # spotHeights, contours, surfaceFit, water, flow, carve, elevationFit,
-│   │                            # worldSurface, worldSetUtils, ceilings, heightmap,
+│   │                            # worldSurface, worldSetUtils, worldWrap, ceilings, heightmap,
 │   │                            # lines, crossScaleLines, inspect, importPlan, navigation, …
 │   ├── components/              # MapCanvas, LayerPanel + ShowPanel (left), ToolPanel (right:
 │   │                            # Terrain, HeightPanel, WaterPanel, LineControls), dialogs, hooks

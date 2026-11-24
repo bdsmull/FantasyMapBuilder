@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   cellCentrePixel, cellSizeMeters, defaultOriginPixel, findWorldOrigin, formatDistance, mapFrame, mapPixelSize,
-  mapsAt, originPixel, pixelToCellIndex, pixelToWorld, worldRect, worldToPixel, WORLD_ORIGIN_TYPE,
+  mapsAt, originPixel, pixelToCellIndex, pixelToWorld, worldRect, worldToCell, worldToPixel, worldWidth, wrapDelta, WORLD_ORIGIN_TYPE,
 } from '../utils/worldCoords';
 import type { WorldMapSource } from '../utils/worldCoords';
 import { mapFromFile } from '../api/tmjFile';
@@ -62,6 +62,8 @@ function computeExpected() {
     worldToPixel: [] as unknown[],
     worldToCell: [] as unknown[],
     mapsAt: [] as unknown[],
+    worldWidths: Object.fromEntries(nodes.filter((n) => n.parentMapName === null).map((n) => [n.mapName, worldWidth(lookup(n.mapName)!)])),
+    wrapDelta: [] as unknown[],
   };
   for (const name of placed) {
     const map = maps.get(name)!;
@@ -100,6 +102,38 @@ function computeExpected() {
     ['island', 0, 0],
     ['island', _r(pixelToWorld(islandFrame, maps.get('island')!, 10, 10).x), _r(pixelToWorld(islandFrame, maps.get('island')!, 10, 10).y)],
   ];
+  // Worlds that wrap: the same place, some turns away
+  for (const name of ['ring', 'straits', 'isle', 'band', 'hexring', 'pointring', 'oddring']) {
+    const map = maps.get(name)!, frame = mapFrame(name, nodes, lookup)!;
+    const turnM = frame.circumference ?? map.width * frame.mpu;
+    for (const [col, row] of [[0, 1], [map.width - 1, map.height - 1], [2, 0]]) {
+      const c = cellCentrePixel(map, col, row);
+      const at = pixelToWorld(frame, map, c.x + 0.13 * map.tilewidth, c.y - 0.11 * map.tileheight);
+      for (const turns of [-2, -1, 1, 3]) {
+        const world = _pt({ x: at.x + turns * turnM, y: at.y });
+        const cell = worldToCell(frame, map, world[0], world[1]);
+        (out.worldToCell as unknown[]).push({ map: name, world, cell: cell && [cell.col, cell.row] });
+        (out.worldToPixel as unknown[]).push({ map: name, world, pixel: _pt(worldToPixel(frame, map, world[0], world[1])) });
+      }
+    }
+  }
+  const straits = maps.get('straits')!, straitsFrame = mapFrame('straits', nodes, lookup)!;
+  const size = mapPixelSize(straits);
+  for (const f of [0.1, 0.5, 0.95]) {
+    const at = pixelToWorld(straitsFrame, straits, size.width * f, size.height * 0.4);
+    for (const turns of [0, 1, -1, 5]) points.push(['ring', _r(at.x + turns * 16_000), _r(at.y)]);
+  }
+  for (const root of ['hexring', 'pointring', 'oddring']) {
+    const map = maps.get(root)!, frame = mapFrame(root, nodes, lookup)!;
+    const r = worldRect(frame, map);
+    for (const x of [r.west - 500, r.east + 500, r.east + 7_000]) points.push([root, _r(x), _r((r.north + r.south) / 2)]);
+  }
+  for (const root of ['world', 'ring', 'pointring']) {
+    const width = worldWidth(lookup(root)!);
+    for (const [from, to] of [[0, 900], [-7_500, 7_300], [7_300, -7_500], [100, 8_100], [8_100, 100], [0, 40_100], [3, 3]]) {
+      (out.wrapDelta as unknown[]).push({ root, from, to, delta: _r(wrapDelta(from, to, width)) });
+    }
+  }
   for (const [root, x, y] of points) {
     (out.mapsAt as unknown[]).push({
       root, world: [x, y],
@@ -165,6 +199,23 @@ describe('world coordinates', () => {
     expect(pixelToCellIndex(square, 33, 70)).toEqual({ col: 1, row: 2 });
     expect(pixelToCellIndex(square, -1, 5)).toBeNull();
     expect(defaultOriginPixel(square)).toEqual({ x: 160, y: 96 });
+  });
+
+  it('on a wrapped root, x repeats: any turn finds the same cell, and positions never jump', () => {
+    const ring: TmjMap = { ...square, properties: [{ name: 'wrapX', type: 'bool', value: true }] };
+    const wrapped = (n: string) => (n === 'root' ? { map: ring, mpu: 100 } : look(n));
+    const f = mapFrame('root', ns, wrapped)!;
+    expect(f.circumference).toBe(1000);
+    expect(pixelToWorld(f, ring, 330, 96).x).toBeCloseTo(531.25); // past the east edge, continuous
+    for (const x of [-450, 550, -1450, 10_550]) expect(worldToCell(f, ring, x, 0)).toEqual({ col: 0, row: 3 });
+    expect(worldToCell(f, ring, 500, 0)).toEqual({ col: 0, row: 3 }); // the east edge is the west edge
+    expect(worldToCell(f, ring, 0, 301)).toBeNull(); // north of the world
+    expect(mapsAt('root', 1_000 - 250, 150, ns, wrapped).map((m) => m.name)).toEqual(['child', 'root']);
+    expect(wrapDelta(450, -450, 1000)).toBe(100);
+    expect(wrapDelta(-450, 450, 1000)).toBe(-100);
+    expect(wrapDelta(0, 500, 1000)).toBe(-500);
+    expect(wrapDelta(0, 1500, null)).toBe(1500);
+    expect(mapFrame('root', ns, look)!.circumference).toBeNull();
   });
 
   it('formats coordinates as finely as the map can use, however far from the origin', () => {

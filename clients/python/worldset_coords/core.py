@@ -2,8 +2,9 @@
 World coordinates for Fantasy Map Builder world sets, read straight from the files.
 
 World coordinates are meters, x east and y north of the world origin: the
-``world-origin`` point object in the world's root map, or that map's centre. The
-algorithm is specified in docs/coordinates.md of the Fantasy Map Builder repository.
+``world-origin`` point object in the world's root map, or that map's centre. A world
+whose root map wraps east-west repeats in x: positions are continuous, and lookups from
+a world point accept any x. The algorithm is specified in docs/coordinates.md of the Fantasy Map Builder repository.
 
 @mirrors frontend/src/utils/worldCoords.ts (and worldSurface.ts / worldSetUtils.ts /
 hexGeometry.ts for the geometry it uses). The shared test suite in
@@ -24,6 +25,7 @@ WORLD_SET_SUFFIX = ".worldset.json"
 _METERS_PER_FOOT = 0.3048
 _FEET_PER_MILE = 5280
 _WHOLE_CELL_TOLERANCE = 1e-9
+_MIN_WRAP_WIDTH = 4
 
 #: Scale preset id -> (meters per cell in metric, feet per cell in imperial). Only
 #: needed for map files without a ``metersPerUnit`` property (saved by older editors).
@@ -121,21 +123,30 @@ class MapGeometry:
         return (self.width * (self.hex_width + self.side_x) + (self.column_width if self.height > 1 else 0),
                 self.height * self.row_height + self.offset_y)
 
-    def pixel_to_cell(self, x: float, y: float) -> Optional[Tuple[int, int]]:
-        """The cell holding a pixel (hex: the nearest centre), or None off the map."""
+    def can_wrap(self) -> bool:
+        """Whether the grid can meet itself east-west: flat-topped hexes need an even width."""
+        return self.width >= _MIN_WRAP_WIDTH and not (self.hexagonal and self.stagger_x and self.width % 2)
+
+    def pixel_to_cell(self, x: float, y: float, wrap: bool = False) -> Optional[Tuple[int, int]]:
+        """
+        The cell holding a pixel (hex: the nearest centre), or None off the map. With
+        ``wrap`` the columns continue round the world.
+        """
         u, v = self.pixel_to_cell_space(x, y)
         if not self.hexagonal:
             col, row = math.floor(u), math.floor(v)
+            if wrap:
+                col %= self.width
             return (col, row) if 0 <= col < self.width and 0 <= row < self.height else None
         best, best_d = None, math.inf
         for col in range(math.floor(u) - 1, math.floor(u) + 2):
             for row in range(math.floor(v) - 1, math.floor(v) + 2):
-                if not (0 <= col < self.width and 0 <= row < self.height):
+                if not 0 <= row < self.height or not (wrap or 0 <= col < self.width):
                     continue
                 cx, cy = self.hex_centre(col, row)
                 d = (cx - x) ** 2 + (cy - y) ** 2
                 if d < best_d - 1e-9:
-                    best, best_d = (col, row), d
+                    best, best_d = (col % self.width, row), d
         if best is None or math.sqrt(best_d) > max(self.hex_width, self.hex_height) / 2:
             return None
         return best
@@ -183,6 +194,8 @@ class MapFrame:
     #: The world origin, the same way
     ox: float
     oy: float
+    #: Meters once round the world when its root map wraps east-west, else None
+    circumference: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -192,6 +205,15 @@ class MapAtPoint:
     z: int
     meters_per_cell: float
     pixel: Point
+
+
+def wrap_delta(start: float, end: float, circumference: Optional[float]) -> float:
+    """
+    Meters east from one world x to another, the short way round a world that wraps
+    (negative: west): at least minus half the circumference, less than half of it.
+    """
+    d = end - start
+    return d - circumference * math.floor(d / circumference + 0.5) if circumference else d
 
 
 def _prop(data: dict, name: str):
@@ -305,7 +327,27 @@ class WorldSet:
             child_geo, child_mpu, node = parent_geo, parent_mpu, parent_node
         root = node["mapName"]
         ou, ov = child_geo.pixel_to_cell_space(*self.origin_pixel(root))
-        return MapFrame(name, root, mpu, bx, by, ou * child_mpu, ov * child_mpu)
+        return MapFrame(name, root, mpu, bx, by, ou * child_mpu, ov * child_mpu, self.world_width(root))
+
+    def world_width(self, root: str) -> Optional[float]:
+        """Meters once round the world of a root map that wraps east-west, else None."""
+        data, geo, mpu = self.map_data(root), self.geometry(root), self.cell_size(root)
+        if data is None or geo is None or mpu is None:
+            return None
+        return geo.width * mpu if _prop(data, "wrapX") is True and geo.can_wrap() else None
+
+    def wrap_delta(self, root: str, start: float, end: float) -> float:
+        """Meters east from world x ``start`` to ``end``, the short way round (negative: west)."""
+        return wrap_delta(start, end, self.world_width(root))
+
+    def _nearest_turn(self, f: MapFrame, x: float) -> float:
+        """On a wrapped world, the same place's x on the turn nearest the middle of the map."""
+        if not f.circumference:
+            return x
+        r = self.world_rect(f.name)
+        assert r is not None
+        middle = (r["west"] + r["east"]) / 2
+        return middle + wrap_delta(middle, x, f.circumference)
 
     # Conversions
     def pixel_to_world(self, name: str, x: float, y: float) -> Optional[Point]:
@@ -322,18 +364,23 @@ class WorldSet:
         return None if geo is None else self.pixel_to_world(name, *geo.cell_centre(col, row))
 
     def world_to_pixel(self, name: str, x: float, y: float) -> Optional[Point]:
-        """World meters -> a map pixel (which may lie off the map)."""
+        """
+        World meters -> a map pixel (which may lie off the map). On a wrapped world any x
+        does; the pixel is the one nearest the middle of the map.
+        """
         f, geo = self.frame(name), self.geometry(name)
         if f is None or geo is None:
             return None
-        u = (x + f.ox - f.bx) / f.meters_per_cell
+        u = (self._nearest_turn(f, x) + f.ox - f.bx) / f.meters_per_cell
         v = (f.oy - y - f.by) / f.meters_per_cell
         return geo.cell_space_to_pixel(u, v)
 
     def world_to_cell(self, name: str, x: float, y: float) -> Optional[Tuple[int, int]]:
         """World meters -> the map cell there, or None when it's off the map."""
-        p, geo = self.world_to_pixel(name, x, y), self.geometry(name)
-        return None if p is None or geo is None else geo.pixel_to_cell(*p)
+        f, p, geo = self.frame(name), self.world_to_pixel(name, x, y), self.geometry(name)
+        if f is None or p is None or geo is None:
+            return None
+        return geo.pixel_to_cell(*p, wrap=f.circumference is not None and f.name == f.root)
 
     def world_rect(self, name: str) -> Optional[Dict[str, float]]:
         """A map's extent in world meters: west, east, south, north."""
@@ -357,7 +404,7 @@ class WorldSet:
             if f is None or f.root != root:
                 continue
             r = self.world_rect(name)
-            if r is None or not (r["west"] <= x <= r["east"] and r["south"] <= y <= r["north"]):
+            if r is None or not (r["west"] <= self._nearest_turn(f, x) <= r["east"] and r["south"] <= y <= r["north"]):
                 continue
             pixel = self.world_to_pixel(name, x, y)
             assert pixel is not None

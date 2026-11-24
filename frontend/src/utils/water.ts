@@ -16,6 +16,7 @@ import { isObjectLayer } from '../types/tmj';
 import type { HeightPatch } from './heightGrid';
 import { heightAt, hexHeightWeights } from './heightGrid';
 import { sampleNeighbours } from './terrainHeights';
+import { canonicalSample, mirrorSeam, wrapsX } from './worldWrap';
 
 export const WATER_TYPE = 'water';
 export const WATER_LAYER = 'Water';
@@ -125,15 +126,17 @@ export function samplesAt(map: TmjMap, patch: Pick<HeightPatch, 'cols' | 'rows'>
   return [...new Set([r0 * patch.cols + c0, r0 * patch.cols + c1, r1 * patch.cols + c0, r1 * patch.cols + c1])];
 }
 
-const _onEdge = (i: number, cols: number, rows: number) => {
+/** Whether a sample is on the edge of the map; a wrapped map only ends at the top and bottom. */
+const _onEdge = (i: number, cols: number, rows: number, wrap: boolean) => {
   const col = i % cols, row = (i - col) / cols;
-  return col === 0 || row === 0 || col === cols - 1 || row === rows - 1;
+  return row === 0 || row === rows - 1 || (!wrap && (col === 0 || col === cols - 1));
 };
 
 /**
  * Where the water is: each body fills the samples connected to its point that lie
  * below its surface; the sea fills ground below sea level connected to the map's edge.
- * Where waters overlap, the higher surface wins.
+ * Where waters overlap, the higher surface wins. On a wrapped map water runs across the
+ * seam, and only the top and bottom are edges.
  */
 export function computeWater(map: TmjMap, patch: Pick<HeightPatch, 'cols' | 'rows' | 'cm'>, bodies: WaterBody[], sea: boolean): WaterMap {
   const { cols, rows, cm } = patch;
@@ -141,6 +144,7 @@ export function computeWater(map: TmjMap, patch: Pick<HeightPatch, 'cols' | 'row
   const surface = new Int32Array(n).fill(NO_WATER);
   const body = new Int32Array(n).fill(-2);
   const neighbours = sampleNeighbours(map, cols, rows);
+  const wrap = wrapsX(map), canonical = canonicalSample(map, cols);
   const seen = new Uint8Array(n);
 
   /** Flood from the seeds through samples below `level`; returns the samples reached. */
@@ -163,23 +167,25 @@ export function computeWater(map: TmjMap, patch: Pick<HeightPatch, 'cols' | 'row
   let seaSamples = 0;
   if (sea) {
     const edge: number[] = [];
-    for (let i = 0; i < n; i++) if (_onEdge(i, cols, rows)) edge.push(i);
+    for (let i = 0; i < n; i++) if (_onEdge(i, cols, rows, wrap)) edge.push(canonical(i));
     const wet = flood(edge, SEA_LEVEL_CM);
     claim(wet, SEA_LEVEL_CM, SEA_BODY);
   }
   const fills = bodies.map((b, k) => {
     // Start from the lowest sample the point reads from, so a point on a slope still fills
     const start = samplesAt(map, patch, b.x, b.y).sort((a, c) => cm[a] - cm[c])[0];
-    const wet = flood([start], b.cm);
+    const wet = flood([canonical(start)], b.cm);
     claim(wet, b.cm, k);
     let maxDepth = 0, edge = false;
     for (const i of wet) {
       maxDepth = Math.max(maxDepth, b.cm - cm[i]);
-      if (_onEdge(i, cols, rows)) edge = true;
+      if (_onEdge(i, cols, rows, wrap)) edge = true;
     }
     return { samples: wet.length, maxDepthCm: maxDepth, dry: wet.length === 0, reachesEdge: edge };
   });
-  if (sea) for (let i = 0; i < n; i++) if (body[i] === SEA_BODY) seaSamples++;
+  if (sea) for (let i = 0; i < n; i++) if (body[i] === SEA_BODY) seaSamples++; // before the twin column is filled in
+  mirrorSeam(map, surface, cols);
+  mirrorSeam(map, body, cols);
   return { surface, body, fills, seaSamples };
 }
 

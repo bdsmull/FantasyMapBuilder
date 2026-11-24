@@ -11,6 +11,7 @@
 import type { TmjMap } from '../types/tmj';
 import { hexLayout, hexCenter, pixelToHex } from '../canvas/hexGeometry';
 import type { UnitSystem } from '../data/mapScales';
+import { mod, wrapsX } from './worldWrap';
 
 /** Inclusive range of sample columns/rows. */
 export interface CellRect { c0: number; r0: number; c1: number; r1: number }
@@ -96,19 +97,24 @@ function squareHeightAt(map: TmjMap, p: HeightPatch, x: number, y: number): numb
   return (h00 * (1 - tx) + h10 * tx) * (1 - ty) + (h01 * (1 - tx) + h11 * tx) * ty;
 }
 
-/** Neighbouring hex centres around (col, row), sorted by angle. */
+/**
+ * Neighbouring hex centres around (col, row), sorted by angle. On a wrapped map those
+ * across the seam are included: `col` is their column, `x` where they'd be beside this hex.
+ */
 export function hexNeighbours(map: TmjMap, col: number, row: number): { col: number; row: number; x: number; y: number }[] {
   const layout = hexLayout(map);
+  const wrap = wrapsX(map);
   const c = hexCenter(layout, col, row);
   const reach = 1.5 * Math.max(layout.tileWidth, layout.tileHeight);
   const found = [];
   for (let dc = -1; dc <= 1; dc++) {
     for (let dr = -1; dr <= 1; dr++) {
       const nc = col + dc, nr = row + dr;
-      if ((dc === 0 && dr === 0) || nc < 0 || nr < 0 || nc >= map.width || nr >= map.height) continue;
+      if ((dc === 0 && dr === 0) || nr < 0 || nr >= map.height) continue;
+      if (!wrap && (nc < 0 || nc >= map.width)) continue;
       const n = hexCenter(layout, nc, nr);
       const d = Math.hypot(n.x - c.x, n.y - c.y);
-      if (d <= reach) found.push({ col: nc, row: nr, x: n.x, y: n.y, d });
+      if (d <= reach) found.push({ col: mod(nc, map.width), row: nr, x: n.x, y: n.y, d });
     }
   }
   return found

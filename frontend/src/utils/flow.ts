@@ -13,6 +13,7 @@
 import type { TmjMap } from '../types/tmj';
 import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 import { sampleNeighbours } from './terrainHeights';
+import { canonicalSample, mirrorSeam, mod, wrapPeriodPx, wrapsX } from './worldWrap';
 import type { WaterMap } from './water';
 import { NO_WATER } from './water';
 
@@ -48,16 +49,17 @@ export function samplePixels(map: TmjMap, cols: number, rows: number): { x: Floa
   return { x, y };
 }
 
-/** Neighbours for flow: 8 around a square corner (diagonals too), 6 around a hex. */
+/** Neighbours for flow: 8 around a square corner (diagonals too), 6 around a hex; across the seam on a wrapped map. */
 function _flowNeighbours(map: TmjMap, cols: number, rows: number): (i: number) => number[] {
   if (map.orientation === 'hexagonal') return sampleNeighbours(map, cols, rows);
+  const wrap = wrapsX(map);
   return (i) => {
     const col = i % cols, row = (i - col) / cols;
     const out: number[] = [];
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
         if (!dc && !dr) continue;
-        const c = col + dc, r = row + dr;
+        const c = wrap ? mod(col + dc, cols - 1) : col + dc, r = row + dr;
         if (c >= 0 && r >= 0 && c < cols && r < rows) out.push(r * cols + c);
       }
     }
@@ -103,7 +105,8 @@ class _Heap {
 
 /**
  * Flow over the ground `cm` (e.g. with drawn rivers carved in, see carve.ts). Water
- * from `water` is an outlet, at its surface.
+ * from `water` is an outlet, at its surface. On a wrapped map water runs across the seam, and
+ * only the top and bottom are the map's edge.
  */
 export function computeFlow(map: TmjMap, cols: number, rows: number, cm: ArrayLike<number>, water: WaterMap | null): FlowMap {
   const n = cols * rows;
@@ -113,12 +116,20 @@ export function computeFlow(map: TmjMap, cols: number, rows: number, cm: ArrayLi
   const done = new Uint8Array(n);
   const outlet = new Uint8Array(n);
   const heap = new _Heap(filled);
+  const wrap = wrapsX(map), canonical = canonicalSample(map, cols);
+  const period = wrap ? wrapPeriodPx(map) : 0;
+  /** Distance between neighbours, the short way round. */
+  const dist = (i: number, j: number) => {
+    const dx = Math.abs(x[i] - x[j]);
+    return Math.hypot(wrap ? Math.min(dx, period - dx) : dx, y[i] - y[j]);
+  };
 
   // Outlets: the map's edge and all water
   for (let i = 0; i < n; i++) {
+    if (canonical(i) !== i) { done[i] = 1; outlet[i] = 1; continue; } // a twin: filled in at the end
     const col = i % cols, row = (i - col) / cols;
     const wet = water && water.surface[i] !== NO_WATER;
-    if (wet || col === 0 || row === 0 || col === cols - 1 || row === rows - 1) {
+    if (wet || row === 0 || row === rows - 1 || (!wrap && (col === 0 || col === cols - 1))) {
       filled[i] = wet ? Math.max(cm[i], water!.surface[i]) : cm[i];
       outlet[i] = 1;
       done[i] = 1;
@@ -144,7 +155,7 @@ export function computeFlow(map: TmjMap, cols: number, rows: number, cm: ArrayLi
     for (const j of neighbours(i)) {
       const drop = filled[i] - filled[j];
       if (drop <= 0) continue;
-      const slope = drop / Math.hypot(x[i] - x[j], y[i] - y[j]);
+      const slope = drop / dist(i, j);
       if (slope > bestSlope) { bestSlope = slope; best = j; }
     }
     receiver[i] = best;
@@ -160,6 +171,7 @@ export function computeFlow(map: TmjMap, cols: number, rows: number, cm: ArrayLi
     const depth = filled[i] - cm[i];
     if (!outlet[i] && depth >= MIN_HOLLOW_CM) hollowCm[i] = depth;
   }
+  for (const values of [receiver, accumulation, hollowCm]) mirrorSeam(map, values, cols);
   return { receiver, accumulation, hollowCm };
 }
 

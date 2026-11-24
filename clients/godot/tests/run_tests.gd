@@ -115,5 +115,11 @@ func _run(ws: WorldSetCoords, expected: Dictionary) -> void:
 				_check(got[i].z == int(c["maps"][i]["z"]), "maps_at z of %s" % got[i].name)
 				_close(got[i].pixel, c["maps"][i]["pixel"], "maps_at pixel of %s" % got[i].name)
 
+	for root in expected["worldWidths"]:
+		var want = expected["worldWidths"][root]
+		_check(ws.world_width(root) == (0.0 if want == null else float(want)), "world width of %s: got %s, want %s" % [root, ws.world_width(root), str(want)])
+	for c in expected["wrapDelta"]:
+		_check(absf(ws.wrap_delta(c["root"], c["from"], c["to"]) - float(c["delta"])) <= TOL, "wrap_delta %s" % str(c))
+
 	_check(ws.pixel_to_world("loose", 0, 0) == null, "unplaced map has no world position")
 	_check(ws.frame("no-such-map") == null, "unknown map has no frame")

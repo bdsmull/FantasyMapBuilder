@@ -61,6 +61,9 @@ export interface ViewStore {
    */
   selectedContourId: number | null;
   selectContour: (id: number | null, point?: number | null) => void;
+  /** Height tool, Ceiling mode: the selected ceiling object (its point is `selectedPoint`). Drawing uses `draftLine` and `dragPoints`. */
+  selectedCeilingId: number | null;
+  selectCeiling: (id: number | null, point?: number | null) => void;
   /** Line drawing (Roads, Water → Rivers): the selected line and point (index), the line being drawn, and the class for new lines. */
   selectedLineId: number | null;
   selectedPoint: number | null;
@@ -114,6 +117,8 @@ export const useViewStore = create<ViewStore>((set) => ({
   setSelectedObjectId: (id) => set({ selectedObjectId: id }),
   selectedContourId: null,
   selectContour: (id, point = null) => set({ selectedContourId: id, selectedPoint: id === null ? null : point }),
+  selectedCeilingId: null,
+  selectCeiling: (id, point = null) => set({ selectedCeilingId: id, selectedPoint: id === null ? null : point }),
   selectedLineId: null,
   selectedPoint: null,
   selectLine: (id, point = null) => set({ selectedLineId: id, selectedPoint: id === null ? null : point }),

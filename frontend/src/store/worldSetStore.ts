@@ -48,6 +48,8 @@ export interface WorldSetStore {
   ) => void;
   /** Set the default unit system for maps in this world set that don't set their own. */
   setUnits: (units: 'metric' | 'imperial') => void;
+  /** Set the floor thickness between Z levels, in meters (null = back to the default). */
+  setFloorSlab: (meters: number | null) => void;
   /** Set the world set's height generation seed and feature size. */
   setGeneration: (generation: { seed: number; featureSizeM: number; roughness?: number }) => void;
   /** Set the world set's road and river classes (null = back to the built-in set). */
@@ -255,6 +257,13 @@ export const useWorldSetStore = create<WorldSetStore>((set, get) => ({
     const { activeWorldSet } = get();
     if (!activeWorldSet) return;
     set({ activeWorldSet: { ...activeWorldSet, units } });
+  },
+
+  setFloorSlab: (meters) => {
+    const { activeWorldSet } = get();
+    if (!activeWorldSet) return;
+    const { floorSlabM: _old, ...rest } = activeWorldSet;
+    set({ activeWorldSet: meters === null ? rest : { ...rest, floorSlabM: meters } });
   },
 
   // ---- Computed helpers ----

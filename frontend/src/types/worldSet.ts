@@ -28,6 +28,11 @@ export interface WorldSet {
   generation?: { seed: number; featureSizeM: number; roughness?: number };
   /** Road and river classes for this world set's maps (#6). Absent = the built-in set. */
   lineClasses?: LineClass[];
+  /**
+   * Floor thickness between Z levels, in meters (#45): a level's ceiling is the floor
+   * of the level above less this. A map's own `slab` property overrides it. Absent = 0.3 m.
+   */
+  floorSlabM?: number;
   nodes: WorldSetNode[];
 }
 

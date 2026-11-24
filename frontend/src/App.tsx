@@ -5,6 +5,7 @@ import { LayerPanel } from './components/LayerPanel';
 import { useHeightsLoader } from './components/useHeightsLoader';
 import { useWorldSurface } from './components/useWorldSurface';
 import { useCrossScaleLines } from './components/useCrossScaleLines';
+import { useCeilings } from './components/useCeilings';
 import { ToolPanel } from './components/ToolPanel';
 import { Toolbar } from './components/Toolbar';
 import { MenuBar } from './components/MenuBar';
@@ -21,6 +22,7 @@ import { useWorldSetStore } from './store/worldSetStore';
 import { useViewStore } from './store/viewStore';
 import { lineToolKey } from './tools/lineTool';
 import { contourKey } from './tools/contourMode';
+import { ceilingKey } from './tools/ceilingMode';
 import { waterKey } from './tools/waterMode';
 import { pointKey } from './tools/pointTool';
 import { LineClassesDialog } from './components/dialogs/LineClassesDialog';
@@ -41,6 +43,7 @@ export const App: React.FC = () => {
   const { showPalette, setShowPalette, lineClassesOpen, setLineClassesOpen } = useViewStore();
   useWorldSurface();
   useCrossScaleLines();
+  useCeilings();
 
   const toggleLeftPanel = useCallback(() => {
     setLeftPanelOpen((prev) => !prev);
@@ -95,6 +98,7 @@ export const App: React.FC = () => {
       const view = useViewStore.getState();
       if (state.selectedTool === 'roads' && lineToolKey(e.key, state, 'road')) { e.preventDefault(); return; }
       if (state.selectedTool === 'height' && state.heightBrush.mode === 'contour' && contourKey(e.key, state)) { e.preventDefault(); return; }
+      if (state.selectedTool === 'height' && state.heightBrush.mode === 'ceiling' && ceilingKey(e.key, state)) { e.preventDefault(); return; }
       if (state.selectedTool === 'point' && pointKey(e.key, state)) { e.preventDefault(); return; }
       if (state.selectedTool === 'water') {
         // Esc stops Convert to River first, in either mode

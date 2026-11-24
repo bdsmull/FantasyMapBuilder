@@ -23,6 +23,9 @@ import type { RectNode } from '../../utils/worldSetUtils';
 import type { WorldSet, WorldSetNode } from '../../types/worldSet';
 import { WORLD_SET_VERSION } from '../../types/worldSet';
 import type { TmjMap } from '../../types/tmj';
+import { ValueField } from '../SpotHeightControls';
+import { formatHeight, parseHeightToCm } from '../../utils/heightGrid';
+import { DEFAULT_SLAB_CM } from '../../utils/ceilings';
 
 interface Props {
   onClose: () => void;
@@ -90,6 +93,7 @@ export const WorldSetDialog: React.FC<Props> = ({
     updateNode,
     removeNode,
     setUnits,
+    setFloorSlab,
     saveWorldSet,
   } = useWorldSetStore();
   const worldSetUnits: UnitSystem = activeWorldSet?.units ?? DEFAULT_UNIT_SYSTEM;
@@ -257,6 +261,19 @@ export const WorldSetDialog: React.FC<Props> = ({
     setError('');
     try {
       setUnits(units);
+      await saveWorldSet();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFloorSlabChange = async (meters: number | null) => {
+    setLoading(true);
+    setError('');
+    try {
+      setFloorSlab(meters);
       await saveWorldSet();
     } catch (e) {
       setError(String(e));
@@ -581,6 +598,25 @@ export const WorldSetDialog: React.FC<Props> = ({
                 <option value="metric">Metric (m / km)</option>
                 <option value="imperial">Imperial (ft / mi)</option>
               </select>
+            </div>
+            <div className="dialog-row">
+              <label>Floor thickness ({worldSetUnits === 'imperial' ? 'ft' : 'm'})</label>
+              <ValueField<number | 'unset'>
+                value={activeWorldSet?.floorSlabM !== undefined ? Math.round(activeWorldSet.floorSlabM * 100) : 'unset'}
+                format={(v) => (v === 'unset' ? '' : formatHeight(v, worldSetUnits).replace(/ (m|ft)$/, '').replace(/,/g, ''))}
+                parse={(t) => {
+                  if (t.trim() === '') return 'unset';
+                  const v = parseHeightToCm(t, worldSetUnits);
+                  return v !== null && v >= 0 ? v : null;
+                }}
+                commit="blur"
+                width={60}
+                title={`Between Z levels: a level's ceiling is the floor above less this. Maps can set their own (Height tool, Ceiling mode). Blank: ${formatHeight(DEFAULT_SLAB_CM, worldSetUnits)}.`}
+                onChange={(v) => handleFloorSlabChange(v === 'unset' ? null : v / 100)}
+              />
+              {activeWorldSet?.floorSlabM === undefined && (
+                <span style={{ color: '#888', marginLeft: 6 }}>{formatHeight(DEFAULT_SLAB_CM, worldSetUnits)}</span>
+              )}
             </div>
             <div className="dialog-section-label">Maps in this world set</div>
             {!activeWorldSet || activeWorldSet.nodes.length === 0 ? (

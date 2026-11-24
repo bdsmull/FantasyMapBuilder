@@ -14,13 +14,13 @@ import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 
 /**
  * 'spot' places and selects spot heights, 'contour' draws and edits contour lines,
- * instead of painting (see utils/spotHeights.ts and utils/contours.ts). Lakes and seas
- * have a tool of their own (Water).
+ * 'ceiling' draws and edits ceiling objects, instead of painting (see utils/spotHeights.ts,
+ * utils/contours.ts and utils/ceilings.ts). Lakes and seas have a tool of their own (Water).
  */
-export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot' | 'contour';
+export type HeightBrushMode = 'raise' | 'lower' | 'set' | 'smooth' | 'release' | 'spot' | 'contour' | 'ceiling';
 
 /** Modes that place or edit marks instead of painting heights. */
-export const MARK_MODES: HeightBrushMode[] = ['spot', 'contour'];
+export const MARK_MODES: HeightBrushMode[] = ['spot', 'contour', 'ceiling'];
 
 export interface HeightBrush {
   mode: HeightBrushMode;
@@ -38,6 +38,8 @@ export interface HeightBrush {
   contourReachCells?: number;
   /** Surface height of new water bodies (Water tool), in cm (default: the Set target). */
   waterCm?: number;
+  /** Headroom of new ceiling objects, in cm (default DEFAULT_CEILING_HEADROOM_CM). */
+  ceilingHeadroomCm?: number;
 }
 
 export const DEFAULT_HEIGHT_BRUSH: HeightBrush = { mode: 'raise', radius: 2, strengthCm: 100, targetCm: 0 };

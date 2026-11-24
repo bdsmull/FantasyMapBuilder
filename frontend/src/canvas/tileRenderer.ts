@@ -6,6 +6,7 @@
 import { drawLine } from './lineRenderer';
 import type { LineStyleFn } from './lineRenderer';
 import { CONTOUR_TYPE } from '../utils/lines';
+import { CEILING_TYPE } from '../utils/ceilings';
 import type { TmjMap, TmjTileLayer, TmjObjectLayer } from '../types/tmj';
 import { isTileLayer, isObjectLayer } from '../types/tmj';
 import type { ViewState } from './canvasUtils';
@@ -131,7 +132,7 @@ function drawObjectLayer(
   lineStyle?: LineStyleFn,
 ): void {
   for (const obj of layer.objects) {
-    if (!obj.visible || obj.type === CONTOUR_TYPE) continue; // contours: drawn by the editor
+    if (!obj.visible || obj.type === CONTOUR_TYPE || obj.type === CEILING_TYPE) continue; // drawn by the editor
     if (obj.polyline) {
       const style = lineStyle?.(obj);
       if (style) drawLine(ctx, obj, zoom, style.cls, style.pixelsPerMeter, { exclude: style.exclude });

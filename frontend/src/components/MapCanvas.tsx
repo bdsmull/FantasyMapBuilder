@@ -40,6 +40,9 @@ import { InspectorCard } from './InspectorCard';
 import { cellAt } from '../utils/inspect';
 import { readSpots } from '../utils/spotHeights';
 import { readContours, contourPath } from '../utils/contours';
+import { readCeilings, ceilingPath, headroomGrid, mapHeadroomCm } from '../utils/ceilings';
+import { renderHeadroomOverlay } from '../canvas/headroomOverlay';
+import { useCeilingContext } from './useCeilings';
 import { renderWaterOverlay } from '../canvas/waterOverlay';
 import { useWaterView } from './useWaterView';
 import { formatArea } from './WaterControls';
@@ -107,7 +110,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const selectedObjectId = useViewStore((s) => s.selectedObjectId);
   // Lakes, the sea, and (when shown) streams and hollows
   const waterView = useWaterView();
-  const { selectedLineId, selectedContourId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
+  const { selectedLineId, selectedContourId, selectedCeilingId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
   // Roads and rivers from ancestor and descendant maps (when they belong to this map)
   const cross = useCrossScaleStore();
   const refinementChecks = useRefinementChecks();
@@ -137,6 +140,21 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     if (!contourMode && v.draftLine && !lineDrawing) v.setDraftLine(null);
     v.setDragPoints(null);
   }, [store.mapName, store.mapWorldSet, contourMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Ceiling selection and drafts belong to the open map and the Height tool's Ceiling mode
+  const ceilingMode = store.selectedTool === 'height' && store.heightBrush.mode === 'ceiling';
+  useEffect(() => {
+    const v = useViewStore.getState();
+    v.selectCeiling(null);
+    if (!ceilingMode && !contourMode && v.draftLine && !lineDrawing) v.setDraftLine(null);
+    v.setDragPoints(null);
+  }, [store.mapName, store.mapWorldSet, ceilingMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Headroom overlay: recomputed when the heights are committed, ceilings or levels above change
+  const ceilingCtx = useCeilingContext();
+  const headroom = useMemo(() => {
+    const map = useMapStore.getState().mapData, h = useMapStore.getState().heights;
+    if (!store.elevationView.headroom || !map || !h) return null;
+    return { grid: headroomGrid(map, h, ceilingCtx, readCeilings(map)), own: mapHeadroomCm(map) };
+  }, [store.elevationView.headroom, store.heights, store.heightsRev, store.mapData?.layers, store.mapData?.properties, ceilingCtx]); // eslint-disable-line react-hooks/exhaustive-deps
   // A water body selection belongs to the open map and the Water tool's Lakes mode
   const waterMode = store.selectedTool === 'water' && viewWaterMode === 'lakes';
   useEffect(() => { useViewStore.getState().setSelectedWaterId(null); }, [store.mapName, store.mapWorldSet, waterMode]);
@@ -280,6 +298,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
             opacity: store.selectedTool === 'terrain' ? _WATER_ALPHA_PAINTING : 1,
           });
         }
+        if (headroom) renderHeadroomOverlay(c, map, headroom.grid, headroom.own, view.zoom, view.pan);
         drawLines(c);
       },
     };
@@ -338,6 +357,43 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         ctx.strokeText(label, lx, ly);
         ctx.fillStyle = c.id === selectedContourId ? '#ffd400' : '#f3e2c7';
         ctx.fillText(label, lx, ly);
+      }
+      ctx.restore();
+    }
+
+    // Ceiling objects (in visible layers): a dashed purple outline with the headroom
+    const ceilings = readCeilings(map).filter((c) => shownLayers.has(c.layerIndex));
+    if (ceilings.length) {
+      const units = resolveUnits(map, defaultUnits);
+      ctx.save();
+      ctx.translate(view.pan.x, view.pan.y);
+      ctx.lineJoin = 'round';
+      ctx.font = "600 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const c of ceilings) {
+        const sel = c.id === selectedCeilingId;
+        const path = ceilingPath(c);
+        ctx.beginPath();
+        path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+        ctx.setLineDash([]);
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.stroke();
+        ctx.setLineDash([5, 3]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = sel ? '#ffd400' : '#6b3fa0';
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // The headroom at the shape's centre (average of its corners)
+        const cx = c.points.reduce((a, p) => a + p.x, 0) / c.points.length * view.zoom;
+        const cy = c.points.reduce((a, p) => a + p.y, 0) / c.points.length * view.zoom;
+        const label = `${c.name ? c.name + ' ' : ''}↕ ${formatHeight(c.headroomCm, units)}`;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.strokeText(label, cx, cy);
+        ctx.fillStyle = sel ? '#ffd400' : '#e4d3f7';
+        ctx.fillText(label, cx, cy);
       }
       ctx.restore();
     }
@@ -486,7 +542,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.restore();
     }
 
-    if (draftLine || selectedLineId !== null || selectedContourId !== null) {
+    if (draftLine || selectedLineId !== null || selectedContourId !== null || selectedCeilingId !== null) {
       ctx.save();
       ctx.translate(view.pan.x, view.pan.y);
       const z = view.zoom;
@@ -506,16 +562,17 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
         pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * z, p.y * z) : ctx.lineTo(p.x * z, p.y * z)));
         ctx.stroke();
         ctx.setLineDash([]);
-        // In Contour mode a bigger first point shows where to click to close the loop
-        draftLine.forEach((p, i) => handle(p, '#ffd400', i === 0 && contourMode && draftLine.length >= 3 ? 5 : 3));
+        // In Contour and Ceiling modes a bigger first point shows where to click to close the loop
+        draftLine.forEach((p, i) => handle(p, '#ffd400', i === 0 && (contourMode || ceilingMode) && draftLine.length >= 3 ? 5 : 3));
       } else {
-        // The selected line, or contour (a closed one gets its closing segment's handle too)
+        // The selected line, contour or ceiling shape (a closed one gets its closing segment's handle too)
         const line = selectedLineId !== null ? readLines(map).find((l) => l.id === selectedLineId) : undefined;
         const contour = selectedContourId !== null ? readContours(map).find((c) => c.id === selectedContourId) : undefined;
-        const editPts = line ? linePoints(line.object) : contour?.points;
+        const ceiling = selectedCeilingId !== null && ceilingMode ? readCeilings(map).find((c) => c.id === selectedCeilingId) : undefined;
+        const editPts = line ? linePoints(line.object) : contour ? contour.points : ceiling?.points;
         if (editPts) {
           const own = (!waterMode && dragPoints) || editPts;
-          const pts = contour ? contourPath({ points: own, closed: contour.closed }) : own;
+          const pts = contour ? contourPath({ points: own, closed: contour.closed }) : ceiling ? ceilingPath({ points: own }) : own;
           ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
           ctx.lineWidth = 1.5;
           ctx.setLineDash([4, 3]);
@@ -559,7 +616,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, selectedObjectId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.selectedTool, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, selectedObjectId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedCeilingId, ceilingMode, headroom, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.selectedTool, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.

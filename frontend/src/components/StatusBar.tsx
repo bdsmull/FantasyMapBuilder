@@ -7,9 +7,12 @@ import { useCursorStore } from '../store/cursorStore';
 import { heightAt, formatHeight } from '../utils/heightGrid';
 import { surfaceAt } from '../utils/worldSurface';
 import { useWorldSurfaceStore, surfaceKey } from '../store/worldSurfaceStore';
+import { ceilingAtPixel, describeCeiling, readCeilings } from '../utils/ceilings';
+import { useCeilingContext } from './useCeilings';
 
 export const StatusBar: React.FC = () => {
   const { mapData, mapName, mapWorldSet, isDirty, zoom, heights, elevationView } = useMapStore();
+  const ceilingCtx = useCeilingContext();
   const surface = useWorldSurfaceStore();
   const children = elevationView.showChildren && surface.key === surfaceKey(mapWorldSet, mapName) ? surface.children : [];
   const cursor = useCursorStore((s) => s.mapPos);
@@ -71,6 +74,20 @@ export const StatusBar: React.FC = () => {
             >
               {formatHeight(here.cm, units)}
               {fromChild && <span style={{ color: '#888' }}> · {here.source}</span>}
+            </span>
+          );
+        })()}
+        {heights && cursor && (() => {
+          // Headroom (#45): where there's a ceiling, and "open sky" on levels off the ground
+          const units = resolveUnits(mapData, worldSetStore.activeWorldSet?.units);
+          const ceiling = ceilingAtPixel(mapData, heights, ceilingCtx, readCeilings(mapData), cursor.x, cursor.y);
+          if (!ceiling && ceilingCtx.z === 0) return null;
+          return (
+            <span
+              className="status-headroom"
+              title={ceiling ? `Headroom under the cursor: ceiling at ${formatHeight(ceiling.cm, units)} (${describeCeiling(ceiling)})` : 'No ceiling under the cursor'}
+            >
+              {ceiling ? <>↕ {formatHeight(ceiling.headroomCm, units)}<span style={{ color: '#888' }}> · {describeCeiling(ceiling)}</span></> : <span style={{ color: '#888' }}>open sky</span>}
             </span>
           );
         })()}

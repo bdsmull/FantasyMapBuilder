@@ -1,0 +1,74 @@
+{
+  "name": "Conformance",
+  "version": "1.0",
+  "units": "metric",
+  "nodes": [
+    {
+      "mapName": "world",
+      "parentMapName": null,
+      "parentAnchor": null,
+      "z": 0
+    },
+    {
+      "mapName": "kingdom",
+      "parentMapName": "world",
+      "parentAnchor": {
+        "col": 5,
+        "row": 4
+      },
+      "parentOffset": {
+        "x": 0.3,
+        "y": -0.2
+      },
+      "z": 0
+    },
+    {
+      "mapName": "province",
+      "parentMapName": "kingdom",
+      "parentAnchor": {
+        "col": 7,
+        "row": 9
+      },
+      "z": 0
+    },
+    {
+      "mapName": "city",
+      "parentMapName": "province",
+      "parentAnchor": {
+        "col": 3,
+        "row": 2
+      },
+      "parentOffset": {
+        "x": -0.25,
+        "y": 0.4
+      },
+      "z": 0
+    },
+    {
+      "mapName": "cellar",
+      "parentMapName": "city",
+      "parentAnchor": {
+        "col": 12,
+        "row": 12
+      },
+      "z": -1,
+      "zLabel": "Cellar"
+    },
+    {
+      "mapName": "tower",
+      "parentMapName": "city",
+      "parentAnchor": {
+        "col": 12,
+        "row": 12
+      },
+      "z": 2,
+      "zLabel": "Tower top"
+    },
+    {
+      "mapName": "island",
+      "parentMapName": null,
+      "parentAnchor": null,
+      "z": 0
+    }
+  ]
+}

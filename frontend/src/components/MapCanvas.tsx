@@ -17,7 +17,7 @@ import { screenToTile } from '../canvas/canvasUtils';
 import { isObjectLayer } from '../types/tmj';
 import type { Tool } from '../tools/baseTool';
 import { terrainTool } from '../tools/terrainTool';
-import { pointTool } from '../tools/pointTool';
+import { pointTool, worldOriginMarker, POINT_PICK_RADIUS_PX } from '../tools/pointTool';
 import { heightTool } from '../tools/heightTool';
 import { inspectTool } from '../tools/inspectTool';
 import { roadsTool } from '../tools/lineTool';
@@ -110,7 +110,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   const selectedObjectId = useViewStore((s) => s.selectedObjectId);
   // Lakes, the sea, and (when shown) streams and hollows
   const waterView = useWaterView();
-  const { selectedLineId, selectedContourId, selectedCeilingId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest } = useViewStore();
+  const { selectedLineId, selectedContourId, selectedCeilingId, selectedPoint, draftLine, dragPoints, selectedGhost, showLines, openMapRequest, originDrag } = useViewStore();
   // Roads and rivers from ancestor and descendant maps (when they belong to this map)
   const cross = useCrossScaleStore();
   const refinementChecks = useRefinementChecks();
@@ -593,6 +593,29 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.restore();
     }
 
+    // The world origin (#9) on a root map: a crosshair, dashed until it's stored in the map
+    const origin = worldOriginMarker(store);
+    if (origin) {
+      const at = originDrag ?? origin;
+      const x = view.pan.x + at.x * view.zoom, y = view.pan.y + at.y * view.zoom;
+      ctx.save();
+      ctx.strokeStyle = '#e8c547';
+      ctx.lineWidth = 2;
+      ctx.setLineDash(origin.stored || originDrag ? [] : [3, 3]);
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.moveTo(x - 13, y); ctx.lineTo(x + 13, y);
+      ctx.moveTo(x, y - 13); ctx.lineTo(x, y + 13);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillText('0, 0', x + 11, y - 9);
+      ctx.fillStyle = '#e8c547';
+      ctx.fillText('0, 0', x + 10, y - 10);
+      ctx.restore();
+    }
+
     // Outline the inspected cell
     const cell = inspected && cellAt(map, inspected.x, inspected.y);
     if (cell) {
@@ -616,7 +639,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       ctx.stroke();
       ctx.restore();
     }
-  }, [refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, selectedObjectId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedCeilingId, ceilingMode, headroom, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.selectedTool, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
+  }, [originDrag, refinementChecks, showLines, ghosts, related, refIndex, selectedGhost, inspected, selectedSpotId, selectedWaterId, selectedObjectId, waterMode, waterView, hoverRiver, selectedLineId, selectedContourId, contourMode, selectedCeilingId, ceilingMode, headroom, selectedPoint, draftLine, dragPoints, cursorPos, activeWorldSetName, store.mapData, store.selectedTool, store.zoom, store.pan, store.showGrid, store.heights, store.heightsRev, store.elevationView, surfaceOverrides, defaultUnits, hoveredFootprint, worldSetStore, mapName, footprintMap]);
 
   // Fetch child map data and pre-compute footprints whenever the children or
   // parent's cell size changes. Results are cached so navigation doesn't re-fetch.
@@ -802,7 +825,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     // drawing goes across them (roads and rivers run into child maps).
     const drawingLines = store.selectedTool === 'roads'
       || (store.selectedTool === 'water' && useViewStore.getState().waterMode === 'rivers');
-    if (store.mapData && store.selectedTool !== 'inspect' && !drawingLines
+    // The Points tool drags the world origin (#9) even where it sits on a child's footprint
+    const origin = store.selectedTool === 'point' ? worldOriginMarker(store) : null;
+    const at = origin && pointerToMap(e.nativeEvent);
+    const onOrigin = !!origin && !!at && Math.hypot(origin.x - at.x, origin.y - at.y) * store.zoom <= POINT_PICK_RADIUS_PX;
+    if (store.mapData && store.selectedTool !== 'inspect' && !drawingLines && !onOrigin
       && (e.pointerType === 'mouse' || e.pointerType === 'touch')) {
       const canvasPt = getCanvasPoint(e.nativeEvent);
       const hits = footprintAtPoint(canvasPt.x, canvasPt.y, renderedFootprintsRef.current);

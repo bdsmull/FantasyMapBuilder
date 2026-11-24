@@ -47,6 +47,23 @@ jobs:
       - name: Type check and build (tsc && vite build)
         run: npm run build
 
+  godot:
+    name: Godot addon (world coordinates)
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.7.2-stable
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download Godot (headless)
+        run: |
+          curl -fsSL -o godot.zip "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}_linux.x86_64" godot
+      - name: Import the test project (registers the addon's class)
+        run: ./godot --headless --path clients/godot --import
+      - name: Conformance tests
+        run: ./godot --headless --path clients/godot --script res://tests/run_tests.gd
+
   docs:
     name: Docs (mkdocs --strict)
     runs-on: ubuntu-latest

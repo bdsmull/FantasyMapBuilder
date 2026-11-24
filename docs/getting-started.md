@@ -65,6 +65,11 @@ python main.py
 
 The server serves both the API and the editor on `http://localhost:8000`.
 
+!!! note "Build again after updating"
+    Port 8000 shows the editor as it was last **built**. After pulling or changing the code, run
+    `npm run build` again and reload the page. Port 5173 (development mode) always runs the
+    current code.
+
 **From an iPad or another computer on the same network:** find this computer's address
 (`ipconfig | findstr IPv4` on Windows, `ip addr show | grep "inet "` on macOS / Linux) and open
 `http://<address>:8000`. The server has no login and is meant for a home or studio network only.

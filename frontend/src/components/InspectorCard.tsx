@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMapStore } from '../store/mapStore';
 import { useWorldSetStore } from '../store/worldSetStore';
 import { useViewStore } from '../store/viewStore';
@@ -13,6 +13,8 @@ import { waterAt } from '../utils/water';
 import { useWaterView } from './useWaterView';
 import { ceilingAtPixel, describeCeiling, readCeilings } from '../utils/ceilings';
 import { useCeilingContext } from './useCeilings';
+import { useWorldFrame } from './useWorldFrame';
+import { formatWorld, pixelToWorld } from '../utils/worldCoords';
 
 /** Screen pixels around a point object that count as clicking it. */
 const _PICK_RADIUS_PX = 10;
@@ -45,6 +47,9 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
   const surface = useWorldSurfaceStore();
   const waterView = useWaterView();
   const ceilingCtx = useCeilingContext();
+  const frame = useWorldFrame();
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { setCopied(false); }, [inspected]);
   if (!mapData || !inspected) return null;
 
   const info = inspectAt(mapData, inspected.x, inspected.y, _PICK_RADIUS_PX / zoom);
@@ -80,8 +85,32 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
       {info && mpu && (() => {
         const { u, v } = pixelToCell(mapData, inspected.x, inspected.y);
         return (
-          <div style={{ color: '#aaa' }} title="Distance from the map's top-left corner">
-            {_distance(u * mpu, units)} east, {_distance(v * mpu, units)} south · cells {_distance(mpu, units)}
+          <div style={{ color: '#aaa' }} title="Distance from this map's top-left corner (not its world position)">
+            {_distance(u * mpu, units)} east, {_distance(v * mpu, units)} south of this map's top-left corner · cells {_distance(mpu, units)}
+          </div>
+        );
+      })()}
+
+      {frame && (() => {
+        // World position (#9): meters east (x) and north (y) of the world origin
+        const w = pixelToWorld(frame, mapData, inspected.x, inspected.y);
+        const exact = `${w.x.toFixed(2)}, ${w.y.toFixed(2)}`;
+        return (
+          <div style={_section}>
+            <div style={_label}>World</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ flex: 1 }} title={`${exact} (meters east, north of the world origin on '${frame.root}')`}>{formatWorld(w, units, frame.mpu)}</span>
+              <button
+                className="btn-secondary"
+                style={{ fontSize: 11, padding: '1px 8px' }}
+                title={`Copy "${exact}" (meters)`}
+                onClick={() => {
+                  navigator.clipboard?.writeText(exact).then(() => setCopied(true), () => setCopied(false));
+                }}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
           </div>
         );
       })()}

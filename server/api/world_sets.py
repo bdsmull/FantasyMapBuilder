@@ -23,6 +23,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from server import data_dir as dd
+from server.api.maps import restamp_cell_sizes, world_set_units
 
 router = APIRouter(tags=["world_sets"])
 
@@ -49,14 +50,20 @@ def get_world_set(name: str):
 
 @router.post("/world_sets/{name}", status_code=200)
 async def save_world_set(name: str, request_body: dict):
-    """Create (folder + maps/) or overwrite a world set from JSON body."""
+    """
+    Create (folder + maps/) or overwrite a world set from JSON body. When its default
+    units change, maps that inherit them get their cell size (``metersPerUnit``) rewritten.
+    """
     folder = dd.world_set_dir(name)
     (folder / "maps").mkdir(parents=True, exist_ok=True)
+    before = world_set_units(folder)
     (folder / f"{folder.name}{dd.WORLD_SET_SUFFIX}").write_text(
         json.dumps(request_body, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    return {"saved": folder.name}
+    after = world_set_units(folder)
+    restamped = restamp_cell_sizes(folder, after) if after != before else []
+    return {"saved": folder.name, **({"restamped": restamped} if restamped else {})}
 
 
 @router.delete("/world_sets/{name}", status_code=200)

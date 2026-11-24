@@ -12,6 +12,19 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
+- **World coordinates** (issue #9): every point of every placed map has a world position in
+  meters, x east and y north of a **world origin**.
+  - The origin is a `0, 0` marker on the world set's root map: a point object (type
+    `world-origin`) the editor adds at the centre the first time the root is saved. Drag it with
+    the Points tool; **Centre it** in the Points panel resets it.
+  - The status bar shows the world position under the cursor; the Inspect card shows it with a
+    **Copy** button.
+  - Every saved map now records its cell size in meters (`metersPerUnit`), also when it uses a
+    scale preset, and maps are updated when a world set's default units change.
+  - **Libraries for outside tools**, which read world set files without the editor: a **Godot 4
+    addon** (`clients/godot/addons/worldset_coords`, GDScript) and a **Python package**
+    (`clients/python`). The method is specified in the new World Coordinates docs page. A
+    shared test suite (`clients/conformance`) checks both against the editor in CI.
 - **Heightmaps for game engines** (issue #46): Height tool → Elevation → **Export heightmap…** /
   **Import heightmap…**.
   - Export writes a 16-bit grayscale PNG or 16-bit little-endian RAW (`.r16`), plus a `.json`
@@ -130,6 +143,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   Existing world sets keep their tilesets.
 
 ### Fixed
+- After the editor is rebuilt, browsers load the new version: the server now has them check for a
+  new page on every load. Before, they could go on showing the old editor from their cache.
 - The hierarchy panel's warnings follow the open map: fixing a scale in **Map Properties** clears
   a scale-inversion or missing-scale warning at once, for the map and its children, and it
   stays cleared after moving to another map; before, it lasted until the world set was

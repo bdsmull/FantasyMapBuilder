@@ -57,6 +57,8 @@ mapeditor.config.json
 # Saved map files (user data, not source)
 *.tmj
 *.tmx
+# ...except the world-coordinate libraries' shared test world set
+!clients/conformance/**/*.tmj
 
 # Personal Claude Code settings (launch configs, local permissions)
 .claude/launch.json

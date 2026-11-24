@@ -11,7 +11,7 @@ cd frontend && npm ci
 
 ## Running the tests
 
-**Python** (253 tests: models, TMJ I/O, API):
+**Python** (276 tests: models, TMJ I/O, API, and the `clients/python` world-coordinate library):
 
 ```bash
 pytest
@@ -19,7 +19,7 @@ pytest
 pytest --cov=map_editor --cov=server --cov-report=term-missing
 ```
 
-**Frontend** (389 Vitest tests):
+**Frontend** (440 Vitest tests):
 
 ```bash
 cd frontend
@@ -27,6 +27,16 @@ npm test              # once
 npm run test:watch    # watch mode
 npx tsc --noEmit -p . # type check (also part of npm run build)
 ```
+
+**Godot addon** (world coordinates, 192 checks; needs Godot 4):
+
+```bash
+godot --headless --path clients/godot --import
+godot --headless --path clients/godot --script res://tests/run_tests.gd
+```
+
+The world-coordinate libraries share a test suite (`clients/conformance`); see
+[World Coordinates](world-coordinates.md#conformance).
 
 ---
 
@@ -39,6 +49,7 @@ on a clean Ubuntu checkout. Each job is a check on the pull request:
 |-------|------|
 | **Backend (pytest)** | Python 3.14: `pip install -r requirements-dev.txt`, then `pytest` |
 | **Frontend (Vitest, type check, build)** | Node LTS, in `frontend/`: `npm ci`, `npm test`, `npm run build` (`tsc && vite build`) |
+| **Godot addon (world coordinates)** | Downloads Godot 4 (headless) and runs `clients/godot/tests/run_tests.gd` |
 | **Docs (mkdocs --strict)** | `mkdocs build --strict`: broken links, anchors or nav fail it |
 
 A failing test, type error, build error or broken docs link marks the pull request's check as

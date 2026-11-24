@@ -6,6 +6,7 @@ import { useHeightsLoader } from './components/useHeightsLoader';
 import { useWorldSurface } from './components/useWorldSurface';
 import { useCrossScaleLines } from './components/useCrossScaleLines';
 import { useCeilings } from './components/useCeilings';
+import { useWorldAncestors } from './components/useWorldFrame';
 import { ToolPanel } from './components/ToolPanel';
 import { Toolbar } from './components/Toolbar';
 import { MenuBar } from './components/MenuBar';
@@ -44,6 +45,7 @@ export const App: React.FC = () => {
   useWorldSurface();
   useCrossScaleLines();
   useCeilings();
+  useWorldAncestors();
 
   const toggleLeftPanel = useCallback(() => {
     setLeftPanelOpen((prev) => !prev);

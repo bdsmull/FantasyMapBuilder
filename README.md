@@ -32,6 +32,9 @@ works from other devices on the same network, such as an iPad.
   carved into the ground
 - **Roads and rivers** — drawn as lines with real-world widths; lines show across map scales
   and can be copied down to a more detailed map and refined there
+- **World coordinates** — every point has a position in meters east and north of a world
+  origin, shown in the status bar and Inspect card; Godot 4 and Python libraries read the same
+  positions straight from the files ([World Coordinates](docs/world-coordinates.md))
 - **Inspect tool** — click anywhere to see terrain, elevation, objects and child maps
 - **Undo / redo** for every edit
 - **Portable** — export or import a whole world set as one `.mapset` file, or import a single map
@@ -113,8 +116,8 @@ The data folder is not committed to git.
 
 ```bash
 pip install -r requirements-dev.txt
-pytest                         # Python: models, TMJ I/O and API (259 tests)
-cd frontend && npm test        # Frontend: Vitest (431 tests)
+pytest                         # Python: models, TMJ I/O, API, Python client (276 tests)
+cd frontend && npm test        # Frontend: Vitest (440 tests)
 ```
 
 ---
@@ -135,6 +138,7 @@ FantasyMapBuilder/
 │       ├── utils/          # Elevation, placement, lines, import logic
 │       └── __tests__/      # Vitest tests
 ├── tests/                  # pytest suite
+├── clients/                # World coordinates outside the editor: Godot 4 addon, Python package
 ├── docs/                   # Documentation (MkDocs)
 └── world_sets/             # Default data folder (not in git)
 ```

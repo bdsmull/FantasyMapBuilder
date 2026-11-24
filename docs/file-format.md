@@ -33,7 +33,7 @@ small and readable.
 |---|---|---|---|
 | Map | `scale` | string | Scale preset ID: `room`, `battle`, `dungeon`, `site`, `town`, `city`, `local`, `province`, `kingdom`, `continent`, `world` |
 | Map | `units` | string | `metric` or `imperial`; absent = the world set's default |
-| Map | `metersPerUnit` | float | Custom cell size in meters, used only when `scale` isn't a preset |
+| Map | `metersPerUnit` | float | Cell size in meters. Written on every save (from `scale` and the units when `scale` is a preset), so readers needn't know the presets; also a custom cell size when `scale` isn't one ([World Coordinates](world-coordinates.md#1-cell-size)) |
 | Map | `heights` | file | `../heights/<map>.tif` ([elevation](#elevation-files)) |
 | Map | `sea` | bool | `false` turns off the automatic sea below 0 m ([Elevation](elevation.md#lakes-and-seas)); absent = on |
 | Tileset | `mapeditor.swatch` | bool | The tileset's image is a generated color swatch; the real data is each tile's color |
@@ -48,6 +48,7 @@ small and readable.
 | Map | `headroom` | float | The level's ceiling height above its floor, in meters ([Ceilings](elevation.md#ceilings)); absent = none |
 | Map | `slab` | float | Thickness of the map's floor, in meters: the level below's ceiling is this much under it; absent = the world set's `floorSlabM` |
 | Object (polygon, type `ceiling`) | `headroom` | float | Ceiling height above the floor inside the shape, in meters ([Ceilings](elevation.md#ceilings)) |
+| Object (point, type `world-origin`) | — | — | The world origin, on a world set's root map ([World Coordinates](world-coordinates.md#5-the-world-origin)); the editor puts it on a `World` layer |
 | Object (polyline) | type | — | Line class ID, e.g. `major-road`, `river` ([Roads & Rivers](roads-rivers.md)); `contour` is a contour line instead |
 | Object (polyline) | `widths` | string | Width in meters per point, comma-separated; blank = class width (e.g. `",,25,40"`) |
 | Object (polyline) | `refines` | string | `<map>#<object id>` of the line this one refines |

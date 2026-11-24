@@ -55,6 +55,9 @@ export interface ViewStore {
   /** Object ID of the point selected with the Points tool. */
   selectedObjectId: number | null;
   setSelectedObjectId: (id: number | null) => void;
+  /** Points tool: the world origin (#9) where it is being dragged to, before it's committed. */
+  originDrag: MapPoint | null;
+  setOriginDrag: (pos: MapPoint | null) => void;
   /**
    * Height tool, Contour mode: the selected contour (its point is `selectedPoint`). The
    * contour being drawn and a point being dragged use `draftLine` and `dragPoints`.
@@ -115,6 +118,8 @@ export const useViewStore = create<ViewStore>((set) => ({
   setSelectedSpotId: (id) => set({ selectedSpotId: id }),
   selectedObjectId: null,
   setSelectedObjectId: (id) => set({ selectedObjectId: id }),
+  originDrag: null,
+  setOriginDrag: (pos) => set({ originDrag: pos }),
   selectedContourId: null,
   selectContour: (id, point = null) => set({ selectedContourId: id, selectedPoint: id === null ? null : point }),
   selectedCeilingId: null,

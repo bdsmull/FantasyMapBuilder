@@ -154,6 +154,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   Existing world sets keep their tilesets.
 
 ### Fixed
+- Keyboard shortcuts (`Ctrl+S`, `Ctrl+Z`, the tool keys, …) keep working after clicking a checkbox,
+  radio button or slider; before, they did nothing until you clicked elsewhere.
 - After the editor is rebuilt, browsers load the new version: the server now has them check for a
   new page on every load. Before, they could go on showing the old editor from their cache.
 - The hierarchy panel's warnings follow the open map: fixing a scale in **Map Properties** clears

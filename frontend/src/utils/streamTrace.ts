@@ -16,6 +16,7 @@ import type { LineRef, Pt } from './lines';
 import { linePoints, nearestOnLine } from './lines';
 import type { WaterMap } from './water';
 import { NO_WATER, sampleAreaM2 } from './water';
+import { canonicalSample, wrapPeriodPx, wrapsX } from './worldWrap';
 
 /** Catchment (km²) below which a converted stream is a brook, then a stream; larger is a river. */
 const _BROOK_MAX_KM2 = 10;
@@ -25,8 +26,8 @@ const _SIMPLIFY_CELLS = 0.5;
 /** How close (in cells) a stream must come to a drawn river to end on it. */
 const _JOIN_CELLS = 0.75;
 
-/** Where a converted river ends. */
-export type StreamEnd = 'water' | 'edge' | 'river';
+/** Where a converted river ends ('seam': a wrapped map's east or west edge, which a line can't cross). */
+export type StreamEnd = 'water' | 'edge' | 'river' | 'seam';
 
 export interface StreamRiver {
   /** The samples followed, source first. */
@@ -103,16 +104,19 @@ export function streamPicker(
   const T = Math.max(2, streamSamples);
   const { x, y } = samplePixels(map, cols, rows);
   const cell = Math.min(map.tilewidth, map.tileheight);
+  const canonical = canonicalSample(map, cols);
+  const period = wrapsX(map) ? wrapPeriodPx(map) : 0;
+  const acrossSeam = (a: number, b: number) => period > 0 && Math.abs(x[a] - x[b]) > period / 2;
   const dry = (i: number) => !water || water.surface[i] === NO_WATER;
   const isStream = (i: number) => flow.accumulation[i] >= T && dry(i);
 
   // The streams' samples, and what drains into each (only stream samples matter)
   const streams: number[] = [];
-  for (let i = 0; i < n; i++) if (isStream(i)) streams.push(i);
+  for (let i = 0; i < n; i++) if (canonical(i) === i && isStream(i)) streams.push(i);
   const donors = new Map<number, number[]>();
   for (let i = 0; i < n; i++) {
     const r = flow.receiver[i];
-    if (r < 0 || flow.accumulation[i] < T) continue;
+    if (r < 0 || flow.accumulation[i] < T || canonical(i) !== i) continue;
     const list = donors.get(r);
     if (list) list.push(i); else donors.set(r, [i]);
   }
@@ -143,7 +147,7 @@ export function streamPicker(
     for (;;) {
       let best = -1;
       for (const d of donors.get(c) ?? []) {
-        if (!seen.has(d) && dry(d) && (best < 0 || flow.accumulation[d] > flow.accumulation[best])) best = d;
+        if (!seen.has(d) && dry(d) && !acrossSeam(c, d) && (best < 0 || flow.accumulation[d] > flow.accumulation[best])) best = d;
       }
       if (best < 0) break;
       seen.add(best);
@@ -159,6 +163,7 @@ export function streamPicker(
       const r = flow.receiver[c];
       if (r < 0) { end = 'edge'; break; }
       if (seen.has(r)) break;
+      if (acrossSeam(c, r)) { end = 'seam'; break; }
       seen.add(r);
       down.push(r);
       if (!dry(r)) { end = 'water'; break; }
@@ -173,8 +178,14 @@ export function streamPicker(
     if (first) pts[0] = first;
     const last = onRiver.get(samples[samples.length - 1]);
     if (end === 'river' && last) pts[pts.length - 1] = last;
+    // Up to the seam: on a square map, where it crosses is this edge's copy of the next sample
+    if (end === 'seam' && map.orientation !== 'hexagonal') {
+      const from = samples[samples.length - 1], to = flow.receiver[from];
+      const edge = { x: x[from] > period / 2 ? period : 0, y: y[to] };
+      if (edge.x !== x[from]) pts.push(edge);
+    }
     // The land draining in, just above where it ends (not counting the water it joins)
-    const lastOwn = end === 'edge' ? samples[samples.length - 1] : samples[samples.length - 2];
+    const lastOwn = end === 'edge' || end === 'seam' ? samples[samples.length - 1] : samples[samples.length - 2];
     const catchmentSamples = flow.accumulation[lastOwn];
     const catchmentM2 = metersPerUnit ? catchmentSamples * sampleAreaM2(metersPerUnit) : null;
     return {

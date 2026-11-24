@@ -19,6 +19,7 @@ from .core import (
     MapGeometry,
     WorldSet,
     child_top_left,
+    wrap_delta,
 )
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "MapGeometry",
     "WorldSet",
     "child_top_left",
+    "wrap_delta",
 ]
 
 __version__ = "0.1.0"

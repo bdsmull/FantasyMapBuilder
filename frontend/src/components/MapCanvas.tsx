@@ -959,7 +959,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const name = classForType(river.classId, classes).cls.name;
     const units = resolveUnits(map, defaultUnits);
     const drains = river.catchmentM2 !== null ? `${formatArea(river.catchmentM2, units)} drains into it` : `${river.catchmentSamples.toLocaleString('en-US')} cells drain into it`;
-    const ends = river.end === 'water' ? 'down into the water' : river.end === 'river' ? 'to where it joins a drawn river' : "to the map's edge";
+    const ends = river.end === 'water' ? 'down into the water' : river.end === 'river' ? 'to where it joins a drawn river'
+      : river.end === 'seam' ? "to the map's east-west seam, which a drawn river can't cross yet" : "to the map's edge";
     v.setConvertingStream(false);
     v.setStreamNote(`Added a ${name.toLowerCase()} from where it begins ${ends}; ${drains}. Select it to change its type or shape.`);
   }

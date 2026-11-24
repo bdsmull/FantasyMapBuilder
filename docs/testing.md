@@ -11,7 +11,7 @@ cd frontend && npm ci
 
 ## Running the tests
 
-**Python** (279 tests: models, TMJ I/O, API, and the `clients/python` world-coordinate library):
+**Python** (281 tests: models, TMJ I/O, API, and the `clients/python` world-coordinate library):
 
 ```bash
 pytest
@@ -19,7 +19,7 @@ pytest
 pytest --cov=map_editor --cov=server --cov-report=term-missing
 ```
 
-**Frontend** (440 Vitest tests):
+**Frontend** (489 Vitest tests):
 
 ```bash
 cd frontend
@@ -28,7 +28,7 @@ npm run test:watch    # watch mode
 npx tsc --noEmit -p . # type check (also part of npm run build)
 ```
 
-**Godot addon** (world coordinates, 236 checks; needs Godot 4):
+**Godot addon** (world coordinates, 674 checks; needs Godot 4):
 
 ```bash
 godot --headless --path clients/godot --import

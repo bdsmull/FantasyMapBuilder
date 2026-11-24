@@ -35,6 +35,7 @@ small and readable.
 | Map | `units` | string | `metric` or `imperial`; absent = the world set's default |
 | Map | `metersPerUnit` | float | Cell size in meters. Written on every save (from `scale` and the units when `scale` is a preset), so readers needn't know the presets; also a custom cell size when `scale` isn't one ([World Coordinates](world-coordinates.md#1-cell-size)) |
 | Map | `heights` | file | `../heights/<map>.tif` ([elevation](#elevation-files)) |
+| Map | `wrapX` | bool | `true`: a root map whose east edge continues at its west edge ([A world that wraps](world-sets.md#a-world-that-wraps)); absent = off. On square maps the last column of heights then equals the first |
 | Map | `sea` | bool | `false` turns off the automatic sea below 0 m ([Elevation](elevation.md#lakes-and-seas)); absent = on |
 | Tileset | `mapeditor.swatch` | bool | The tileset's image is a generated color swatch; the real data is each tile's color |
 | Tile | `color_r`, `color_g`, `color_b` | int | Display color (color-only tilesets) |

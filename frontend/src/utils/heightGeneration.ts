@@ -16,6 +16,12 @@
  * (fBm; 0.5 by default). The sum is scaled by a fixed factor (not by
  * the octaves present), so leaving out the fine ones on coarse maps doesn't change
  * the rest. About 95% of places then vary by up to ±relief.
+ *
+ * On a wrapped world (#36) the field repeats once per turn, so it meets itself at the
+ * seam: each octave gets a whole number of waves around the world (its wavelength is
+ * stretched a little east-west if it doesn't divide the circumference) and the lattice
+ * repeats after them. Where the wavelength divides the circumference exactly, only the
+ * last two waves before the seam differ from the unwrapped field.
  */
 
 import type { TmjMap } from '../types/tmj';
@@ -23,6 +29,7 @@ import type { WorldSetNode } from '../types/worldSet';
 import type { HeightPatch } from './heightGrid';
 import { placeChild, sampleCell } from './worldSurface';
 import { terrainSamples, smoothSamples } from './terrainHeights';
+import { mirrorSeam, mod } from './worldWrap';
 
 /** World set generation settings. */
 export interface GenerationSettings {
@@ -67,15 +74,20 @@ function _grad(ix: number, iy: number, seed: number, dx: number, dy: number): nu
   return Math.cos(a) * dx + Math.sin(a) * dy;
 }
 
-/** Gradient noise at (x, y) in lattice units, roughly in [-1, 1]. */
-export function gradientNoise(x: number, y: number, seed: number): number {
+/**
+ * Gradient noise at (x, y) in lattice units, roughly in [-1, 1]. With `repeat` it repeats
+ * every `count` lattice cells in x, counted from cell `from`.
+ */
+export function gradientNoise(x: number, y: number, seed: number, repeat?: { from: number; count: number }): number {
   const x0 = Math.floor(x), y0 = Math.floor(y);
   const fx = x - x0, fy = y - y0;
   const u = _fade(fx), v = _fade(fy);
-  const n00 = _grad(x0, y0, seed, fx, fy);
-  const n10 = _grad(x0 + 1, y0, seed, fx - 1, fy);
-  const n01 = _grad(x0, y0 + 1, seed, fx, fy - 1);
-  const n11 = _grad(x0 + 1, y0 + 1, seed, fx - 1, fy - 1);
+  const ix = (i: number) => (repeat ? repeat.from + mod(i - repeat.from, repeat.count) : i);
+  const a = ix(x0), b = ix(x0 + 1);
+  const n00 = _grad(a, y0, seed, fx, fy);
+  const n10 = _grad(b, y0, seed, fx - 1, fy);
+  const n01 = _grad(a, y0 + 1, seed, fx, fy - 1);
+  const n11 = _grad(b, y0 + 1, seed, fx - 1, fy - 1);
   const nx0 = n00 + (n10 - n00) * u, nx1 = n01 + (n11 - n01) * u;
   return (nx0 + (nx1 - nx0) * v) * Math.SQRT2;
 }
@@ -100,13 +112,18 @@ export function noiseScale(settings: GenerationSettings): number {
 /**
  * Octave `octave`'s term (amplitude included) at (x, y) meters. Each octave is shifted
  * by its own seed-derived offset, so no map sits on a point where every octave is zero.
+ * `circumferenceM` is the world's width when it wraps.
  */
-export function octaveTerm(x: number, y: number, settings: GenerationSettings, octave: number): number {
+export function octaveTerm(x: number, y: number, settings: GenerationSettings, octave: number, circumferenceM?: number): number {
   const lambda = settings.featureSizeM / 2 ** octave;
   const seed = settings.seed + octave * 1013;
   const ox = (_hash(octave, 1, seed) / 4294967296) * 997;
   const oy = (_hash(octave, 2, seed) / 4294967296) * 997;
-  return _roughness(settings) ** octave * gradientNoise(x / lambda + ox, y / lambda + oy, seed);
+  if (!circumferenceM) return _roughness(settings) ** octave * gradientNoise(x / lambda + ox, y / lambda + oy, seed);
+  const exact = circumferenceM / lambda;
+  const count = Math.max(1, Math.round(exact));
+  const lx = Math.abs(exact - count) < 1e-9 * count ? x / lambda : (x * count) / circumferenceM;
+  return _roughness(settings) ** octave * gradientNoise(lx + ox, y / lambda + oy, seed, { from: Math.floor(ox), count });
 }
 
 /**
@@ -114,11 +131,11 @@ export function octaveTerm(x: number, y: number, settings: GenerationSettings, o
  * `minWavelengthM`. About 95% of values lie in [-1, 1]; the same point gives the
  * same coarse octaves whatever `minWavelengthM` is.
  */
-export function worldNoise(x: number, y: number, settings: GenerationSettings, minWavelengthM: number): number {
+export function worldNoise(x: number, y: number, settings: GenerationSettings, minWavelengthM: number, circumferenceM?: number): number {
   let sum = 0;
   const floor = Math.max(minWavelengthM, _MIN_WAVELENGTH_M);
   for (let octave = 0; settings.featureSizeM / 2 ** octave >= floor && octave < 40; octave++) {
-    sum += octaveTerm(x, y, settings, octave);
+    sum += octaveTerm(x, y, settings, octave, circumferenceM);
   }
   return sum / noiseScale(settings);
 }
@@ -166,6 +183,8 @@ export interface GenerateOptions {
   strength: number;
   /** Relief (cm) where the terrain sets none. */
   fallbackReliefCm: number;
+  /** The world's width (m) when its root map wraps east-west. */
+  circumferenceM?: number;
 }
 
 /** Relief (cm) per sample: from terrain types, smoothed across boundaries, else the fallback. */
@@ -201,11 +220,12 @@ export function generateHeights(map: TmjMap, patch: HeightPatch, opts: GenerateO
       const amp = reliefCm[i] * opts.strength;
       if (amp === 0) continue;
       const { u, v } = sampleCell(map, col, row);
-      const n = worldNoise(opts.origin.x + u * opts.mpu, opts.origin.y + v * opts.mpu, opts.settings, minWave);
+      const n = worldNoise(opts.origin.x + u * opts.mpu, opts.origin.y + v * opts.mpu, opts.settings, minWave, opts.circumferenceM);
       const next = Math.max(-2_147_483_648, Math.min(2_147_483_647, Math.round(out[i] + n * amp)));
       if (next !== out[i]) { out[i] = next; changed++; }
     }
   }
+  mirrorSeam(map, out, cols);
   return { cm: out, changed };
 }
 

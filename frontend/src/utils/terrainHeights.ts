@@ -18,6 +18,7 @@ import type { TmjMap, TmjTileEntry, TmjProperty } from '../types/tmj';
 import { isTileLayer } from '../types/tmj';
 import type { HeightPatch } from './heightGrid';
 import { hexNeighbours } from './heightGrid';
+import { canonicalSample, hasSeamTwin, mod, wrapsX } from './worldWrap';
 
 export const TILE_HEIGHT_BASE = 'heightBase';
 export const TILE_HEIGHT_RELIEF = 'heightRelief';
@@ -77,9 +78,13 @@ export function cellTerrain(map: TmjMap): (TerrainHeight | null)[] {
   return cells;
 }
 
-/** Neighbouring samples of each sample (square: the 4 around a corner; hex: the 6 around a centre). */
+/**
+ * Neighbouring samples of each sample (square: the 4 around a corner; hex: the 6 around a centre).
+ * On a wrapped map they continue across the seam, as canonical samples (see worldWrap.ts).
+ */
 export function sampleNeighbours(map: TmjMap, cols: number, rows: number): (i: number) => number[] {
   if (map.orientation === 'hexagonal') {
+    const wrap = wrapsX(map);
     // The neighbour pattern depends only on column/row parity (the stagger): work it
     // out once per parity on a small interior grid, then offset it
     const probe = { ...map, width: 6, height: 6 };
@@ -98,9 +103,19 @@ export function sampleNeighbours(map: TmjMap, cols: number, rows: number): (i: n
       const col = i % cols, row = (i - col) / cols;
       const out: number[] = [];
       for (const [dc, dr] of pattern(col, row)) {
-        const c = col + dc, r = row + dr;
+        const c = wrap ? mod(col + dc, cols) : col + dc, r = row + dr;
         if (c >= 0 && r >= 0 && c < cols && r < rows) out.push(r * cols + c);
       }
+      return out;
+    };
+  }
+  if (hasSeamTwin(map)) {
+    const W = cols - 1, canonical = canonicalSample(map, cols);
+    return (i) => {
+      const c = canonical(i), col = c % cols, start = c - col, row = start / cols;
+      const out = [start + mod(col - 1, W), start + mod(col + 1, W)];
+      if (row > 0) out.push(c - cols);
+      if (row < rows - 1) out.push(c + cols);
       return out;
     };
   }
@@ -129,6 +144,7 @@ export function terrainSamples(
   const cells = cellTerrain(map);
   const values = new Float64Array(cols * rows);
   const has = new Uint8Array(cols * rows);
+  const wrap = wrapsX(map);
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       let sum = 0, n = 0;
@@ -137,7 +153,7 @@ export function terrainSamples(
         if (t) { sum = pick(t); n = 1; }
       } else {
         for (const [dc, dr] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
-          const c = col + dc, r = row + dr;
+          const c = wrap ? mod(col + dc, map.width) : col + dc, r = row + dr;
           if (c < 0 || r < 0 || c >= map.width || r >= map.height) continue;
           const t = cells[r * map.width + c];
           if (t) { sum += pick(t); n++; }

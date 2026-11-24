@@ -134,6 +134,30 @@ Every point of every placed map has a **world position**: meters east (**x**) an
 - **Seeing positions:** the **status bar** shows the world position under the cursor, and the
   **Inspect** card shows it for the clicked point, with **Copy** for the exact meters.
 
+### A world that wraps
+
+A world map can **wrap east–west**, so its east edge continues at its west edge, as on a globe.
+Open the world set's root map, choose **File → Map Properties…** and tick **Wraps east–west**.
+
+- **Heights** are eased to meet: at the seam, each row goes to the average of its two ends, and the
+  change fades out over 4 cells each side. Hand-set heights are kept where possible. It's one
+  undo step together with the setting.
+- **Smoothing, the height brush, heights from terrain, fitting and hillshading** then work across
+  the seam.
+- **Generated detail** repeats once around the world, on the world map and every map inside it. Detail
+  generated before still matches, except near the seam, or if the feature size doesn't divide
+  evenly into the world's width.
+- **The sea, lakes and flow** run across it; only the top and bottom are the map's edge. A
+  stream turned into a drawn river stops at the seam for now.
+- **World coordinates** are continuous, and looking one up works any number of turns around.
+
+A flat-topped hex map needs an even number of columns. Scrolling past the seam, placing child maps
+across it, and drawing roads and rivers over it are still to come.
+
+The **poles** are just the top and bottom edges: the world is a cylinder, and every cell counts as
+the same size. On a map that stands for a whole globe, east–west distances are too long away from the
+equator (about 2× at 60°, 3× at 70°).
+
 Games and other tools can work out the same positions from the files, without the editor:
 [World Coordinates](world-coordinates.md) describes the method and the ready-made Godot 4 and
 Python libraries.

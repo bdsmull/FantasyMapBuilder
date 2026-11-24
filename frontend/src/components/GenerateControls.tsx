@@ -9,6 +9,7 @@ import {
   DEFAULT_FEATURE_SIZE_M, DEFAULT_ROUGHNESS, MIN_ROUGHNESS, MAX_ROUGHNESS, generateHeights, mapOriginMeters, minWavelengthFor, randomSeed, reliefSamples, tooCoarse,
 } from '../utils/heightGeneration';
 import type { GenerationSettings, PlacedMapSource } from '../utils/heightGeneration';
+import { wrapsX } from '../utils/worldWrap';
 
 const _METERS_PER_MILE = 1609.344;
 
@@ -83,10 +84,13 @@ export const GenerateControls: React.FC<{ units: UnitSystem; onClose: () => void
         node = activeWorldSet.nodes.find((n) => n.mapName === parentName);
       }
       const origin = mapOriginMeters(mapName, activeWorldSet.nodes, (n) => sources.get(n));
+      // On a wrapped world the detail repeats once per turn, on every map in it
+      const root = node && !node.parentMapName ? sources.get(node.mapName) : undefined;
+      const circumferenceM = root && wrapsX(root.map) ? root.map.width * root.mpu : undefined;
       const current = useMapStore.getState().heights;
       if (!current) return;
       const result = generateHeights(mapData, current, {
-        settings, mpu, origin, strength: strength / 100, fallbackReliefCm: Math.abs(fallbackCm),
+        settings, mpu, origin, strength: strength / 100, fallbackReliefCm: Math.abs(fallbackCm), circumferenceM,
       });
       if (result.changed > 0) replaceHeights(result.cm);
       setNote(result.changed > 0

@@ -17,6 +17,7 @@ import type { HeightPatch } from '../utils/heightGrid';
 import { bandOf, heightColor, hexNeighbours, patchRange } from '../utils/heightGrid';
 import { hexLayout, hexTopLeft, hexPolygon, hexCenter } from './hexGeometry';
 import { visibleHexRange } from './hexRenderer';
+import { mod, wrapsX } from '../utils/worldWrap';
 
 export interface ElevationOverlayOptions {
   opacity: number;
@@ -78,9 +79,10 @@ function _paintSquare(cache: SquareCache, map: TmjMap, patch: HeightPatch, opts:
   x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(pw, x1); y1 = Math.min(ph, y1);
   if (x0 >= x1 || y0 >= y1) return;
 
-  // Heights for the region plus a one-pixel border
-  const bx0 = Math.max(0, x0 - 1), by0 = Math.max(0, y0 - 1);
-  const bx1 = Math.min(pw, x1 + 1), by1 = Math.min(ph, y1 + 1);
+  // Heights for the region plus a one-pixel border (around the world, on a wrapped map)
+  const wrap = wrapsX(map);
+  const bx0 = wrap ? x0 - 1 : Math.max(0, x0 - 1), by0 = Math.max(0, y0 - 1);
+  const bx1 = wrap ? x1 + 1 : Math.min(pw, x1 + 1), by1 = Math.min(ph, y1 + 1);
   const bw = bx1 - bx0;
   const h = new Float32Array(bw * (by1 - by0));
   for (let py = by0; py < by1; py++) {
@@ -88,7 +90,7 @@ function _paintSquare(cache: SquareCache, map: TmjMap, patch: HeightPatch, opts:
     const r0 = Math.min(Math.floor(fy), H - 1);
     const ty = fy - r0;
     for (let px = bx0; px < bx1; px++) {
-      const fx = (px + 0.5) / ppc;
+      const fx = (mod(px, pw) + 0.5) / ppc;
       const c0 = Math.min(Math.floor(fx), W - 1);
       const tx = fx - c0;
       const i = r0 * patch.cols + c0;
@@ -106,14 +108,15 @@ function _paintSquare(cache: SquareCache, map: TmjMap, patch: HeightPatch, opts:
       const band = bandOf(v, interval);
       let color = heightColor((band + 0.5) * interval, range);
       // Contour edge where the band changes towards the right or below
-      if ((px + 1 < pw && bandOf(at(px + 1, py), interval) !== band)
+      if (((wrap || px + 1 < pw) && bandOf(at(px + 1, py), interval) !== band)
         || (py + 1 < ph && bandOf(at(px, py + 1), interval) !== band)) {
         color = _shade(color, _CONTOUR_DARKEN);
       }
       if (opts.hillshade) {
-        const xl = at(px > 0 ? px - 1 : px, py), xr = at(px + 1 < pw ? px + 1 : px, py);
+        const left = wrap || px > 0, right = wrap || px + 1 < pw;
+        const xl = at(left ? px - 1 : px, py), xr = at(right ? px + 1 : px, py);
         const yu = at(px, py > 0 ? py - 1 : py), yd = at(px, py + 1 < ph ? py + 1 : py);
-        const spanX = (px > 0 ? 1 : 0) + (px + 1 < pw ? 1 : 0) || 1;
+        const spanX = (left ? 1 : 0) + (right ? 1 : 0) || 1;
         const spanY = (py > 0 ? 1 : 0) + (py + 1 < ph ? 1 : 0) || 1;
         // pixels -> cells: multiply by ppc; heights -> bands: divide by interval
         color = _shade(color, hillshadeFactor(((xr - xl) / spanX) * ppc / interval, ((yd - yu) / spanY) * ppc / interval));
@@ -131,7 +134,7 @@ function _paintSquare(cache: SquareCache, map: TmjMap, patch: HeightPatch, opts:
 function _squareRaster(map: TmjMap, patch: HeightPatch, opts: ElevationOverlayOptions): HTMLCanvasElement | null {
   const W = map.width, H = map.height;
   if (patch.cols !== W + 1 || patch.rows !== H + 1) return null; // stale patch for this map size
-  const key = `${W}x${H}|${opts.hillshade}|${opts.intervalCm}`;
+  const key = `${W}x${H}|${opts.hillshade}|${opts.intervalCm}|${wrapsX(map)}`;
   let cache = _squareCache.get(patch);
 
   if (cache && patch.rangeCheck && !_sameRange(cache.range, patchRange(patch))) patch.fullRefresh = true;
@@ -148,6 +151,11 @@ function _squareRaster(map: TmjMap, patch: HeightPatch, opts: ElevationOverlayOp
     const { c0, r0, c1, r1 } = patch.dirtyRect;
     const p = cache.ppc;
     _paintSquare(cache, map, patch, opts, (c0 - 2) * p, (r0 - 2) * p, (c1 + 2) * p, (r1 + 2) * p);
+    if (wrapsX(map)) {
+      // ...and what's across the seam from it
+      if (c0 <= 1) _paintSquare(cache, map, patch, opts, (W - 2) * p, (r0 - 2) * p, W * p, (r1 + 2) * p);
+      if (c1 >= W - 1) _paintSquare(cache, map, patch, opts, 0, (r0 - 2) * p, 2 * p, (r1 + 2) * p);
+    }
   }
   patch.fullRefresh = false;
   patch.rangeCheck = false;
@@ -195,7 +203,7 @@ function _colorHexes(cache: HexCache, map: TmjMap, patch: HeightPatch, opts: Ele
 
 function _hexColors(map: TmjMap, patch: HeightPatch, opts: ElevationOverlayOptions): string[] | null {
   if (patch.cols !== map.width || patch.rows !== map.height) return null;
-  const key = `${map.width}x${map.height}|${opts.hillshade}|${opts.intervalCm}`;
+  const key = `${map.width}x${map.height}|${opts.hillshade}|${opts.intervalCm}|${wrapsX(map)}`;
   let cache = _hexCache.get(patch);
   if (cache && patch.rangeCheck && !_sameRange(cache.range, patchRange(patch))) patch.fullRefresh = true;
   if (!cache || cache.key !== key || patch.fullRefresh) {
@@ -206,6 +214,10 @@ function _hexColors(map: TmjMap, patch: HeightPatch, opts: ElevationOverlayOptio
     // A hex's shading depends on its neighbours, so recolor one ring further
     const { c0, r0, c1, r1 } = patch.dirtyRect;
     _colorHexes(cache, map, patch, opts, c0 - 1, r0 - 1, c1 + 1, r1 + 1);
+    if (wrapsX(map)) {
+      if (c0 <= 1) _colorHexes(cache, map, patch, opts, map.width - 2, r0 - 1, map.width - 1, r1 + 1);
+      if (c1 >= map.width - 2) _colorHexes(cache, map, patch, opts, 0, r0 - 1, 1, r1 + 1);
+    }
   }
   patch.fullRefresh = false;
   patch.rangeCheck = false;

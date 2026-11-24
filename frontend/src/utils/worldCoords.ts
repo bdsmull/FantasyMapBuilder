@@ -14,6 +14,10 @@
  *      map's cell space times the cell sizes.
  *   3. The root map's `world-origin` point object (or its centre) is world (0, 0); y flips
  *      so north is positive.
+ *
+ * A root that wraps east-west (#36, utils/worldWrap.ts) is a cylinder: a place's x repeats
+ * every `circumference` meters. Positions stay continuous (a map across the seam has no
+ * jump in it); lookups from a world point accept any x.
  */
 
 import type { TmjMap, TmjObject } from '../types/tmj';
@@ -22,6 +26,7 @@ import type { WorldSetNode } from '../types/worldSet';
 import { cellToPixel, pixelToCell, placeChild } from './worldSurface';
 import { hexCenter, hexLayout, hexMapPixelSize } from '../canvas/hexGeometry';
 import { MAP_SCALE_BY_ID, scaleMetersPerUnit } from '../data/mapScales';
+import { mod, wrapsX } from './worldWrap';
 
 /** Tiled class (type) of the root map's world origin point. */
 export const WORLD_ORIGIN_TYPE = 'world-origin';
@@ -82,6 +87,8 @@ export interface MapFrame {
   /** The world origin, the same way. */
   ox: number;
   oy: number;
+  /** Meters once round the world, when its root wraps east-west; else null. */
+  circumference: number | null;
 }
 
 /**
@@ -111,7 +118,21 @@ export function mapFrame(
   }
   const o = originPixel(child.map);
   const oc = pixelToCell(child.map, o.x, o.y);
-  return { name, root: node.mapName, mpu: self.mpu, bx, by, ox: oc.u * child.mpu, oy: oc.v * child.mpu };
+  return { name, root: node.mapName, mpu: self.mpu, bx, by, ox: oc.u * child.mpu, oy: oc.v * child.mpu, circumference: worldWidth(child) };
+}
+
+/** Meters once round the world of a root map that wraps east-west, or null. */
+export function worldWidth(root: WorldMapSource): number | null {
+  return wrapsX(root.map) ? root.map.width * root.mpu : null;
+}
+
+/**
+ * Meters east from one world x to another, the short way round (negative: west): at least
+ * minus half the circumference, less than half of it. Without a wrap, simply the difference.
+ */
+export function wrapDelta(from: number, to: number, circumference: number | null): number {
+  const d = to - from;
+  return circumference ? d - circumference * Math.floor(d / circumference + 0.5) : d;
 }
 
 /** Map pixel -> world meters (x east, y north). */
@@ -120,9 +141,20 @@ export function pixelToWorld(frame: MapFrame, map: TmjMap, x: number, y: number)
   return { x: frame.bx + u * frame.mpu - frame.ox, y: frame.oy - (frame.by + v * frame.mpu) };
 }
 
-/** World meters -> map pixel (may lie off the map). */
+/** On a wrapped world, the same place's x on the turn nearest the middle of this map. */
+function _nearestTurn(frame: MapFrame, map: TmjMap, wx: number): number {
+  if (!frame.circumference) return wx;
+  const r = worldRect(frame, map);
+  const middle = (r.west + r.east) / 2;
+  return middle + wrapDelta(middle, wx, frame.circumference);
+}
+
+/**
+ * World meters -> map pixel (may lie off the map). On a wrapped world any x does; the
+ * pixel is the one nearest the middle of the map.
+ */
 export function worldToPixel(frame: MapFrame, map: TmjMap, wx: number, wy: number): { x: number; y: number } {
-  const u = (wx + frame.ox - frame.bx) / frame.mpu;
+  const u = (_nearestTurn(frame, map, wx) + frame.ox - frame.bx) / frame.mpu;
   const v = (frame.oy - wy - frame.by) / frame.mpu;
   return cellToPixel(map, u, v);
 }
@@ -134,12 +166,13 @@ export function cellCentrePixel(map: TmjMap, col: number, row: number): { x: num
 
 /**
  * The cell holding a map pixel: on square maps the cell it falls in, on hex maps the one
- * with the nearest centre. Null when it's off the map.
+ * with the nearest centre. Null when it's off the map. `wrap`: columns continue round the
+ * world (a wrapped root map), so only the top and bottom are off it.
  */
-export function pixelToCellIndex(map: TmjMap, x: number, y: number): { col: number; row: number } | null {
+export function pixelToCellIndex(map: TmjMap, x: number, y: number, wrap = false): { col: number; row: number } | null {
   const { u, v } = pixelToCell(map, x, y);
   if (map.orientation !== 'hexagonal') {
-    const col = Math.floor(u), row = Math.floor(v);
+    const col = wrap ? mod(Math.floor(u), map.width) : Math.floor(u), row = Math.floor(v);
     return col >= 0 && row >= 0 && col < map.width && row < map.height ? { col, row } : null;
   }
   const layout = hexLayout(map);
@@ -147,15 +180,21 @@ export function pixelToCellIndex(map: TmjMap, x: number, y: number): { col: numb
   let bestD = Infinity;
   for (let col = Math.floor(u) - 1; col <= Math.floor(u) + 1; col++) {
     for (let row = Math.floor(v) - 1; row <= Math.floor(v) + 1; row++) {
-      if (col < 0 || row < 0 || col >= map.width || row >= map.height) continue;
+      if (row < 0 || row >= map.height || (!wrap && (col < 0 || col >= map.width))) continue;
       const c = hexCenter(layout, col, row);
       const d = (c.x - x) ** 2 + (c.y - y) ** 2;
-      if (d < bestD - 1e-9) { bestD = d; best = { col, row }; }
+      if (d < bestD - 1e-9) { bestD = d; best = { col: mod(col, map.width), row }; }
     }
   }
   if (!best) return null;
   // Off the map: farther from the nearest centre than a hex reaches
   return Math.sqrt(bestD) <= Math.max(layout.tileWidth, layout.tileHeight) / 2 ? best : null;
+}
+
+/** World meters -> the map cell there, or null when it's off the map. */
+export function worldToCell(frame: MapFrame, map: TmjMap, wx: number, wy: number): { col: number; row: number } | null {
+  const p = worldToPixel(frame, map, wx, wy);
+  return pixelToCellIndex(map, p.x, p.y, frame.circumference !== null && frame.name === frame.root);
 }
 
 /** The map's pixel size (its extent: from (0, 0) to this). */
@@ -194,7 +233,8 @@ export function mapsAt(
     const frame = src ? mapFrame(n.mapName, nodes, lookup) : null;
     if (!src || !frame || frame.root !== root) continue;
     const r = worldRect(frame, src.map);
-    if (wx < r.west || wx > r.east || wy < r.south || wy > r.north) continue;
+    const x = _nearestTurn(frame, src.map, wx);
+    if (x < r.west || x > r.east || wy < r.south || wy > r.north) continue;
     found.push({ name: n.mapName, z: n.z, mpu: frame.mpu, pixel: worldToPixel(frame, src.map, wx, wy) });
   }
   return found.sort((a, b) => a.mpu - b.mpu || Number(a.z !== 0) - Number(b.z !== 0) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));

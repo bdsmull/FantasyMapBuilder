@@ -15,6 +15,7 @@ import { NO_WATER } from '../utils/water';
 import type { FlowMap } from '../utils/flow';
 import { MIN_HOLLOW_CM, samplePixels } from '../utils/flow';
 import { hexLayout, hexTopLeft, hexPolygon } from './hexGeometry';
+import { wrapPeriodPx, wrapsX } from '../utils/worldWrap';
 import { visibleHexRange } from './hexRenderer';
 
 export interface WaterOverlayOptions {
@@ -129,6 +130,7 @@ function _streams(ctx: CanvasRenderingContext2D, map: TmjMap, patch: HeightPatch
   const vx0 = (-pan.x - margin) / zoom, vy0 = (-pan.y - margin) / zoom;
   const vx1 = (width - pan.x + margin) / zoom, vy1 = (height - pan.y + margin) / zoom;
   const T = Math.max(2, opts.streamSamples);
+  const period = wrapsX(map) ? wrapPeriodPx(map) : 0;
   ctx.strokeStyle = _STREAM;
   ctx.lineCap = 'round';
   // Group by width so each width is one path
@@ -148,7 +150,14 @@ function _streams(ctx: CanvasRenderingContext2D, map: TmjMap, patch: HeightPatch
     ctx.beginPath();
     for (const i of list) {
       const j = flow.receiver[i];
+      const dx = pos.x[j] - pos.x[i];
       ctx.moveTo(pos.x[i] * zoom, pos.y[i] * zoom);
+      if (period && Math.abs(dx) > period / 2) {
+        // Across the seam: out over this edge, and in over the other
+        const shift = dx > 0 ? -period : period;
+        ctx.lineTo((pos.x[j] + shift) * zoom, pos.y[j] * zoom);
+        ctx.moveTo((pos.x[i] - shift) * zoom, pos.y[i] * zoom);
+      }
       ctx.lineTo(pos.x[j] * zoom, pos.y[j] * zoom);
     }
     ctx.stroke();

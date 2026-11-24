@@ -22,6 +22,7 @@ import type { TmjMap } from '../types/tmj';
 import type { HeightPatch } from './heightGrid';
 import { heightAt, hexHeightWeights } from './heightGrid';
 import { pixelToCell, sampleCell } from './worldSurface';
+import { joinSeam, mod, withWrap, wrapPeriodPx, wrapsX } from './worldWrap';
 
 /** A height (cm) the surface should pass through at a map pixel, pulling within `reachCells`. */
 export interface KnownHeight {
@@ -226,8 +227,54 @@ function _solve(levels: _Level[], residual: Float64Array): Float64Array {
   return x!;
 }
 
-/** Bend the surface so it passes through every known height. */
+/**
+ * Bend the surface so it passes through every known height. On a wrapped map (#36) the
+ * fit reaches across the seam: it's made on the map unrolled a little past both edges, with
+ * the marks near each edge repeated beyond the other.
+ */
 export function fitHeights(map: TmjMap, patch: HeightPatch, known: KnownHeight[]): FitResult {
+  if (!wrapsX(map) || known.length === 0) return _fit(map, patch, known);
+  const W = map.width, period = wrapPeriodPx(map), hex = map.orientation === 'hexagonal';
+  // Far enough for reaches that overlap across the seam; even, so flat-topped hexes keep their stagger
+  const reach = Math.ceil(Math.max(...known.map((k) => k.reachCells)));
+  const pad = Math.min(W + (W % 2), 2 * Math.ceil((3 * reach + 2) / 2));
+  const shift = (pad * period) / W;
+  const wide: TmjMap = { ...map, width: W + 2 * pad, properties: withWrap(map.properties, false) };
+  const cols = wide.width + (hex ? 0 : 1);
+  const margin = (reach * period) / W;
+  const copies = known.flatMap((k) => [-1, 0, 1].map((t) => ({ ...k, x: k.x + shift + t * period })))
+    .filter((k) => k.x > -margin && k.x < (wide.width * period) / W + margin);
+  let cm = patch.cm;
+  let best: FitResult | null = null;
+  // The two sides are solved apart and agree closely; joining them can move a mark at the
+  // seam by a little, so fit what's left again
+  for (let round = 0; round < _ROUNDS; round++) {
+    const roll = { cols, rows: patch.rows, cm: new Int32Array(cols * patch.rows), mask: new Uint8Array(cols * patch.rows) };
+    for (let row = 0; row < patch.rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const from = row * patch.cols + mod(col - pad, W);
+        roll.cm[row * cols + col] = cm[from];
+        roll.mask[row * cols + col] = patch.mask[from];
+      }
+    }
+    const fit = _fit(wide, roll, copies);
+    const next = patch.cm.slice();
+    for (let row = 0; row < patch.rows; row++) {
+      for (let col = 0; col < patch.cols; col++) next[row * patch.cols + col] = fit.cm[row * cols + col + pad];
+    }
+    joinSeam(map, next, null, patch.cols);
+    let maxMissCm = 0, changed = 0;
+    for (const k of known) maxMissCm = Math.max(maxMissCm, Math.abs(k.cm - heightAt(map, { ...patch, cm: next }, k.x, k.y)));
+    for (let i = 0; i < next.length; i++) if (next[i] !== patch.cm[i]) changed++;
+    if (best && maxMissCm > best.maxMissCm * 0.9) break;
+    best = { cm: next, changed, maxMissCm };
+    if (maxMissCm < _CLOSE_ENOUGH_CM) break;
+    cm = next;
+  }
+  return best!;
+}
+
+function _fit(map: TmjMap, patch: HeightPatch, known: KnownHeight[]): FitResult {
   const { cols, rows } = patch;
   const out = patch.cm.slice();
   if (known.length === 0) return { cm: out, changed: 0, maxMissCm: 0 };

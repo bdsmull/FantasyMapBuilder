@@ -4,7 +4,8 @@
 ## "world-origin" point object in the world's root map, or that map's centre.
 ## Positions are returned as {"x": float, "y": float} dictionaries (64-bit floats;
 ## Godot's Vector2 is 32-bit, which loses about half a meter at world scale).
-## Cells are Vector2i.
+## Cells are Vector2i. A world whose root map wraps east-west repeats in x: positions are
+## continuous, and lookups from a world point accept any x.
 ##
 ## [codeblock]
 ## var ws := WorldSetCoords.open("res://world_sets/Brakka")
@@ -25,6 +26,7 @@ const WORLD_SET_SUFFIX := ".worldset.json"
 const _METERS_PER_FOOT := 0.3048
 const _FEET_PER_MILE := 5280.0
 const _WHOLE_CELL_TOLERANCE := 1e-9
+const _MIN_WRAP_WIDTH := 4
 
 ## Scale preset id -> [meters per cell (metric), feet per cell (imperial)]. Only needed
 ## for map files without a "metersPerUnit" property (saved by older editors).
@@ -141,12 +143,19 @@ class MapGeometry:
 			width * (hex_width + side_x) + (column_width if height > 1 else 0),
 			height * row_height + offset_y])
 
-	## The cell holding a pixel (hex: the nearest centre), or null off the map.
-	func pixel_to_cell(x: float, y: float) -> Variant:
+	## Whether the grid can meet itself east-west: flat-topped hexes need an even width.
+	func can_wrap() -> bool:
+		return width >= _MIN_WRAP_WIDTH and not (hexagonal and stagger_x and width % 2 == 1)
+
+	## The cell holding a pixel (hex: the nearest centre), or null off the map. With wrap the
+	## columns continue round the world.
+	func pixel_to_cell(x: float, y: float, wrap := false) -> Variant:
 		var uv := pixel_to_cell_space(x, y)
 		if not hexagonal:
 			var c := floori(uv[0])
 			var r := floori(uv[1])
+			if wrap:
+				c = posmod(c, width)
 			if c >= 0 and r >= 0 and c < width and r < height:
 				return Vector2i(c, r)
 			return null
@@ -154,12 +163,12 @@ class MapGeometry:
 		var best_d := INF
 		for col in range(floori(uv[0]) - 1, floori(uv[0]) + 2):
 			for row in range(floori(uv[1]) - 1, floori(uv[1]) + 2):
-				if col < 0 or row < 0 or col >= width or row >= height:
+				if row < 0 or row >= height or (not wrap and (col < 0 or col >= width)):
 					continue
 				var c := hex_centre(col, row)
 				var d := (c[0] - x) * (c[0] - x) + (c[1] - y) * (c[1] - y)
 				if d < best_d - 1e-9:
-					best = Vector2i(col, row)
+					best = Vector2i(posmod(col, width), row)
 					best_d = d
 		if best == null or sqrt(best_d) > maxf(hex_width, hex_height) / 2.0:
 			return null
@@ -177,6 +186,8 @@ class MapFrame:
 	## The world origin, the same way.
 	var ox: float
 	var oy: float
+	## Meters once round the world when its root map wraps east-west, else 0.
+	var circumference := 0.0
 
 
 var folder: String
@@ -357,7 +368,39 @@ func frame(map_name: String) -> MapFrame:
 	f.by = by
 	f.ox = ouv[0] * child_mpu
 	f.oy = ouv[1] * child_mpu
+	f.circumference = world_width(root)
 	return f
+
+
+## Meters once round the world of a root map that wraps east-west, else 0.
+func world_width(root: String) -> float:
+	var d = map_data(root)
+	var geo := geometry(root)
+	var mpu := cell_size(root)
+	if d == null or geo == null or mpu <= 0:
+		return 0.0
+	var wraps = _prop(d, "wrapX")
+	return geo.width * mpu if typeof(wraps) == TYPE_BOOL and wraps and geo.can_wrap() else 0.0
+
+
+## Meters east from world x start to end, the short way round a world that wraps
+## (negative: west): at least minus half the circumference, less than half of it.
+func wrap_delta(root: String, start: float, end: float) -> float:
+	return _wrap_delta(start, end, world_width(root))
+
+
+static func _wrap_delta(start: float, end: float, circumference: float) -> float:
+	var d := end - start
+	return d - circumference * floorf(d / circumference + 0.5) if circumference > 0.0 else d
+
+
+## On a wrapped world, the same place's x on the turn nearest the middle of the map.
+func _nearest_turn(f: MapFrame, x: float) -> float:
+	if f.circumference <= 0.0:
+		return x
+	var r = world_rect(f.name)
+	var middle: float = (r.west + r.east) / 2.0
+	return middle + _wrap_delta(middle, x, f.circumference)
 
 
 ## A map pixel -> world meters {x (east), y (north)}, or null.
@@ -378,12 +421,13 @@ func cell_to_world(map_name: String, col: int, row: int) -> Variant:
 	return pixel_to_world(map_name, c[0], c[1])
 
 
-## World meters -> a map pixel {x, y} (which may lie off the map), or null.
+## World meters -> a map pixel {x, y} (which may lie off the map), or null. On a wrapped
+## world any x does; the pixel is the one nearest the middle of the map.
 func world_to_pixel(map_name: String, x: float, y: float) -> Variant:
 	var f := frame(map_name)
 	if f == null:
 		return null
-	var u := (x + f.ox - f.bx) / f.meters_per_cell
+	var u := (_nearest_turn(f, x) + f.ox - f.bx) / f.meters_per_cell
 	var v := (f.oy - y - f.by) / f.meters_per_cell
 	var p := geometry(map_name).cell_space_to_pixel(u, v)
 	return {"x": p[0], "y": p[1]}
@@ -394,7 +438,8 @@ func world_to_cell(map_name: String, x: float, y: float) -> Variant:
 	var p = world_to_pixel(map_name, x, y)
 	if p == null:
 		return null
-	return geometry(map_name).pixel_to_cell(p.x, p.y)
+	var f := frame(map_name)
+	return geometry(map_name).pixel_to_cell(p.x, p.y, f.circumference > 0.0 and f.name == f.root)
 
 
 ## A map's extent in world meters {west, east, south, north}, or null.
@@ -419,7 +464,10 @@ func maps_at(root: String, x: float, y: float) -> Array:
 		if f == null or f.root != root:
 			continue
 		var r = world_rect(map_name)
-		if r == null or x < r.west or x > r.east or y < r.south or y > r.north:
+		if r == null:
+			continue
+		var turn_x := _nearest_turn(f, x)
+		if turn_x < r.west or turn_x > r.east or y < r.south or y > r.north:
 			continue
 		found.append({"name": map_name, "z": int(n.get("z", 0)), "meters_per_cell": f.meters_per_cell,
 			"pixel": world_to_pixel(map_name, x, y)})

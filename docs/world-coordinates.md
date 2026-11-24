@@ -25,7 +25,7 @@ A world set is a folder (see [File Format](file-format.md)):
   `{col, row}`, the optional `parentOffset` `{x, y}`, and `z`.
 - `maps/<map>.tmj`: Tiled JSON. You need `orientation`, `width`, `height`, `tilewidth`,
   `tileheight`, for hex maps `hexsidelength`, `staggeraxis`, `staggerindex`, the custom
-  properties `metersPerUnit`, `scale` and `units`, and the root map's origin object.
+  properties `metersPerUnit`, `scale` and `units`, and from the root map `wrapX` and the origin object.
 
 A map without a node is not placed, and has no world position. Nor does a map whose chain of
 parents is broken (a missing map or anchor, a loop) or one that has no cell size.
@@ -187,6 +187,33 @@ A map's **extent** is from pixel (0, 0) to its pixel size: `width × tilewidth` 
 with the smallest cells (most detailed) first; among equal cell sizes, Z = 0 comes before other
 levels, then they're sorted by name.
 
+### Worlds that wrap
+
+A world **wraps east–west** when its root map has the `wrapX` custom property set to `true` and can
+wrap: it is at least 4 cells wide, and if it is a hex map with `staggeraxis` `x`, its width is
+even. (`wrapX` on any other map means nothing here.) Such a world is a cylinder of
+
+```
+circumference C = the root map's width × its cell size
+```
+
+meters, and a place's x repeats every `C`. Positions are **continuous**: everything above holds
+unchanged, so there is no jump in a map that crosses the seam, and the same place can have an x
+that differs by a multiple of `C`. Lookups **from** a world point accept any x:
+
+- **The short way round** from `a` to `b` is `wrapDelta = d − C × floor(d / C + 0.5)`, with
+  `d = b − a`: at least `−C / 2` and less than `C / 2`.
+- **World to pixel, and maps at a world point:** first move the point's x to the turn nearest the
+  middle of the map: `middle + wrapDelta(middle, x)`, where `middle` is halfway between the
+  map's west and east extents.
+- **The cell at a world point on the root map itself:** columns continue round the world. Take
+  columns modulo `width`, so only the top and bottom are off the map. On a hex map, measure
+  distances to the unwrapped columns before taking the modulo.
+
+Nothing wraps north–south. The map is a flat sheet rolled into a cylinder: every cell counts as
+the same size, so east–west distances are too long away from the equator, if the map stands
+for a globe.
+
 Heights (z) are already absolute: meters above sea level, in each map's height file (see
 [Elevation files](file-format.md#elevation-files)).
 
@@ -224,7 +251,8 @@ Heights (z) are already absolute: meters above sea level, in each map's height f
     ```
 
 Both offer: `cell_size`, `roots`, `frame`, `pixel_to_world`, `cell_to_world`, `world_to_pixel`,
-`world_to_cell`, `world_rect` (west, east, south, north) and `maps_at`.
+`world_to_cell`, `world_rect` (west, east, south, north) and `maps_at`, and for worlds that wrap
+`world_width` (Godot: 0, Python: `None` when it doesn't) and `wrap_delta`.
 
 ---
 
@@ -233,7 +261,7 @@ Both offer: `cell_size`, `roots`, `frame`, `pixel_to_world`, `cell_to_world`, `w
 `clients/conformance/` holds a small world set, `Conformance/`, and `expected.json`, the
 reference implementation's answers for it. The world set covers square and both kinds of hex
 map, offsets, Z levels, imperial units, a file without `metersPerUnit`, a second root without an
-origin object, and an unplaced map. Answers are in meters and should match within 1e-6.
+origin object, an unplaced map, and worlds that wrap. Answers are in meters and should match within 1e-6.
 
 CI runs all three implementations against it: pytest for Python, a headless Godot for the addon,
 and Vitest for the reference. The scale table has one source, `frontend/src/data/mapScales.json`, which the editor and its server

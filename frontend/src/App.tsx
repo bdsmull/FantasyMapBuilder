@@ -26,6 +26,7 @@ import { contourKey } from './tools/contourMode';
 import { ceilingKey } from './tools/ceilingMode';
 import { waterKey } from './tools/waterMode';
 import { pointKey } from './tools/pointTool';
+import { keepsKeys } from './utils/keyboard';
 import { LineClassesDialog } from './components/dialogs/LineClassesDialog';
 
 type Dialog = 'new' | 'open' | 'tilesets' | 'worldSets' | 'mapProperties' | null;
@@ -84,7 +85,7 @@ export const App: React.FC = () => {
 
   // Global keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (keepsKeys(e.target)) return;
 
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); undo(); return; }

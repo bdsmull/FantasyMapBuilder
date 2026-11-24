@@ -11,6 +11,8 @@ import { inspectAt } from '../utils/inspect';
 import type { ChildRect } from '../utils/worldSetUtils';
 import { waterAt } from '../utils/water';
 import { useWaterView } from './useWaterView';
+import { ceilingAtPixel, describeCeiling, readCeilings } from '../utils/ceilings';
+import { useCeilingContext } from './useCeilings';
 
 /** Screen pixels around a point object that count as clicking it. */
 const _PICK_RADIUS_PX = 10;
@@ -42,6 +44,7 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
   const defaultUnits = useWorldSetStore((s) => s.activeWorldSet?.units);
   const surface = useWorldSurfaceStore();
   const waterView = useWaterView();
+  const ceilingCtx = useCeilingContext();
   if (!mapData || !inspected) return null;
 
   const info = inspectAt(mapData, inspected.x, inspected.y, _PICK_RADIUS_PX / zoom);
@@ -91,6 +94,23 @@ export const InspectorCard: React.FC<Props> = ({ footprints, onOpenMap }) => {
           {elevation.handSet && <span style={{ color: '#888' }}> · hand-set</span>}
         </div>
       )}
+
+      {heights && info && (() => {
+        // Ceiling (#45): only where there is one, or on levels off the ground
+        const ceiling = ceilingAtPixel(mapData, heights, ceilingCtx, readCeilings(mapData), inspected.x, inspected.y);
+        if (!ceiling && ceilingCtx.z === 0) return null;
+        return (
+          <div style={_section}>
+            <div style={_label}>Ceiling</div>
+            {ceiling ? (
+              <>
+                {formatHeight(ceiling.headroomCm, units)} headroom
+                <span style={{ color: '#888' }}> · ceiling {formatHeight(ceiling.cm, units)} · {describeCeiling(ceiling)}</span>
+              </>
+            ) : <span style={{ color: '#888' }}>Open sky</span>}
+          </div>
+        );
+      })()}
 
       {heights && waterView.water && info && (() => {
         const w = waterAt(mapData, heights, waterView.water, waterView.bodies, inspected.x, inspected.y);

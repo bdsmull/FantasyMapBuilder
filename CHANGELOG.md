@@ -12,6 +12,16 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
+- **Ceilings for Z levels** (issue #45): how much headroom there is over each spot of a level.
+  - The ceiling is the floor of the next level up (a sibling map at a higher Z on the same parent)
+    less its **floor thickness**, or for maps below ground the parent's ground.
+  - Floor thickness: a world set default (**Edit → World Sets…**, 0.3 m unless set), which a map
+    can override (map property `slab`).
+  - A map's own **headroom** (map property `headroom`) and **ceiling shapes** (Height tool →
+    **Ceiling** mode; closed shapes of type `ceiling` in a **Ceilings** layer) with their own
+    headroom for a low passage or a tall hall. Neither goes above the floor over it.
+  - The headroom under the cursor shows in the status bar and the Inspect card, and **Show →
+    Headroom** shades where it differs from the map's own.
 - **Continuous integration** (#43, issue #42): a GitHub Actions workflow runs `pytest`, the Vitest
   suite, the type check and build, and `mkdocs build --strict` on every pull request and push to
   `main`. Status badge in the README.

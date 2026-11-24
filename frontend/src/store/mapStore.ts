@@ -23,6 +23,7 @@ import { isLine, toPolyline, writeWidths } from '../utils/lines';
 import { WATER_LAYER, WATER_TYPE, isWaterBody, waterProperties, withSea } from '../utils/water';
 import { CONTOUR_LAYER, CONTOUR_TYPE, isContour, contourPoints, contourShape, minContourPoints } from '../utils/contours';
 import type { Pt } from '../utils/lines';
+import { CEILING_LAYER, CEILING_TYPE, isCeiling, ceilingProperties, ceilingShape, withLengthProperty } from '../utils/ceilings';
 
 /** Object layer new lines go into when the active layer isn't an object layer. */
 export const LINE_LAYER = 'Roads and rivers';
@@ -49,6 +50,8 @@ export interface ElevationView {
   flow: boolean;
   /** A stream shows where at least this many height samples drain through (null: a default for the map size). */
   streamSamples: number | null;
+  /** Shade where the headroom differs from the map's own (#45). */
+  headroom: boolean;
 }
 import { MAP_SCALE_BY_ID } from '../data/mapScales';
 
@@ -171,6 +174,14 @@ export interface MapStore {
   addContour: (points: Pt[], closed: boolean, cm: number, reachCells: number) => number | null;
   updateContour: (id: number, changes: { name?: string; cm?: number; reachCells?: number; points?: Pt[]; closed?: boolean }) => void;
   deleteContour: (id: number) => void;
+
+  // ---- Ceilings (#45; object changes are one undo step each) ----
+  /** Add a ceiling object (a closed shape, map pixels) to the "Ceilings" layer (created if needed); returns its object ID. */
+  addCeiling: (points: Pt[], headroomCm: number) => number | null;
+  updateCeiling: (id: number, changes: { name?: string; headroomCm?: number; points?: Pt[] }) => void;
+  deleteCeiling: (id: number) => void;
+  /** Set the map's own headroom or floor thickness (cm), or remove it (null). Saved with the map. */
+  setMapLength: (property: 'headroom' | 'slab', cm: number | null) => void;
 
   // ---- Lines: roads and rivers (each change is one undo step) ----
   /**
@@ -351,7 +362,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
   pendingTiles: [],
   heights: null,
   heightsDirty: false,
-  elevationView: { visible: true, opacity: 0.6, hillshade: true, showChildren: true, water: true, flow: false, streamSamples: null },
+  elevationView: { visible: true, opacity: 0.6, hillshade: true, showChildren: true, water: true, flow: false, streamSamples: null, headroom: false },
   heightBrush: DEFAULT_HEIGHT_BRUSH,
   heightsRev: 0,
   pendingHeights: new Map(),
@@ -668,6 +679,62 @@ export const useMapStore = create<MapStore>((set, get) => ({
       return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
     });
     if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  addCeiling: (points, headroomCm) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData || points.length < 3 || headroomCm <= 0) return null;
+    const id = mapData.nextobjectid;
+    const ceiling: TmjObject = {
+      id, name: '', type: CEILING_TYPE, width: 0, height: 0, visible: true, ...ceilingShape(points),
+      properties: ceilingProperties([], headroomCm),
+    };
+    const top = _topObjectLayer(mapData, CEILING_LAYER, '#9b6bd1');
+    const layers = updateObjectLayer(top.layers, top.index, (objects) => [...objects, ceiling]);
+    _commitLayers(set, get, layers, activeLayerIndex, top.nextlayerid);
+    set((state) => ({ mapData: state.mapData && { ...state.mapData, nextobjectid: id + 1 } }));
+    return id;
+  },
+
+  updateCeiling: (id, changes) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    if (changes.points && changes.points.length < 3) return;
+    if (changes.headroomCm !== undefined && changes.headroomCm <= 0) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isCeiling(o))) return layer;
+      found = true;
+      return {
+        ...layer,
+        objects: layer.objects.map((o) => {
+          if (o.id !== id) return o;
+          const next: TmjObject = { ...o, name: changes.name ?? o.name };
+          if (changes.headroomCm !== undefined) next.properties = ceilingProperties(o.properties, changes.headroomCm);
+          return changes.points ? { ...next, ...ceilingShape(changes.points) } : next;
+        }),
+      };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  deleteCeiling: (id) => {
+    const { mapData, activeLayerIndex } = get();
+    if (!mapData) return;
+    let found = false;
+    const layers = mapData.layers.map((layer) => {
+      if (!isObjectLayer(layer) || !layer.objects.some((o) => o.id === id && isCeiling(o))) return layer;
+      found = true;
+      return { ...layer, objects: layer.objects.filter((o) => o.id !== id) };
+    });
+    if (found) _commitLayers(set, get, layers, activeLayerIndex, mapData.nextlayerid);
+  },
+
+  setMapLength: (property, cm) => {
+    const { mapData } = get();
+    if (!mapData) return;
+    const properties = withLengthProperty(mapData.properties, property, cm);
+    set({ mapData: { ...mapData, ...(properties.length ? { properties } : { properties: undefined }) }, isDirty: true });
   },
 
   addLine: (points, classId, extra) => {

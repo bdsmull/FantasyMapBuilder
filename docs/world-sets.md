@@ -62,7 +62,9 @@ The child is centred on its anchor cell. To put it at an exact spot, see below.
 Maps on the same spot at different heights, such as a building's floors or a cave under a
 town, share a parent and anchor but have different **Z levels** (0 = ground; +1, +2 … floors;
 −1 … below ground), each with an optional label like "Second Floor". Elevation and roads
-assemble only the ground level (Z = 0).
+assemble only the ground level (Z = 0). Each level's heights are its floor, and the floor of
+the level above (or the ground, below ground) is its ceiling: see
+[Ceilings](elevation.md#ceilings).
 
 ---
 

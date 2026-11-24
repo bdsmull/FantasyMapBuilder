@@ -8,6 +8,7 @@ import { resolveUnits } from '../data/mapScales';
 import { formatHeight, hasHeightsProperty, patchRange } from '../utils/heightGrid';
 import { defaultStreamSamples } from '../utils/flow';
 import { shownLines } from '../utils/lines';
+import { mapHeadroomCm } from '../utils/ceilings';
 
 /** The Flow view's stream detail: fewer (only big streams) to more. */
 export const StreamSlider: React.FC = () => {
@@ -54,6 +55,7 @@ export const ShowPanel: React.FC = () => {
   const own = shownLines(mapData).length;
   const other = cross.key === surfaceKey(mapWorldSet, mapName) ? cross.ghosts.length : 0;
   const range = heights ? patchRange(heights) : null;
+  const headroomOwn = mapHeadroomCm(mapData);
 
   return (
     <div className="show-panel">
@@ -117,6 +119,22 @@ export const ShowPanel: React.FC = () => {
             <span className="layer-name">Flow</span>
           </label>
           {elevationView.flow && <StreamSlider />}
+          <label
+            className="layer-item"
+            style={{ cursor: 'default' }}
+            title={headroomOwn !== null
+              ? `Shade where the headroom isn't this map's own ${formatHeight(headroomOwn, units)}: orange lower (a floor above, a low passage), blue higher (a tall hall)`
+              : 'Shade where there is a ceiling (a floor above, the ground, a ceiling shape). Set a headroom for this map in the Height tool\'s Ceiling mode.'}
+          >
+            <input type="checkbox" checked={elevationView.headroom} onChange={(e) => setElevationView({ headroom: e.target.checked })} />
+            <span className="layer-icon">↕</span>
+            <span className="layer-name">
+              Headroom
+              <span style={{ color: '#888', marginLeft: 6, fontSize: 11 }}>
+                {headroomOwn !== null ? `differs from ${formatHeight(headroomOwn, units)}` : 'under a ceiling'}
+              </span>
+            </span>
+          </label>
         </>
       ) : (
         <div className="panel-empty" style={{ padding: '6px 8px' }}>

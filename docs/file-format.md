@@ -45,6 +45,9 @@ small and readable.
 | Object (polyline or polygon, type `contour`) | `height` | float | Contour height in meters ([Elevation](elevation.md#contour-lines)) |
 | Object (polyline or polygon, type `contour`) | `reach` | float | How far it pulls the surface, in cells (default 10) |
 | Object (point, type `water`) | `height` | float | A lake's or sea's surface height in meters ([Elevation](elevation.md#lakes-and-seas)) |
+| Map | `headroom` | float | The level's ceiling height above its floor, in meters ([Ceilings](elevation.md#ceilings)); absent = none |
+| Map | `slab` | float | Thickness of the map's floor, in meters: the level below's ceiling is this much under it; absent = the world set's `floorSlabM` |
+| Object (polygon, type `ceiling`) | `headroom` | float | Ceiling height above the floor inside the shape, in meters ([Ceilings](elevation.md#ceilings)) |
 | Object (polyline) | type | — | Line class ID, e.g. `major-road`, `river` ([Roads & Rivers](roads-rivers.md)); `contour` is a contour line instead |
 | Object (polyline) | `widths` | string | Width in meters per point, comma-separated; blank = class width (e.g. `",,25,40"`) |
 | Object (polyline) | `refines` | string | `<map>#<object id>` of the line this one refines |
@@ -107,6 +110,7 @@ so edits are shared. A color-only tileset gets a generated swatch PNG next to it
 | `units` | Default units for maps that don't set their own; absent = metric |
 | `generation` | Height generation settings shared by the world set ([Generate](elevation.md#generate)); absent until used. `roughness` absent = 0.5 |
 | `lineClasses` | Road and river classes; absent = the built-in set |
+| `floorSlabM` | Floor thickness between Z levels, in meters ([Ceilings](elevation.md#ceilings)); absent = 0.3 |
 | `nodes` | One entry per placed map |
 | `nodes[].parentAnchor` | The parent cell it sits on; `null` for a root |
 | `nodes[].parentOffset` | Optional fine position: how far, in parent cells, its centre is moved from its default spot (centred on the anchor) |

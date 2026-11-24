@@ -47,6 +47,7 @@ The **Show** section of the left panel sets how the elevation is drawn, whatever
 | Child maps | Show child maps' heights inside their footprints (see [Across maps](#across-maps)) |
 | Water | Show lakes and the sea, shaded by depth (see [Water](#water)) |
 | Flow | Show streams where rain would run and hollows where it would pool; **Streams** sets how many |
+| Headroom | Shade where the headroom differs from the map's own (see [Ceilings](#ceilings)) |
 
 **Colors.** Maps that span more than 500 m of height, or go below sea level, use absolute
 colors (blues below sea level; greens, tans, browns, greys and white with height). Flatter maps
@@ -76,6 +77,7 @@ Select the **Height** tool (`2`). Its panel (right) has a **Brush** section:
 | Release | Remove protection from hand-set heights, without changing them |
 | Spot | Place spot heights instead of painting (see below) |
 | Contour | Draw contour lines instead of painting (see below) |
+| Ceiling | Set this level's headroom and draw ceiling shapes (see [Ceilings](#ceilings)) |
 
 **Radius** is in cells. Each press-drag-release stroke is one undo step. Right-click picks the
 height under the pointer as the Set target (in Spot and Contour modes, as the height for new
@@ -295,6 +297,55 @@ off it is, and:
 
 One undo step; hand-set marks are kept. If the parent's ground under the child is uneven (a
 peak, say), no shift or tilt can fit it, and the panel says so.
+
+---
+
+## Ceilings
+
+On a building's floors, in caves and mines, a map's heights are its **floor**. The **ceiling**
+over a spot, and so the **headroom** (ceiling less floor), is the lower of:
+
+- **The level above.** [Z levels](world-sets.md#z-levels) share a parent map. The floor of the
+  next level up covering the spot (the lowest higher Z that has elevation), less that level's
+  **floor thickness**, is the ceiling. A map below ground (Z < 0) with no level above has the
+  parent's ground over it.
+- **This level's own headroom:** inside a **ceiling shape**, the shape's headroom (the lowest,
+  where shapes overlap), elsewhere the map's **headroom**. Both are heights above the floor, so
+  the ceiling follows a sloping floor.
+
+With neither there is no ceiling: open sky.
+
+**Floor thickness** is set for the whole world set in **Edit → World Sets…** (0.3 m unless set).
+A map's own, in its Ceiling mode panel, overrides it: it's the thickness under that map's floor.
+
+### Ceiling mode
+
+The Height tool's **Ceiling** mode panel shows the level and what's above it, and sets:
+
+| Setting | Effect |
+|---|---|
+| This map's headroom | Headroom wherever no ceiling shape sets one. Blank: none |
+| Floor thickness | Thickness of this map's floor, for the level below. Blank: the world set's |
+| New shapes: headroom | Headroom inside shapes you draw next |
+
+Click the map to start a **ceiling shape**, click to add corners, and click the first corner
+(or double-click, or press `Enter`) to close it. `Esc` cancels; `Backspace` removes the last
+corner. Click a shape's outline to select it: rename it, change its headroom, drag its corners,
+drag a side's midpoint to add one, and `Delete` removes the selected corner, or the shape. A
+shape's headroom can be lower than the map's (a low passage) or higher (a tall hall), but never
+above the floor over it. Each change is one undo step.
+
+### Seeing headroom
+
+- The **status bar** shows the headroom under the cursor and what sets it (the floor of the
+  level above, the ground, the map's headroom or a ceiling shape), or "open sky" on a level
+  off the ground. The **Inspect** tool shows it with the ceiling's height.
+- **Show → Headroom** shades the cells where the headroom differs from the map's own: orange
+  where it's lower, blue where it's higher. On a map without a headroom, it shades wherever
+  there's a ceiling.
+
+The levels above are read when the map opens; after editing another level, reopen this one to
+see the change.
 
 ---
 

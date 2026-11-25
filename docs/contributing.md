@@ -87,4 +87,5 @@ On Windows, set `PYTHONUTF8=1` first.
 - Add entries under `## [Unreleased]` with the pull request number, in `### Added`, `### Changed`,
   `### Fixed` or `### Removed`.
 - When cutting a release, rename `[Unreleased]` to the version and date, then add a fresh empty
-  `[Unreleased]` block above it.
+  `[Unreleased]` block above it. Set the same version in `frontend/package.json`,
+  `frontend/package-lock.json` (twice, near the top) and `server/main.py`.

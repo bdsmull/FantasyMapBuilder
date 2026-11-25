@@ -5,7 +5,8 @@
  * place it is followed up the main branch (the one with the most water) to where the
  * stream begins, and down to where it ends: a lake or the sea, the map's edge, or a
  * river already drawn (the new line then ends on it). The path is simplified, and the
- * land draining into it picks the class: brook, stream or river.
+ * land draining into it picks the class: brook, stream or river. On a wrapped map it
+ * carries on across the seam.
  */
 
 import type { TmjMap } from '../types/tmj';
@@ -16,7 +17,7 @@ import type { LineRef, Pt } from './lines';
 import { linePoints, nearestOnLine } from './lines';
 import type { WaterMap } from './water';
 import { NO_WATER, sampleAreaM2 } from './water';
-import { canonicalSample, wrapPeriodPx, wrapsX } from './worldWrap';
+import { canonicalSample, seamDelta, shiftsOnto, turnPx, xSpan } from './worldWrap';
 
 /** Catchment (km²) below which a converted stream is a brook, then a stream; larger is a river. */
 const _BROOK_MAX_KM2 = 10;
@@ -26,13 +27,13 @@ const _SIMPLIFY_CELLS = 0.5;
 /** How close (in cells) a stream must come to a drawn river to end on it. */
 const _JOIN_CELLS = 0.75;
 
-/** Where a converted river ends ('seam': a wrapped map's east or west edge, which a line can't cross). */
-export type StreamEnd = 'water' | 'edge' | 'river' | 'seam';
+/** Where a converted river ends. */
+export type StreamEnd = 'water' | 'edge' | 'river';
 
 export interface StreamRiver {
   /** The samples followed, source first. */
   samples: number[];
-  /** The line's points (simplified), map pixels, source first. */
+  /** The line's points (simplified), map pixels, source first; past an edge where it crosses the seam. */
   points: Pt[];
   /** Line class ID for it. */
   classId: string;
@@ -105,8 +106,7 @@ export function streamPicker(
   const { x, y } = samplePixels(map, cols, rows);
   const cell = Math.min(map.tilewidth, map.tileheight);
   const canonical = canonicalSample(map, cols);
-  const period = wrapsX(map) ? wrapPeriodPx(map) : 0;
-  const acrossSeam = (a: number, b: number) => period > 0 && Math.abs(x[a] - x[b]) > period / 2;
+  const turn = turnPx(map);
   const dry = (i: number) => !water || water.surface[i] === NO_WATER;
   const isStream = (i: number) => flow.accumulation[i] >= T && dry(i);
 
@@ -122,17 +122,19 @@ export function streamPicker(
   }
 
   // Drawn rivers near each stream sample (the nearest one, if within reach)
-  const riverLines = rivers.map((r) => linePoints(r.object));
   const joinD = _JOIN_CELLS * cell;
+  const riverLines = rivers.map((r) => ({ pts: linePoints(r.object), span: xSpan(linePoints(r.object)) }));
   const onRiver = new Map<number, Pt>();
   for (const i of streams) {
     let best: Pt | null = null, bestD = joinD;
-    for (const pts of riverLines) {
-      const near = nearestOnLine(pts, x[i], y[i]);
-      if (near.d <= bestD) {
-        const a = pts[near.segment], b = pts[near.segment + 1] ?? a;
-        best = { x: a.x + (b.x - a.x) * near.t, y: a.y + (b.y - a.y) * near.t };
-        bestD = near.d;
+    for (const { pts, span } of riverLines) {
+      for (const shift of shiftsOnto(turn, span.x0 - joinD, span.x1 + joinD, x[i], x[i])) {
+        const near = nearestOnLine(pts, x[i] - shift, y[i]);
+        if (near.d <= bestD) {
+          const a = pts[near.segment], b = pts[near.segment + 1] ?? a;
+          best = { x: a.x + (b.x - a.x) * near.t + shift, y: a.y + (b.y - a.y) * near.t };
+          bestD = near.d;
+        }
       }
     }
     if (best) onRiver.set(i, best);
@@ -147,7 +149,7 @@ export function streamPicker(
     for (;;) {
       let best = -1;
       for (const d of donors.get(c) ?? []) {
-        if (!seen.has(d) && dry(d) && !acrossSeam(c, d) && (best < 0 || flow.accumulation[d] > flow.accumulation[best])) best = d;
+        if (!seen.has(d) && dry(d) && (best < 0 || flow.accumulation[d] > flow.accumulation[best])) best = d;
       }
       if (best < 0) break;
       seen.add(best);
@@ -163,7 +165,6 @@ export function streamPicker(
       const r = flow.receiver[c];
       if (r < 0) { end = 'edge'; break; }
       if (seen.has(r)) break;
-      if (acrossSeam(c, r)) { end = 'seam'; break; }
       seen.add(r);
       down.push(r);
       if (!dry(r)) { end = 'water'; break; }
@@ -172,20 +173,21 @@ export function streamPicker(
     }
     const samples = [...up.reverse(), start, ...down];
     if (samples.length < 2) return null;
-    const pts: Pt[] = samples.map((i) => ({ x: x[i], y: y[i] }));
-    // Meet drawn rivers exactly
-    const first = onRiver.get(samples[0]);
-    if (first) pts[0] = first;
-    const last = onRiver.get(samples[samples.length - 1]);
-    if (end === 'river' && last) pts[pts.length - 1] = last;
-    // Up to the seam: on a square map, where it crosses is this edge's copy of the next sample
-    if (end === 'seam' && map.orientation !== 'hexagonal') {
-      const from = samples[samples.length - 1], to = flow.receiver[from];
-      const edge = { x: x[from] > period / 2 ? period : 0, y: y[to] };
-      if (edge.x !== x[from]) pts.push(edge);
+    // From sample to sample the short way round, so it can run over the seam
+    const pts: Pt[] = [];
+    for (const i of samples) {
+      const before = pts[pts.length - 1];
+      pts.push({ x: before ? before.x + seamDelta(map, before.x, x[i]) : x[i], y: y[i] });
     }
+    // Meet drawn rivers exactly
+    const meet = (k: number) => {
+      const at = onRiver.get(samples[k]);
+      if (at) pts[k] = { x: pts[k].x + (at.x - x[samples[k]]), y: at.y };
+    };
+    meet(0);
+    if (end === 'river') meet(samples.length - 1);
     // The land draining in, just above where it ends (not counting the water it joins)
-    const lastOwn = end === 'edge' || end === 'seam' ? samples[samples.length - 1] : samples[samples.length - 2];
+    const lastOwn = end === 'edge' ? samples[samples.length - 1] : samples[samples.length - 2];
     const catchmentSamples = flow.accumulation[lastOwn];
     const catchmentM2 = metersPerUnit ? catchmentSamples * sampleAreaM2(metersPerUnit) : null;
     return {
@@ -202,7 +204,7 @@ export function streamPicker(
     at(px, py, radius) {
       let best = -1, bestD = radius;
       for (const i of streams) {
-        const d = Math.hypot(x[i] - px, y[i] - py);
+        const d = Math.hypot(seamDelta(map, px, x[i]), y[i] - py);
         if (d <= bestD) { best = i; bestD = d; }
       }
       return best < 0 ? null : trace(best);

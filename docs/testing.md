@@ -19,7 +19,7 @@ pytest
 pytest --cov=map_editor --cov=server --cov-report=term-missing
 ```
 
-**Frontend** (515 Vitest tests):
+**Frontend** (539 Vitest tests):
 
 ```bash
 cd frontend

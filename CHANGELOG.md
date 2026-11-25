@@ -8,26 +8,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Everything since the World Sets milestone. Issue and PR numbers refer to the
+---
+
+## [2.0.0] - 2026-11-24
+
+Everything since World Sets (1.1.0): elevation, water, roads and rivers, world coordinates and worlds
+that wrap east–west. Issue and PR numbers refer to the
 [GitHub repository](https://github.com/bdsmull/FantasyMapBuilder).
 
 ### Added
-- **Worlds that wrap east–west, part 1** (issue #36): File → Map Properties → **Wraps east–west** on a
-  world set's root map.
+- **Worlds that wrap east–west** (issue #36): File → Map Properties → **Wraps east–west** on a world
+  set's root map.
   - Turning it on eases the heights near the seam to meet (one undo step with the setting). The
     height brush, smoothing, heights from terrain, fitting, hillshading, the sea, lakes and flow
     then continue across it, and generated detail repeats once around the world.
   - World coordinates stay continuous; looking up a point accepts any x. The Godot and Python
     libraries follow, and gain `world_width` and `wrap_delta`.
   - The poles stay the top and bottom edges of a flat map.
-- **Worlds that wrap east–west, part 2** (issue #36): the view. Roads, rivers and contours across the
-  seam come in part 3.
   - Scrolling east or west goes round and round, showing the world once at a time. A faint dashed
     line marks the seam while the grid is on.
   - Painting, filling, the height brush and Inspect work over the seam, and objects beside it can be
     picked from either side.
   - Child maps can be placed and dragged across it; their footprints, ground, roads, heights and
     overlap warnings follow.
+  - Roads, rivers and contours cross the seam, each drawn and edited as one line. **Carve rivers**
+    and fitting heights to contours work on both sides of it, and **Convert to River** carries on
+    across it.
+  - Child maps show the world's lines from whichever side of the seam they come; copying one takes
+    every part inside the map, and the copy replaces and is checked against the original there.
+  - A contour can go right round the world. Ceiling shapes across the seam cover both sides.
 - **World coordinates** (issue #9): every point of every placed map has a world position in
   meters, x east and y north of a **world origin**.
   - The origin is a `0, 0` marker on the world set's root map: a point object (type
@@ -161,6 +170,8 @@ Everything since the World Sets milestone. Issue and PR numbers refer to the
   Existing world sets keep their tilesets.
 
 ### Fixed
+- A road or river copied both to a map and to a map inside that one no longer shows again inside the
+  inner map.
 - Keyboard shortcuts (`Ctrl+S`, `Ctrl+Z`, the tool keys, …) keep working after clicking a checkbox,
   radio button or slider; before, they did nothing until you clicked elsewhere.
 - After the editor is rebuilt, browsers load the new version: the server now has them check for a

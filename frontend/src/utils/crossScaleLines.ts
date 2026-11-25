@@ -14,6 +14,9 @@
  *
  * All the transforms involved are affine (pixels <-> cell space <-> placement), so a
  * related map's pixels map to the open map's pixels with one scale and offset per axis.
+ *
+ * Where the root map wraps (#36), an ancestor's line may reach the open map a turn (or more)
+ * to either side of where it's placed, and maps that refine a line hide it there as well.
  */
 
 import type { TmjMap, TmjObject } from '../types/tmj';
@@ -22,6 +25,7 @@ import { pixelToCell, placeChild } from './worldSurface';
 import { hexLayout, hexMapPixelSize } from '../canvas/hexGeometry';
 import { readLines, linePoints, readWidths } from './lines';
 import type { Pt } from './lines';
+import { shiftsOnto, turnPx, xSpan } from './worldWrap';
 
 export const REFINES_PROPERTY = 'refines';
 
@@ -137,6 +141,16 @@ export function relatedMaps(
   return out;
 }
 
+/** One turn of the world in the open map's pixels; 0 unless its top map wraps. */
+export function worldTurn(openMap: TmjMap, related: RelatedMap[]): number {
+  let top: RelatedMap | null = null;
+  for (const m of related) if (m.depth < 0 && (!top || m.depth < top.depth)) top = m;
+  return top ? turnPx(top.map) * top.toOpen.sx : turnPx(openMap);
+}
+
+/** Points moved east by `dx` pixels. */
+export const shifted = (points: Pt[], dx: number): Pt[] => (dx ? points.map((p) => ({ x: p.x + dx, y: p.y })) : points);
+
 // ---------------------------------------------------------------------------
 // Refinement links
 // ---------------------------------------------------------------------------
@@ -176,10 +190,17 @@ export function refinedByIndex(openName: string, openMap: TmjMap, related: Relat
 /**
  * Areas (open-map pixels) where line `key` is hidden because a more detailed map
  * refines it there. The open map's own refinement hides it across the whole open map.
+ * For the open map's own line in a world that wraps (`turn`, see worldTurn), on every turn
+ * its `points` reach. (Other maps' lines come with the areas in step.)
  */
-export function hiddenAreas(key: string, index: Map<string, string[]>, openName: string, openRect: Rect, related: RelatedMap[]): Rect[] {
-  return (index.get(key) ?? []).map((name) => (name === openName ? openRect : related.find((m) => m.name === name)?.rect))
+export function hiddenAreas(
+  key: string, index: Map<string, string[]>, openName: string, openRect: Rect, related: RelatedMap[], turn = 0, points: Pt[] = [],
+): Rect[] {
+  const areas = (index.get(key) ?? []).map((name) => (name === openName ? openRect : related.find((m) => m.name === name)?.rect))
     .filter((r): r is Rect => !!r);
+  if (!turn || !areas.length) return areas;
+  const { x0, x1 } = xSpan(points);
+  return areas.flatMap((r) => shiftsOnto(turn, r.x0, r.x1, x0, x1).map((s) => ({ ...r, x0: r.x0 + s, x1: r.x1 + s })));
 }
 
 // ---------------------------------------------------------------------------
@@ -194,21 +215,33 @@ export interface GhostLine {
   object: TmjObject;
   /** The line as an object positioned in the open map's pixels (widths kept). */
   placed: TmjObject;
+  /**
+   * The same, for every turn of a wrapped world on which an ancestor's line reaches the open
+   * map (more than one when the line runs right round). Otherwise just `placed`.
+   */
+  copies: TmjObject[];
   /** Ancestors' lines are only shown inside the open map's area. */
   clipTo: Rect | null;
 }
 
-/** Ghost lines from every related map, whatever their layer's visibility (lines hidden by themselves are skipped). */
-export function ghostLines(related: RelatedMap[], openRect: Rect): GhostLine[] {
+/**
+ * Ghost lines from every related map, whatever their layer's visibility (lines hidden by
+ * themselves are skipped). `turn`: one turn of the world (see worldTurn).
+ */
+export function ghostLines(related: RelatedMap[], openRect: Rect, turn = 0): GhostLine[] {
   const out: GhostLine[] = [];
   for (const m of related) {
     for (const { object } of readLines(m.map, true)) {
       const pts = linePoints(object).map((p) => apply(m.toOpen, p));
+      const { x0, x1 } = xSpan(pts);
+      const shifts = m.depth < 0 ? shiftsOnto(turn, x0, x1, openRect.x0, openRect.x1) : [0];
+      const copies = (shifts.length ? shifts : [0]).map((s): TmjObject => ({ ...object, x: 0, y: 0, polyline: shifted(pts, s) }));
       out.push({
         key: lineKey(m.name, object.id),
         source: m,
         object,
-        placed: { ...object, x: 0, y: 0, polyline: pts },
+        placed: copies[0],
+        copies,
         clipTo: m.depth < 0 ? openRect : null,
       });
     }
@@ -262,5 +295,5 @@ export function clipPolyline(points: Pt[], widths: (number | null)[], r: Rect): 
 
 /** The pieces of a ghost line inside the open map, ready to add as lines. */
 export function adoptPieces(ghost: GhostLine, openRect: Rect): { points: Pt[]; widths: (number | null)[] }[] {
-  return clipPolyline(ghost.placed.polyline ?? [], readWidths(ghost.object), openRect);
+  return ghost.copies.flatMap((c) => clipPolyline(c.polyline ?? [], readWidths(ghost.object), openRect));
 }

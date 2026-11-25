@@ -7,7 +7,7 @@ import { isTileLayer, isObjectLayer } from '../types/tmj';
 import { hexLayout, pixelToHex, hexMapPixelSize } from '../canvas/hexGeometry';
 import { tileTerrainHeight } from './terrainHeights';
 import { nearestOnLine } from './lines';
-import { mod, unrolledHex, wrapPeriodPx, wrapPixelX, wrapsX } from './worldWrap';
+import { mod, reachShifts, unrolledHex, wrapPixelX, wrapsX } from './worldWrap';
 import type { TerrainHeight } from './terrainHeights';
 
 const _GID_MASK = 0x0fffffff;
@@ -122,8 +122,8 @@ export function inspectAt(map: TmjMap, x: number, y: number, pickRadius: number)
   if (!cell) return null;
   x = wrapPixelX(map, x);
   // On a wrapped map an object by one edge (or reaching past it) shows by the other, too
-  const turn = wrapsX(map) ? wrapPeriodPx(map) : 0;
-  const hits = (o: TmjObject) => (turn ? [0, -turn, turn] : [0]).some((s) => _hits(o, x + s, y, pickRadius));
+  const shifts = reachShifts(map);
+  const hits = (o: TmjObject) => shifts.some((s) => _hits(o, x + s, y, pickRadius));
   const i = cell.row * map.width + cell.col;
   const tiles: InspectedTile[] = [];
   const objects: InspectedObject[] = [];

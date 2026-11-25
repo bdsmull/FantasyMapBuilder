@@ -22,7 +22,7 @@ import type { TmjMap } from '../types/tmj';
 import type { HeightPatch } from './heightGrid';
 import { heightAt, hexHeightWeights } from './heightGrid';
 import { pixelToCell, sampleCell } from './worldSurface';
-import { joinSeam, mod, withWrap, wrapPeriodPx, wrapsX } from './worldWrap';
+import { joinSeam, mod, withWrap, wrapPeriodPx, wrapPixelX, wrapsX } from './worldWrap';
 
 /** A height (cm) the surface should pass through at a map pixel, pulling within `reachCells`. */
 export interface KnownHeight {
@@ -242,7 +242,7 @@ export function fitHeights(map: TmjMap, patch: HeightPatch, known: KnownHeight[]
   const wide: TmjMap = { ...map, width: W + 2 * pad, properties: withWrap(map.properties, false) };
   const cols = wide.width + (hex ? 0 : 1);
   const margin = (reach * period) / W;
-  const copies = known.flatMap((k) => [-1, 0, 1].map((t) => ({ ...k, x: k.x + shift + t * period })))
+  const copies = known.flatMap((k) => [-1, 0, 1].map((t) => ({ ...k, x: wrapPixelX(map, k.x) + shift + t * period })))
     .filter((k) => k.x > -margin && k.x < (wide.width * period) / W + margin);
   let cm = patch.cm;
   let best: FitResult | null = null;

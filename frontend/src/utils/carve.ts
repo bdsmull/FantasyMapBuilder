@@ -13,7 +13,7 @@
 import type { TmjMap } from '../types/tmj';
 import type { HeightPatch } from './heightGrid';
 import { heightAt } from './heightGrid';
-import { canonicalSample } from './worldWrap';
+import { canonicalSample, shiftsOnto, turnPx } from './worldWrap';
 import type { LineRef, Pt } from './lines';
 import { linePoints, readWidths, pixelsPerMeter } from './lines';
 import type { LineClass } from '../data/lineClasses';
@@ -59,6 +59,9 @@ export function carveRivers(
   const c0 = pixelToCell(map, 0, 0), c1 = pixelToCell(map, 1, 1);
   const cellPx = 1 / Math.max(Math.abs(c1.u - c0.u), Math.abs(c1.v - c0.v), 1e-9);
   const target = new Float64Array(out.length).fill(Infinity);
+  const turn = turnPx(map);
+  let samplesX0 = Infinity, samplesX1 = -Infinity;
+  for (const x of pos.x) { samplesX0 = Math.min(samplesX0, x); samplesX1 = Math.max(samplesX1, x); }
 
   for (const river of rivers) {
     const pts = linePoints(river.object);
@@ -109,14 +112,17 @@ export function carveRivers(
       const dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy;
       const x0 = Math.min(a.x, b.x) - maxReach, x1 = Math.max(a.x, b.x) + maxReach;
       const y0 = Math.min(a.y, b.y) - maxReach, y1 = Math.max(a.y, b.y) + maxReach;
-      for (let i = 0; i < out.length; i++) {
-        const px = pos.x[i], py = pos.y[i];
-        if (px < x0 || px > x1 || py < y0 || py > y1) continue;
-        const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2));
-        const s = along[k] + t * Math.sqrt(len2);
-        const reach = Math.max(_MIN_REACH_CELLS * cellPx, (widthAt(s) / 2) * ppm);
-        if (Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)) > reach) continue;
-        target[i] = Math.min(target[i], bedAt(s));
+      // On a wrapped map, also the samples a turn away that a segment by the seam reaches
+      for (const shift of shiftsOnto(turn, x0, x1, samplesX0, samplesX1)) {
+        for (let i = 0; i < out.length; i++) {
+          const px = pos.x[i] - shift, py = pos.y[i];
+          if (px < x0 || px > x1 || py < y0 || py > y1) continue;
+          const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2));
+          const s = along[k] + t * Math.sqrt(len2);
+          const reach = Math.max(_MIN_REACH_CELLS * cellPx, (widthAt(s) / 2) * ppm);
+          if (Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)) > reach) continue;
+          target[i] = Math.min(target[i], bedAt(s));
+        }
       }
     }
   }

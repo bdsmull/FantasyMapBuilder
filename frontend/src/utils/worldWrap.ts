@@ -9,10 +9,15 @@
  * grid algorithms work on the canonical samples (columns 0 … width − 1) and copy the
  * result to the twin.
  *
+ * Lines (roads, rivers, contours) are stored unrolled: the first point is on the map, and
+ * the rest carry on from it, past an edge if the line crosses the seam. Whatever asks what
+ * a line touches looks for it a whole number of turns to either side (`shiftsOnto`).
+ *
  * The poles are not special: the top and bottom rows are the world's edges.
  */
 
 import type { TmjMap, TmjProperty } from '../types/tmj';
+import { isObjectLayer } from '../types/tmj';
 import { hexLayout, hexMapPixelSize, pixelToHex } from '../canvas/hexGeometry';
 
 /** Map property (bool) that turns the wrap on. */
@@ -50,6 +55,80 @@ export function wrapPeriodPx(map: TmjMap): number {
   if (map.orientation !== 'hexagonal') return map.width * map.tilewidth;
   const layout = hexLayout(map);
   return map.width * (layout.staggerX ? layout.columnWidth : layout.tileWidth + layout.sideLengthX);
+}
+
+/** Map pixels in one turn of the world, or 0 on a map that doesn't wrap. */
+export function turnPx(map: TmjMap): number {
+  return wrapsX(map) ? wrapPeriodPx(map) : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Lines: unrolled, so they can cross the seam
+// ---------------------------------------------------------------------------
+
+type _Pt = { x: number; y: number };
+
+/** The west and east ends of some points. */
+export function xSpan(points: _Pt[]): { x0: number; x1: number } {
+  let x0 = Infinity, x1 = -Infinity;
+  for (const p of points) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); }
+  return { x0, x1 };
+}
+
+/**
+ * The shifts (whole turns, px) that bring something spanning x0 … x1 over lo … hi: none when
+ * no turn does. Just 0 when there's no turn (a map that doesn't wrap).
+ */
+export function shiftsOnto(turn: number, x0: number, x1: number, lo: number, hi: number): number[] {
+  if (!turn) return [0];
+  const out: number[] = [];
+  for (let k = Math.ceil((lo - x1) / turn); k <= Math.floor((hi - x0) / turn); k++) out.push(k * turn + 0);
+  return out;
+}
+
+/** A line's points with the first on the map's own turn (unchanged on a map that doesn't wrap). */
+export function onOwnTurn<P extends _Pt>(map: TmjMap, points: P[]): P[] {
+  if (!points.length) return points;
+  const shift = wrapPixelX(map, points[0].x) - points[0].x;
+  return shift ? points.map((p) => ({ ...p, x: p.x + shift })) : points;
+}
+
+/** Whether a line goes round the world: its ends are nearer a turn apart than together. */
+export function goesRound(map: TmjMap, points: _Pt[]): boolean {
+  const turn = turnPx(map), n = points.length;
+  return turn > 0 && n > 1 && Math.abs(points[n - 1].x - points[0].x) > turn / 2;
+}
+
+/** How many turns past the map's own the points reach, either way. */
+function _turnsPast(period: number, points: _Pt[]): number {
+  if (!points.length) return 0;
+  const { x0, x1 } = xSpan(points);
+  return Math.max(0, Math.ceil(-x0 / period), Math.ceil(x1 / period) - 1);
+}
+
+/**
+ * How many turns to either side of a place to look for the map's lines and shapes: 1 for
+ * most (what crosses the seam), more when one runs further round the world than that.
+ * `extra`: points being drawn or dragged.
+ */
+export function turnReach(map: TmjMap, extra: _Pt[] = []): number {
+  const period = turnPx(map);
+  if (!period) return 0;
+  let reach = Math.max(1, _turnsPast(period, extra));
+  for (const layer of map.layers) {
+    if (!isObjectLayer(layer)) continue;
+    for (const o of layer.objects) {
+      const rel = o.polyline ?? o.polygon;
+      if (rel) reach = Math.max(reach, _turnsPast(period, rel.map((p) => ({ x: o.x + p.x, y: 0 }))));
+    }
+  }
+  return reach;
+}
+
+/** The turns (px) at which to look for what a wrapped map holds, the map's own first; [0] on other maps. */
+export function reachShifts(map: TmjMap): number[] {
+  const period = turnPx(map);
+  return [0, ...Array.from({ length: turnReach(map) }, (_, i) => [-(i + 1) * period, (i + 1) * period]).flat()];
 }
 
 // ---------------------------------------------------------------------------
@@ -94,12 +173,12 @@ export interface WrapView {
   x1: number;
   /** Turns to draw the ground of: turn k is the map drawn k periods to the right. */
   ground: number[];
-  /** Turns to draw lines, objects and marks of: what reaches over the seam from one more each side, too. */
+  /** Turns to draw lines, objects and marks of: what reaches over the seam from further each side, too. */
   marks: number[];
 }
 
-/** How to draw a wrapped map at a view; null for a map that doesn't wrap. */
-export function wrapView(map: TmjMap, zoom: number, panX: number, canvasWidth: number): WrapView | null {
+/** How to draw a wrapped map at a view (`reach`: see `turnReach`); null for a map that doesn't wrap. */
+export function wrapView(map: TmjMap, zoom: number, panX: number, canvasWidth: number, reach = 1): WrapView | null {
   if (!wrapsX(map)) return null;
   const period = wrapPeriodPx(map) * zoom;
   const x0 = Math.max(0, (canvasWidth - period) / 2), x1 = Math.min(canvasWidth, (canvasWidth + period) / 2);
@@ -108,7 +187,7 @@ export function wrapView(map: TmjMap, zoom: number, panX: number, canvasWidth: n
   const first = Math.floor((x0 - panX - width) / period) + 1;
   const last = Math.ceil((x1 - panX) / period) - 1;
   const range = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
-  return { period, x0, x1, ground: range(first, last), marks: range(first - 1, last + 1) };
+  return { period, x0, x1, ground: range(first, last), marks: range(first - reach, last + reach) };
 }
 
 // ---------------------------------------------------------------------------

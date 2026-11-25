@@ -59,7 +59,7 @@ export function ghostAt(store: MapStore, p: MapPoint, radius: number, kind?: Lin
     if (index.get(g.key)?.includes(store.mapName)) continue; // refined here: hidden
     if (g.clipTo && !_inRect(p, g.clipTo)) continue;
     if (hiddenAreas(g.key, index, store.mapName, openRect, cs.related).some((r) => _inRect(p, r))) continue;
-    if (nearestOnLine(g.placed.polyline ?? [], p.x, p.y).d <= radius) return g.key;
+    if (g.copies.some((c) => nearestOnLine(c.polyline ?? [], p.x, p.y).d <= radius)) return g.key;
   }
   return null;
 }

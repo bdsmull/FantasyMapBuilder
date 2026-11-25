@@ -54,6 +54,9 @@ small and readable.
 | Object (polyline) | `widths` | string | Width in meters per point, comma-separated; blank = class width (e.g. `",,25,40"`) |
 | Object (polyline) | `refines` | string | `<map>#<object id>` of the line this one refines |
 
+On a map with `wrapX`, a line or shape across the seam is one object: its `x` is on the map, and its
+points carry on past the edge (below 0, or beyond the map's width) without jumping back.
+
 ---
 
 ## Object shapes

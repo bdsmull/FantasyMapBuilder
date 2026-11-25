@@ -147,8 +147,8 @@ Open the world set's root map, choose **File → Map Properties…** and tick **
 - **Generated detail** repeats once around the world, on the world map and every map inside it. Detail
   generated before still matches, except near the seam, or if the feature size doesn't divide
   evenly into the world's width.
-- **The sea, lakes and flow** run across it; only the top and bottom are the map's edge. A
-  stream turned into a drawn river stops at the seam for now.
+- **The sea, lakes and flow** run across it; only the top and bottom are the map's edge. A stream
+  turned into a drawn river carries on across the seam.
 - **World coordinates** are continuous, and looking one up works any number of turns around.
 - **Scrolling** east or west goes round and round. The world is shown once at a time, however far you
   zoom out, and the picture is cut opposite the middle of the view. With the grid on, a faint dashed
@@ -157,9 +157,17 @@ Open the world set's root map, choose **File → Map Properties…** and tick **
 - **Child maps** can be placed and dragged across it: their footprints, ground and roads show on both
   sides, and their heights, the overlap check and **Open** find them there.
 
-A flat-topped hex map needs an even number of columns. Roads, rivers and contours over the seam are
-still to come: you can draw one past it, but joining other lines there, and what the line does to
-the land on the far side, isn't finished.
+- **Roads, rivers and contours** can be drawn and edited across it, each as one line. Carving a river
+  and fitting heights to a contour shape the ground on both sides. Child maps show the world's lines
+  from whichever side they come, and a copy on a child map replaces the original there.
+- **A contour right round the world** ends when you click its first point again; its two ends then
+  meet across the seam. (Move both if you move one.)
+
+Each click goes the short way round from the last one, so a segment longer than half the world needs
+a point in between. A line across the seam is stored past the map's edge, which is how Tiled shows
+it; turning the wrap off leaves it there.
+
+A flat-topped hex map needs an even number of columns.
 
 The **poles** are just the top and bottom edges: the world is a cylinder, and every cell counts as
 the same size. On a map that stands for a whole globe, east–west distances are too long away from the

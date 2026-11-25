@@ -6,7 +6,7 @@ import { surfaceKey } from '../store/worldSurfaceStore';
 import { getMap } from '../api/client';
 import { resolveMetersPerUnit } from '../data/mapScales';
 import type { WorldSetNode } from '../types/worldSet';
-import { relatedMaps, ghostLines, mapExtent } from '../utils/crossScaleLines';
+import { relatedMaps, ghostLines, mapExtent, worldTurn } from '../utils/crossScaleLines';
 import type { MapSource } from '../utils/crossScaleLines';
 
 /** Descendants smaller than this (longest side, in cells of the open map) are left out: their lines would be specks. */
@@ -82,7 +82,7 @@ export function useCrossScaleLines(): void {
         const minPx = _MIN_EXTENT_CELLS * Math.min(current.tilewidth, current.tileheight);
         const related = relatedMaps(mapName, nodes, lookup, (_src, rect) => Math.max(rect.x1 - rect.x0, rect.y1 - rect.y0) >= minPx);
         const openRect = mapExtent(current);
-        setRelated(key, related, ghostLines(related, openRect), openRect);
+        setRelated(key, related, ghostLines(related, openRect, worldTurn(current, related)), openRect);
       })
       .catch((e) => console.error('Loading lines from other maps failed:', e));
     return () => { cancelled = true; };

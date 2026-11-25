@@ -15,7 +15,7 @@ import { renderHexMap, clearHexTileCache } from '../canvas/hexRenderer';
 import { hexLayout, pixelToHex } from '../canvas/hexGeometry';
 import { screenToTile } from '../canvas/canvasUtils';
 import type { ViewState } from '../canvas/canvasUtils';
-import { mod, seamDelta, unrolledHex, wrapPeriodPx, wrapPixelX, wrapsX, wrapView } from '../utils/worldWrap';
+import { mod, reachShifts, seamDelta, turnReach, unrolledHex, wrapPixelX, wrapsX, wrapView } from '../utils/worldWrap';
 import { mapPixelSize } from '../utils/worldCoords';
 import { isObjectLayer } from '../types/tmj';
 import type { TmjMap } from '../types/tmj';
@@ -30,7 +30,7 @@ import { readLines, shownLines, linePoints, pixelsPerMeter } from '../utils/line
 import { resolveLineClasses, classForType } from '../data/lineClasses';
 import { drawLine } from '../canvas/lineRenderer';
 import { useCrossScaleStore } from '../store/crossScaleStore';
-import { refinedByIndex, hiddenAreas, lineKey, mapExtent } from '../utils/crossScaleLines';
+import { refinedByIndex, hiddenAreas, lineKey, mapExtent, worldTurn } from '../utils/crossScaleLines';
 import { useRefinementChecks } from './useRefinementChecks';
 
 /** Around the map, and where a wrapped world has been shown once. */
@@ -276,6 +276,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const lineClasses = resolveLineClasses(store.mapWorldSet === activeWorldSetName ? worldSetStore.activeWorldSet?.lineClasses : undefined);
     const ppm = pixelsPerMeter(map, resolveMetersPerUnit(map, defaultUnits));
     const openRect = mapExtent(map);
+    const worldTurnPx = worldTurn(map, related);
     // Roads and rivers, all shown or hidden by the "Roads & rivers" toggle: other maps' lines
     // (faded), then this map's on shown layers, above the terrain and under the other
     // objects. A line is hidden where a more detailed map refines it.
@@ -283,15 +284,17 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       if (!showLines) return;
       for (const g of ghosts) {
         if (refIndex.get(g.key)?.includes(store.mapName)) continue;
-        drawLine(c, g.placed, zoom, classForType(g.object.type, lineClasses).cls, ppm, {
-          exclude: hiddenAreas(g.key, refIndex, store.mapName, openRect, related),
-          clipTo: g.clipTo,
-          alpha: _GHOST_ALPHA,
-        });
+        for (const copy of g.copies) {
+          drawLine(c, copy, zoom, classForType(g.object.type, lineClasses).cls, ppm, {
+            exclude: hiddenAreas(g.key, refIndex, store.mapName, openRect, related),
+            clipTo: g.clipTo,
+            alpha: _GHOST_ALPHA,
+          });
+        }
       }
       for (const { object, layerIndex } of shownLines(map)) {
         drawLine(c, object, zoom, classForType(object.type, lineClasses).cls, ppm, {
-          exclude: related.length ? hiddenAreas(lineKey(store.mapName, object.id), refIndex, store.mapName, openRect, related) : undefined,
+          exclude: related.length ? hiddenAreas(lineKey(store.mapName, object.id), refIndex, store.mapName, openRect, related, worldTurnPx, linePoints(object)) : undefined,
           alpha: map.layers[layerIndex].opacity,
         });
       }
@@ -541,14 +544,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
       // Line drawing (Roads, Water → Rivers): the line being drawn, and the selected line's handles
       // A selected line from another map: outline it
       const ghost = selectedGhost ? ghosts.find((g) => g.key === selectedGhost) : undefined;
-      if (ghost?.placed.polyline) {
+      for (const copy of ghost?.copies ?? []) {
         ctx.save();
         ctx.translate(view.pan.x, view.pan.y);
         ctx.strokeStyle = 'rgba(255, 212, 0, 0.9)';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
         ctx.beginPath();
-        ghost.placed.polyline.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
+        copy.polyline?.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x * view.zoom, p.y * view.zoom) : ctx.lineTo(p.x * view.zoom, p.y * view.zoom)));
         ctx.stroke();
         ctx.restore();
       }
@@ -653,7 +656,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     };
 
     renderedFootprintsRef.current = [];
-    const wrap = wrapView(map, zoom, pan.x, canvas.width);
+    const wrap = wrapView(map, zoom, pan.x, canvas.width, turnReach(map, [...(draftLine ?? []), ...(dragPoints ?? []), ...(hoverRiver?.points ?? [])]));
     if (!wrap) {
       drawMap({ zoom, pan });
       drawMarks({ zoom, pan });
@@ -829,8 +832,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
   function pressPos(e: PointerEvent, tool: Tool): MapPoint {
     const pos = pointerToMap(e), map = store.mapData;
     if (!map || !wrapsX(map) || !tool.picks || useViewStore.getState().draftLine) return pos;
-    const period = wrapPeriodPx(map);
-    return [0, -period, period].map((s) => ({ x: pos.x + s, y: pos.y })).find((p) => tool.picks!(store, p)) ?? pos;
+    return reachShifts(map).map((s) => ({ x: pos.x + s, y: pos.y })).find((p) => tool.picks!(store, p)) ?? pos;
   }
 
   function pointerToTile(e: PointerEvent): { col: number; row: number } | null {
@@ -1038,8 +1040,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = (props) => {
     const name = classForType(river.classId, classes).cls.name;
     const units = resolveUnits(map, defaultUnits);
     const drains = river.catchmentM2 !== null ? `${formatArea(river.catchmentM2, units)} drains into it` : `${river.catchmentSamples.toLocaleString('en-US')} cells drain into it`;
-    const ends = river.end === 'water' ? 'down into the water' : river.end === 'river' ? 'to where it joins a drawn river'
-      : river.end === 'seam' ? "to the map's east-west seam, which a drawn river can't cross yet" : "to the map's edge";
+    const ends = river.end === 'water' ? 'down into the water' : river.end === 'river' ? 'to where it joins a drawn river' : "to the map's edge";
     v.setConvertingStream(false);
     v.setStreamNote(`Added a ${name.toLowerCase()} from where it begins ${ends}; ${drains}. Select it to change its type or shape.`);
   }

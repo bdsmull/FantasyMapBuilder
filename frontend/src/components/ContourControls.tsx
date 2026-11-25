@@ -6,6 +6,7 @@ import { bandIntervalCm, formatHeight, parseHeightToCm } from '../utils/heightGr
 import { readContours } from '../utils/contours';
 import { DEFAULT_REACH_CELLS } from '../utils/spotHeights';
 import { newContourCm } from '../tools/contourMode';
+import { goesRound } from '../utils/worldWrap';
 import { ValueField, parseReach } from './SpotHeightControls';
 
 /**
@@ -77,11 +78,14 @@ export const ContourControls: React.FC<{ units: UnitSystem }> = ({ units }) => {
             <ValueField value={selected.reachCells} format={String} parse={parseReach} commit="blur" width={50}
               title="How far this contour pulls the surface (Enter to apply)" onChange={(c) => updateContour(selected.id, { reachCells: c })} />
           </label>
-          <label style={{ display: 'block', marginBottom: 4 }} title="A closed contour is a loop, e.g. around a hilltop">
+          <label
+            style={{ display: 'block', marginBottom: 4 }}
+            title={goesRound(mapData, selected.points) ? 'This contour goes round the world, so its ends meet across the seam instead' : 'A closed contour is a loop, e.g. around a hilltop'}
+          >
             <input
               type="checkbox"
               checked={selected.closed}
-              disabled={!selected.closed && selected.points.length < 3}
+              disabled={!selected.closed && (selected.points.length < 3 || goesRound(mapData, selected.points))}
               onChange={(e) => updateContour(selected.id, { closed: e.target.checked })}
             />{' '}
             Closed loop

@@ -72,12 +72,12 @@ export function drawLine(
     ctx.rect(r.x0 * zoom, r.y0 * zoom, (r.x1 - r.x0) * zoom, (r.y1 - r.y0) * zoom);
     ctx.clip();
   }
-  if (opts.exclude && opts.exclude.length) {
-    // Everything except the excluded areas (holes via the even-odd rule)
+  // Everything except the excluded areas (holes via the even-odd rule; one at a time, as they may overlap)
+  for (const r of opts.exclude ?? []) {
     const big = 1e7;
     ctx.beginPath();
     ctx.rect(-big, -big, 2 * big, 2 * big);
-    for (const r of opts.exclude) ctx.rect(r.x0 * zoom, r.y0 * zoom, (r.x1 - r.x0) * zoom, (r.y1 - r.y0) * zoom);
+    ctx.rect(r.x0 * zoom, r.y0 * zoom, (r.x1 - r.x0) * zoom, (r.y1 - r.y0) * zoom);
     ctx.clip('evenodd');
   }
   if (cls.kind === 'road') _stroke(ctx, pts, widths, _CASING, 2);

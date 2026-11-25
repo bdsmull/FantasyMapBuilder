@@ -280,7 +280,7 @@ describe('generated detail', () => {
 });
 
 describe('a traced stream', () => {
-  it('stops at the seam, since a drawn line cannot cross it', () => {
+  it('runs on across the seam', () => {
     // A valley running west over the seam, down to a pit just past it that drains south
     const { cols, rows } = sampleGrid(square);
     const cm = new Int32Array(cols * rows);
@@ -294,14 +294,16 @@ describe('a traced stream', () => {
     for (let r = 4; r < rows; r++) cm[r * cols + 13] = 900 - r * 50;
     const flow = computeFlow(square, cols, rows, cm, null);
     const r = streamPicker(square, cols, rows, flow, null, 4, [], BUILTIN_LINE_CLASSES, null).at(2 * 20, 4 * 20, 5)!;
-    expect(r.end).toBe('seam');
-    expect(Math.min(...r.points.map((p) => p.x))).toBe(0);
-    // No segment jumps across the map
-    for (let i = 1; i < r.points.length; i++) expect(Math.abs(r.points[i].x - r.points[i - 1].x)).toBeLessThan(160);
-    // Picked on the far side, it starts at the seam and runs on
-    const far = streamPicker(square, cols, rows, flow, null, 4, [], BUILTIN_LINE_CLASSES, null).at(15 * 20, 4 * 20, 5)!;
-    expect(far.end).toBe('edge');
-    for (let i = 1; i < far.points.length; i++) expect(Math.abs(far.points[i].x - far.points[i - 1].x)).toBeLessThan(160);
+    expect(r.end).toBe('edge');
+    // From its source on the map, west over the seam and down the valley past it, with no jump
+    expect(r.points[0].x).toBeGreaterThan(0);
+    expect(r.points[0].x).toBeLessThan(160);
+    expect(r.points[r.points.length - 1]).toEqual({ x: 13 * 20 - 320, y: 9 * 20 });
+    for (let i = 1; i < r.points.length; i++) expect(r.points[i].x).toBeLessThanOrEqual(r.points[i - 1].x);
+    // The same stream picked on the far side, or at the seam's twin column
+    for (const x of [15 * 20, 16 * 20, 16 * 20 + 2]) {
+      expect(streamPicker(square, cols, rows, flow, null, 4, [], BUILTIN_LINE_CLASSES, null).at(x, 4 * 20, 5)).toEqual(r);
+    }
   });
 });
 

@@ -23,6 +23,7 @@ import { heightAt } from './heightGrid';
 import type { Pt } from './lines';
 import { nearestOnLine } from './lines';
 import type { ChildPlacement } from './worldSurface';
+import { reachShifts } from './worldWrap';
 import { pixelToCell, cellToPixel } from './worldSurface';
 import { hexLayout, hexCenter } from '../canvas/hexGeometry';
 
@@ -228,10 +229,11 @@ export function ceilingAt(
   map: TmjMap, floorCm: number, ctx: CeilingContext, areas: CeilingArea[], headroomCm: number | null, x: number, y: number,
 ): Ceiling | null {
   let best = _outsideCeiling(map, ctx, x, y);
+  const shifts = areas.length ? reachShifts(map) : [];
   // Inside ceiling objects the lowest of theirs replaces the map's own headroom
   let own: { cm: number; source: CeilingSource; name: string } | null = null;
   for (const a of areas) {
-    if (insideShape(a.points, x, y) && (!own || floorCm + a.headroomCm < own.cm)) own = { cm: floorCm + a.headroomCm, source: 'object', name: a.name };
+    if (shifts.some((s) => insideShape(a.points, x + s, y)) && (!own || floorCm + a.headroomCm < own.cm)) own = { cm: floorCm + a.headroomCm, source: 'object', name: a.name };
   }
   if (!own && headroomCm !== null) own = { cm: floorCm + headroomCm, source: 'map', name: '' };
   if (own && (!best || own.cm < best.cm)) best = own;

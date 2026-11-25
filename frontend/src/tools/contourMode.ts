@@ -2,8 +2,9 @@
  * Contour mode of the Height tool (#8 phase 3d): draw and edit contour lines.
  *
  * Drawing: click to add points; double-click or Enter finishes an open contour; a click
- * on the first point (with three or more points) closes it into a loop. Esc cancels;
- * Backspace removes the last point. New contours get the height and reach set in the panel.
+ * on the first point (with three or more points) closes it into a loop (or, having gone
+ * right round a wrapped world, ends it there). Esc cancels; Backspace removes the last
+ * point. New contours get the height and reach set in the panel.
  * Editing: click a contour to select it; drag its points, or drag a segment's midpoint
  * handle to insert a point. Delete removes the selected point (or the contour, if it
  * would get too short, or no point is selected). Each change is one undo step.
@@ -15,6 +16,7 @@ import { useViewStore } from '../store/viewStore';
 import { pointAt, midpointAt } from '../utils/lines';
 import { readContours, contourAt, contourPath, minContourPoints } from '../utils/contours';
 import { DEFAULT_REACH_CELLS } from '../utils/spotHeights';
+import { seamDelta } from '../utils/worldWrap';
 
 /** Screen pixels around a contour, point or handle that count as clicking it. */
 export const CONTOUR_PICK_RADIUS_PX = 8;
@@ -60,7 +62,14 @@ export function contourPress(store: MapStore, pos: MapPoint): void {
 
   const draft = _view().draftLine;
   if (draft) {
-    if (draft.length >= 3 && Math.hypot(pos.x - draft[0].x, pos.y - draft[0].y) <= r) { _finish(store, true); return; }
+    const beside = seamDelta(store.mapData, draft[0].x, pos.x);
+    if (draft.length >= 3 && Math.hypot(beside, pos.y - draft[0].y) <= r) {
+      // Back at the start: a loop, or right round the world (the ends then meet over the seam)
+      const round = pos.x - beside - draft[0].x;
+      if (Math.abs(round) > r) _view().setDraftLine([...draft, { x: draft[0].x + round, y: draft[0].y }]);
+      _finish(store, Math.abs(round) <= r);
+      return;
+    }
     if (isDouble) { _finish(store, false); return; }
     _view().setDraftLine([...draft, pos]);
     return;

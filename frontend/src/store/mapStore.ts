@@ -26,7 +26,7 @@ import type { Pt } from '../utils/lines';
 import { CEILING_LAYER, CEILING_TYPE, isCeiling, ceilingProperties, ceilingShape, withLengthProperty } from '../utils/ceilings';
 import { WORLD_ORIGIN_LAYER, WORLD_ORIGIN_NAME, WORLD_ORIGIN_TYPE, defaultOriginPixel, findWorldOrigin } from '../utils/worldCoords';
 import { useWorldSetStore } from './worldSetStore';
-import { blendSeam, joinSeam, withWrap, wrapProblem, wrapsX } from '../utils/worldWrap';
+import { blendSeam, joinSeam, onOwnTurn, withWrap, wrapProblem, wrapsX } from '../utils/worldWrap';
 
 /** Object layer new lines go into when the active layer isn't an object layer. */
 export const LINE_LAYER = 'Roads and rivers';
@@ -680,7 +680,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
     if (!mapData || points.length < minContourPoints(closed)) return null;
     const id = mapData.nextobjectid;
     const contour: TmjObject = {
-      id, name: '', type: CONTOUR_TYPE, width: 0, height: 0, visible: true, ...contourShape(points, closed),
+      id, name: '', type: CONTOUR_TYPE, width: 0, height: 0, visible: true, ...contourShape(onOwnTurn(mapData, points), closed),
       properties: spotProperties([], cm, reachCells),
     };
     const top = _topObjectLayer(mapData, CONTOUR_LAYER, '#8a5a2b');
@@ -713,7 +713,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
           };
           delete next.polyline;
           delete next.polygon;
-          return { ...next, ...contourShape(points, closed) };
+          return { ...next, ...contourShape(onOwnTurn(mapData, points), closed) };
         }),
       };
     });
@@ -737,7 +737,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
     if (!mapData || points.length < 3 || headroomCm <= 0) return null;
     const id = mapData.nextobjectid;
     const ceiling: TmjObject = {
-      id, name: '', type: CEILING_TYPE, width: 0, height: 0, visible: true, ...ceilingShape(points),
+      id, name: '', type: CEILING_TYPE, width: 0, height: 0, visible: true, ...ceilingShape(onOwnTurn(mapData, points)),
       properties: ceilingProperties([], headroomCm),
     };
     const top = _topObjectLayer(mapData, CEILING_LAYER, '#9b6bd1');
@@ -845,7 +845,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
     const { mapData, activeLayerIndex } = get();
     if (!mapData || points.length < 2) return null;
     const id = mapData.nextobjectid;
-    const line: TmjObject = { id, name: extra?.name ?? '', type: classId, width: 0, height: 0, visible: true, ...toPolyline(points) };
+    const line: TmjObject = { id, name: extra?.name ?? '', type: classId, width: 0, height: 0, visible: true, ...toPolyline(onOwnTurn(mapData, points)) };
     const props = writeWidths(extra?.properties, extra?.widths ?? []);
     if (props.length) line.properties = props;
     let layers = mapData.layers;
@@ -882,7 +882,7 @@ export const useMapStore = create<MapStore>((set, get) => ({
           let next: TmjObject = { ...o };
           if (changes.name !== undefined) next.name = changes.name;
           if (changes.classId !== undefined) next.type = changes.classId;
-          if (changes.points && changes.points.length >= 2) next = { ...next, ...toPolyline(changes.points) };
+          if (changes.points && changes.points.length >= 2) next = { ...next, ...toPolyline(onOwnTurn(mapData, changes.points)) };
           if (changes.widths) next.properties = writeWidths(next.properties, changes.widths);
           if (next.properties && next.properties.length === 0) delete next.properties;
           return next;

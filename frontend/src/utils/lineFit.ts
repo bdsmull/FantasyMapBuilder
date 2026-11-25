@@ -14,7 +14,8 @@ import type { TmjMap } from '../types/tmj';
 import type { Pt } from './lines';
 import { readLines, linePoints } from './lines';
 import type { RelatedMap, Rect } from './crossScaleLines';
-import { apply, clipPolyline, lineKey, mapExtent, refinesOf } from './crossScaleLines';
+import { apply, clipPolyline, lineKey, mapExtent, refinesOf, shifted, worldTurn } from './crossScaleLines';
+import { shiftsOnto, xSpan } from './worldWrap';
 
 /** How far an end may be from the original's crossing, in the refining map's cells. */
 export const EDGE_TOLERANCE_CELLS = 2;
@@ -58,11 +59,18 @@ export function edgeCrossings(points: Pt[], area: Rect): Pt[] {
   return out;
 }
 
-/** Compare refined copies with their original at the edge of `area` (all in one pixel space). */
-export function fitRefinedLine(copies: { id: number; points: Pt[] }[], original: Pt[] | null, area: Rect, tolPx: number): LineFitResult {
+/**
+ * Compare refined copies with their original at the edge of `area` (all in one pixel space).
+ * In a world that wraps (`turn`, one turn in pixels), the original counts on every turn it
+ * reaches the area.
+ */
+export function fitRefinedLine(
+  copies: { id: number; points: Pt[] }[], original: Pt[] | null, area: Rect, tolPx: number, turn = 0,
+): LineFitResult {
   const none: LineFitResult = { status: 'ok', offPx: 0, badEnds: [], unmatchedCrossings: [], fixes: [] };
   if (!original) return { ...none, status: 'missing' };
-  const crossings = edgeCrossings(original, area);
+  const span = xSpan(original);
+  const crossings = shiftsOnto(turn, span.x0, span.x1, area.x0, area.x1).flatMap((s) => edgeCrossings(shifted(original, s), area));
   if (crossings.length === 0) return { ...none, status: 'left' };
 
   const ends: CopyEnd[] = [];
@@ -115,6 +123,7 @@ const _cellPx = (m: TmjMap, rect: Rect) => Math.min((rect.x1 - rect.x0) / m.widt
 export function checkRefinements(openName: string, openMap: TmjMap, related: RelatedMap[]): RefinementCheck[] {
   const out: RefinementCheck[] = [];
   const openRect = mapExtent(openMap);
+  const turn = worldTurn(openMap, related);
 
   const group = (map: TmjMap, accept: (sourceMap: string) => boolean) => {
     const groups = new Map<string, { id: number; points: Pt[] }[]>();
@@ -135,7 +144,7 @@ export function checkRefinements(openName: string, openMap: TmjMap, related: Rel
     const original = line ? linePoints(line.object).map((p) => apply(src.toOpen, p)) : null;
     out.push({
       refiningMap: openName, original: key, originalName: line?.object.name ?? null, copyIds: copies.map((c) => c.id),
-      result: fitRefinedLine(copies, original, openRect, EDGE_TOLERANCE_CELLS * Math.min(openMap.tilewidth, openMap.tileheight)),
+      result: fitRefinedLine(copies, original, openRect, EDGE_TOLERANCE_CELLS * Math.min(openMap.tilewidth, openMap.tileheight), turn),
     });
   }
 
@@ -147,7 +156,7 @@ export function checkRefinements(openName: string, openMap: TmjMap, related: Rel
       const placed = copies.map((c) => ({ id: c.id, points: c.points.map((p) => apply(d.toOpen, p)) }));
       out.push({
         refiningMap: d.name, original: key, originalName: line?.object.name ?? null, copyIds: copies.map((c) => c.id),
-        result: fitRefinedLine(placed, line ? linePoints(line.object) : null, d.rect, EDGE_TOLERANCE_CELLS * _cellPx(d.map, d.rect)),
+        result: fitRefinedLine(placed, line ? linePoints(line.object) : null, d.rect, EDGE_TOLERANCE_CELLS * _cellPx(d.map, d.rect), turn),
       });
     }
   }
